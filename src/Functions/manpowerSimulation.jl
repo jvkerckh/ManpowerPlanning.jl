@@ -233,12 +233,17 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
         mpSim.isVirgin = false
     end  # if now( mpSim ) == 0.0
 
-    empty!( mpSim.simCache )
+    oldSimTime = now( mpSim )
 
     if toTime > 0.0
         run( mpSim.sim, toTime )
     else
         run( mpSim.sim )
+    end  # if toTime > 0.0
+
+    # Empty the simulation cache if the simulation time has advanced.
+    if oldSimTime < now( mpSim )
+        empty!( mpSim.simCache )
     end
 end  # run( mpSim, toTime )
 
