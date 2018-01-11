@@ -33,7 +33,8 @@ function countRecords( mpSim::ManpowerSimulation, timeDelta::T,
     end  # if timeDelta <= 0.0
 
     return countRecords( mpSim.simResult,
-        collect( 0:timeDelta:mpSim.simLength ), prereqGroup )
+        collect( 0.0:timeDelta:min( now( mpSim ), mpSim.simLength ) ),
+        prereqGroup )
 end  # countRecords( mpSim, timeDelta, prereqGroup )
 
 function countRecords( mpSim::ManpowerSimulation, times::Vector{Float64} )
@@ -43,7 +44,7 @@ end  # countRecords( mpSim, times )
 function countRecords( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
     # If the report is already cached, return the cached report.
     if isCached( mpSim.simCache, timeDelta, :count )
-        return ( collect( 0:timeDelta:mpSim.simLength ),
+        return ( collect( 0.0:timeDelta:min( now( mpSim ), mpSim.simLength ) ),
             mpSim.simCache[ timeDelta, :count ] )
     end  # if isCached( mpSim.simCache, timeDelta, :count )
 
@@ -60,16 +61,107 @@ function countRecords( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
         return countRecords( mpSim, timeDelta )
     end  # if !isempty( res )
 
-    # Otherwise, generate a new report.
+    # Otherwise, generate a new report and cache it. If the simulation is
+    #   continued, the cache gets wiped.
     report = countRecords( mpSim, timeDelta, countPersonnelPrereqGroup )
-
-    # If the simulation is done, cache the report.
-    if now( mpSim ) > mpSim.simLength
-        mpSim.simCache[ timeDelta, :count ] = report[ 2 ]
-    end  # if now( mpSim ) > mpSim.simLength
-
+    mpSim.simCache[ timeDelta, :count ] = report[ 2 ]
     return report
 end  # countRecords( mpSim, timeDelta )
+
+
+# This function counts the average number of people that satisfy the given set
+#   of prerequisites during each period. The average is taken over a number of
+#   snapshots during each period. The entry at time 0.0 is the snapshot at this
+#   time.
+export countAverage
+function countAverage( mpSim::ManpowerSimulation, reportTimeDelta::T1,
+    snapTimeDelta::T2, prereqGroup::Union{Void, PrerequisiteGroup} = nothing ) where T1 <: Real where T2 <: Real
+    if ( reportTimeDelta <= 0.0 ) || ( snapTimeDelta <= 0.0 )
+        warn( "Cannot have a time grid with step size ⩽ 0.0, nothing returned." )
+        return nothing
+    end  # if ( reportTimeDelta <= 0.0 ) || ...
+
+    if reportTimeDelta % snapTimeDelta != 0.0
+        warn( "Time grid of report must be a multiple of the snap time grid, nothing returned." )
+        return nothing
+    end  # if reportTimeDelta % snapTimeDelta != 0.0
+
+    if prereqGroup === nothing
+        snapReport = countRecords( mpSim, snapTimeDelta )
+    else
+        snapReport = countRecords( mpSim, snapTimeDelta, prereqGroup )
+    end  # if prereqGroup === nothing
+
+    aggrRatio = Int( reportTimeDelta / snapTimeDelta )
+
+    if aggrRatio == 1
+        return snapReport
+    end  # if aggrRatio == 1
+
+    # Create the reporting times.
+    tMax = snapReport[ 1 ][ end ]
+    tmpTimes = collect( 0.0:reportTimeDelta:tMax )
+
+    if tmpTimes[ end ] < tMax
+        push!( tmpTimes, tMax )
+    end  # if tmpTimes < snapReport[ 1 ][ end ]
+
+    tmpCounts = similar( tmpTimes, Float64 )
+
+    # The snapshot at time 0.0.
+    tmpCounts[ 1 ] = snapReport[ 2 ][ 1 ]
+    nWholePeriods = Int( floor( ( length( snapReport[ 1 ] ) - 1 ) / aggrRatio ) )
+    map( ii -> tmpCounts[ ii + 1 ] =
+        mean( snapReport[ 2 ][ 1 + ( ii - 1 ) * aggrRatio + (1:aggrRatio) ] ),
+        1:nWholePeriods )
+
+    # Average over last shortened period if necessary.
+    if length( snapReport[ 1 ] ) > 1 + nWholePeriods * aggrRatio
+        tmpCounts[ end ] =
+            mean( snapReport[ 2 ][ ( nWholePeriods * aggrRatio + 2 ):end ] )
+    end  # if length( snapReport[ 1 ] ) > 1 + nWholePeriods * aggrRatio
+
+    return ( tmpTimes, tmpCounts )
+end  # countAverage( mpSim, reportTimeDelta, snapTimeDelta, prereqGroup )
+
+
+# This function counts a moving average of the number of people
+#   that satisfy the given set of prerequisites during each period. The average
+#   is taken over a number of snapshots during each period.
+export countMovingAverage
+function countMovingAverage( mpSim::ManpowerSimulation, timeDelta::T1,
+    windowSize::T2, prereqGroup::Union{Void, PrerequisiteGroup} = nothing ) where T1 <: Real where T2 <: Integer
+    if timeDelta <= 0.0
+        warn( "Cannot have a time grid with step size ⩽ 0.0, nothing returned." )
+        return nothing
+    end  # if if timeDelta <= 0.0
+
+    if windowSize <= 0
+        warn( "Moving average window size must be > 0, nothing returned." )
+        return nothing
+    end  # if reportTimeDelta % snapTimeDelta != 0.0
+
+    if prereqGroup === nothing
+        snapReport = countRecords( mpSim, timeDelta )
+    else
+        snapReport = countRecords( mpSim, timeDelta, prereqGroup )
+    end  # if prereqGroup === nothing
+
+    if windowSize == 1
+        return snapReport
+    end  # if windowSize == 1
+
+    tmpTimes = snapReport[ 1 ]
+    tmpCount = similar( tmpTimes, Float64 )
+    nTimes = length( tmpTimes )
+    map( ii -> tmpCount[ ii ] = sum( snapReport[ 2 ][ 1:ii ] ) / windowSize,
+        1:(windowSize - 1) )  # The first entries.
+    map( ii -> tmpCount[ ii ] =
+        mean( snapReport[ 2 ][ (1:windowSize) + ii - windowSize ] ),
+        windowSize:nTimes )  # The other entries.
+
+    return ( tmpTimes, tmpCount )
+end  # countMovingAverage( mpSim, timeDelta, windowSize, prereqGroup )
 
 
 # This function counts the number of people that started to satisfy the given
@@ -107,9 +199,10 @@ function countFluxIn( mpSim::ManpowerSimulation, timeDelta::T,
         return nothing
     end  # if timeDelta <= 0.0
 
-    tmpTimes = collect( 0:timeDelta:mpSim.simLength )
-    push!( tmpTimes, mpSim.simLength )  # This is safe because the countFluxIn
-                                        #   function takes unique times.
+    tMax = min( now( mpSim ), mpSim.simLength )
+    tmpTimes = collect( 0.0:timeDelta:tMax )
+    push!( tmpTimes, tMax )  # This is safe because the countFluxIn
+                             #   function takes unique times.
     return countFluxIn( mpSim.simResult, tmpTimes, prereqGroup )
 end  # countFluxIn( mpSim, timeDelta, prereqGroup )
 
@@ -120,11 +213,12 @@ end  # countFluxIn( mpSim, times )
 function countFluxIn( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
     # If the report is already cached, return the cached report.
     if isCached( mpSim.simCache, timeDelta, :fluxIn )
-        timeGrid = collect( timeDelta:timeDelta:mpSim.simLength )
+        tMax = min( now( mpSim ), mpSim.simLength )
+        timeGrid = collect( timeDelta:timeDelta:tMax )
 
-        if timeGrid[ end ] < mpSim.simLength
-            push!( timeGrid, mpSim.simLength )
-        end  # if timeGrid[ end ] < mpSim.simLength
+        if timeGrid[ end ] < tMax
+            push!( timeGrid, tMax )
+        end  # if timeGrid[ end ] < tMax
 
         return ( timeGrid, mpSim.simCache[ timeDelta, :fluxIn ] )
     end  # if isCached( mpSim.simCache, timeDelta, :count )
@@ -142,14 +236,10 @@ function countFluxIn( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
         return countFluxIn( mpSim, timeDelta )
     end  # if !isempty( res )
 
-    # Otherwise, generate a new report.
+    # Otherwise, generate a new report and cache it. If the simulation is
+    #   continued, the cache gets wiped.
     report = countFluxIn( mpSim, timeDelta, countPersonnelPrereqGroup )
-
-    # If the simulation is done, cache the report.
-    if now( mpSim ) > mpSim.simLength
-        mpSim.simCache[ timeDelta, :fluxIn ] = report[ 2 ]
-    end  # if now( mpSim ) > mpSim.simLength
-
+    mpSim.simCache[ timeDelta, :fluxIn ] = report[ 2 ]
     return report
 end  # countFluxIn( mpSim, timeDelta )
 
@@ -189,9 +279,10 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
         return nothing
     end  # if timeDelta <= 0.0
 
-    tmpTimes = collect( 0:timeDelta:mpSim.simLength )
-    push!( tmpTimes, mpSim.simLength )  # This is safe because the countFluxOut
-                                        #   function takes unique times.
+    tMax = min( now( mpSim ), mpSim.simLength )
+    tmpTimes = collect( 0.0:timeDelta:tMax )
+    push!( tmpTimes, tMax )  # This is safe because the countFluxOut
+                             #   function takes unique times.
     return countFluxOut( mpSim, tmpTimes, prereqGroup )
 end  # countFluxOut( mpSim, timeDelta, prereqGroup )
 
@@ -202,11 +293,12 @@ end  # countFluxOut( mpSim, times )
 function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
     # If the report is already cached, return the cached report.
     if isCached( mpSim.simCache, timeDelta, :fluxOut )
-        timeGrid = collect( timeDelta:timeDelta:mpSim.simLength )
+        tMax = min( now( mpSim ), mpSim.simLength )
+        timeGrid = collect( timeDelta:timeDelta:tMax )
 
-        if timeGrid[ end ] < mpSim.simLength
-            push!( timeGrid, mpSim.simLength )
-        end  # if timeGrid[ end ] < mpSim.simLength
+        if timeGrid[ end ] < tMax
+            push!( timeGrid, tMax )
+        end  # if timeGrid[ end ] < tMax
 
         return ( timeGrid, mpSim.simCache[ timeDelta, :fluxOut ] )
     end  # if isCached( mpSim.simCache, timeDelta, :count )
@@ -224,14 +316,10 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
         return countFluxOut( mpSim, timeDelta )
     end  # if !isempty( res )
 
-    # Otherwise, generate a new report.
+    # Otherwise, generate a new report and cache it. If the simulation is
+    #   continued, the cache gets wiped.
     report = countFluxOut( mpSim, timeDelta, countPersonnelPrereqGroup )
-
-    # If the simulation is done, cache the report.
-    if now( mpSim ) > mpSim.simLength
-        mpSim.simCache[ timeDelta, :fluxOut ] = report[ 2 ]
-    end  # if now( mpSim ) > mpSim.simLength
-
+    mpSim.simCache[ timeDelta, :fluxOut ] = report[ 2 ]
     return report
 end  # countFluxOut( mpSim, timeDelta )
 
@@ -252,7 +340,7 @@ function generateReport( mpSim::ManpowerSimulation, timeDelta::T,
 
     # General info
     sheet[ "A", 1 ] = "Simulation length"
-    sheet[ "B", 1 ] = mpSim.simLength
+    sheet[ "B", 1 ] = min( now( mpSim ), mpSim.simLength )
     sheet[ "A", 2 ] = "Report time resolution"
     sheet[ "B", 2 ] = timeDelta
     sheet[ "A", 3 ] = "Personnel cap"
