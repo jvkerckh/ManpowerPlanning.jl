@@ -19,12 +19,14 @@ end  # for reqType in requiredTypes
 export setRecruitmentSchedule
 function setRecruitmentSchedule( recScheme::Recruitment, freq::T1,
     offset::T2 = 0.0 ) where T1 <: Real where T2 <: Real
+
     if freq <= 0.0
         error( "Recruitment frequency must be > 0.0." )
     end  # if freq <= 0.0
 
     recScheme.recruitFreq = freq
     recScheme.recruitOffset = offset % freq + ( offset < 0.0 ? freq : 0.0 )
+
 end  # setRecruitmentSchedule( recScheme, freq, offset )
 
 
@@ -36,6 +38,7 @@ end  # setRecruitmentSchedule( recScheme, freq, offset )
 export setRecruitmentDistribution
 function setRecruitmentDistribution( recScheme::Recruitment,
     recDist::Dict{Int, Float64} )
+
     tmpMap = collect( keys( recDist ) )
     tmpMap = tmpMap[ map( key -> ( key >= 0 ) && ( recDist[ key ] > 0 ),
         tmpMap ) ]
@@ -51,6 +54,7 @@ function setRecruitmentDistribution( recScheme::Recruitment,
 
     recScheme.recruitDist = Categorical( tmpProbs )
     recScheme.recruitMap = tmpMap
+
 end  #  setRecruitmentDistribution( recScheme, recDist )
 
 
@@ -58,6 +62,7 @@ end  #  setRecruitmentDistribution( recScheme, recDist )
 #   recruitment cycle.
 export setRecruitmentCap
 function setRecruitmentCap( recScheme::Recruitment, cap::T ) where T <: Integer
+
     if cap < 0
         warn( "Negative recruitment cap entered. Not making changes to recruitment scheme." )
         return
@@ -65,18 +70,21 @@ function setRecruitmentCap( recScheme::Recruitment, cap::T ) where T <: Integer
 
     recScheme.recruitDist = Categorical( [ 1.0 ] )
     recScheme.recruitMap = [ cap ]
+
 end
 
 
 # This function sets the recruitment age to a single, fixed number.
 export setRecruitmentAge
 function setRecruitmentAge( recScheme::Recruitment, age::T ) where T <: Real
+
     if age < 0.0
         warn( "Age at recruitment must be ⩾ 0.0. Not making changes to recruitment scheme." )
         return
     end
 
     recScheme.ageDist = function() return age end
+
 end  # setRecruitmentAge( recScheme, age )
 
 
@@ -85,6 +93,7 @@ end  # setRecruitmentAge( recScheme, age )
 export setAgeDistribution
 function setAgeDistribution( recScheme::Recruitment,
     ageDist::Dict{Float64, Float64}, ageDistType::Symbol )
+
     # Check if the distribution type is known.
     if ageDistType ∉ [ :disc, :pUnif, :pLin ]
         warn( "Unknown distribution type. Age distribution not set." )
@@ -119,6 +128,7 @@ function setAgeDistribution( recScheme::Recruitment,
         :pUnif => setPUnifAgeDist,
         :pLin => setPLinAgeDist )
     ( distFuncs[ ageDistType ] )( recScheme, ageDist, tmpNodes )
+
 end  # setAgeDistribution( recScheme, ageDist, recDistType )
 
 
@@ -126,6 +136,7 @@ end  # setAgeDistribution( recScheme, ageDist, recDistType )
 #   discrete distribution with the given nodes.
 function setDiscAgeDist( recScheme::Recruitment,
     ageDist::Dict{Float64, Float64}, nodes::Vector{Float64} )
+
     # Get the point probabilities of the nodes.
     pNodes = map( node -> ageDist[ node ], nodes )
     pNodes /= sum( pNodes )
@@ -133,6 +144,7 @@ function setDiscAgeDist( recScheme::Recruitment,
     recScheme.ageDist = function()
         return nodes[ rand( Categorical( pNodes ) ) ]
     end
+
 end  # setDiscAgeDist( recScheme, ageDist, nodes )
 
 
@@ -143,6 +155,7 @@ end  # setDiscAgeDist( recScheme, ageDist, nodes )
 #   node is ignored.
 function setPUnifAgeDist( recScheme::Recruitment,
     ageDist::Dict{Float64, Float64}, nodes::Vector{Float64} )
+
     # Get the point probabilities of the intervals.
     pInts = map( node -> ageDist[ node ], nodes[1:(end-1)] )
     pInts /= sum( pInts )
@@ -151,6 +164,7 @@ function setPUnifAgeDist( recScheme::Recruitment,
         intI = rand( Categorical( pInts ) )
         return rand( Uniform( nodes[ intI ], nodes[ intI + 1 ] ) )
     end
+
 end  # setPUnifAgeDist( recScheme, ageDist, nodes )
 
 
@@ -158,6 +172,7 @@ end  # setPUnifAgeDist( recScheme, ageDist, nodes )
 #   piecewise linear distribution with the given nodes.
 function setPLinAgeDist( recScheme::Recruitment,
     ageDist::Dict{Float64, Float64}, nodes::Vector{Float64} )
+
     # Get the point probabilities of the intervals.
     pNodes = map( node -> ageDist[ node ], nodes )
     pMasses = map( ii -> ( nodes[ ii + 1 ] - nodes[ ii ] ) *
@@ -177,16 +192,19 @@ function setPLinAgeDist( recScheme::Recruitment,
                 abs( pNodes[ intI + 1 ] - pNodes[ intI ] )
             dist = Truncated( SymTriangularDist( mu, sigma ), nodes[ intI ],
                 nodes[ intI + 1 ] )
-        end
+        end  # if pDiff == 0
 
         return rand( dist )
     end
+
 end  # setPLinAgeDist( recScheme, ageDist, nodes )
 
 # This function generates and returns the number of available personnel members
 #   in a recruitment cycle.
 function generatePoolSize( recScheme::Recruitment )
+
     return recScheme.recruitMap[ rand( recScheme.recruitDist ) ]
+
 end  # generatePoolSize( recScheme )
 
 
@@ -195,22 +213,55 @@ end  # generatePoolSize( recScheme )
 # XXX Right now this is a very trivial function, but this will change once
 #   attributes are added.
 function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
-    # Create the person in both databases.
-    id = "Sim" * string( length( mpSim.simResult ) + 1 )
-    addPersonnel!( mpSim.workingDbase, id )
-    addPersonnel!( mpSim.simResult, id )
 
-    # Fill in the necessary attributes.
-    person = mpSim.workingDbase[ length( mpSim.workingDbase ) ]
-    result = mpSim.simResult[ length( mpSim.simResult ) ]
+    # Create the person in the database.
+    # XXX Additional attributes need to be implemented
+    id = "Sim" * string( mpSim.resultSize + 1 )
+    person = Dict{String, Any}()
+    person[ mpSim.idKey ] = "'$id'"
+    person[ "status" ] = "'active'"
+    person[ "timeEntered" ] = now( mpSim )
+    person[ "ageAtRecruitment" ] = recScheme.ageDist()
 
-    person[ :status ] = :active
-    person[ :timeEntered ] = now( mpSim )
-    person[ :ageAtRecruitment ] = recScheme.ageDist()
-    result[ :history ] = Dict{Symbol, History}()
-    result[ :history ][ :status ] = History( :status )
-    result[ :status, now( mpSim ) ] = :active
-    result[ :ageAtRecruitment ] = person[ :ageAtRecruitment ]
+    command = "INSERT INTO $(mpSim.personnelDBname) (" *
+        join( keys( person ), "," ) * ") values (" *
+        join( values( person ), "," ) * ")"
+    SQLite.execute!( mpSim.simDB, command )
+
+    # Add the person's entry to the history database.
+    # XXX Additional attributes need to be implemented(?)
+    command = "INSERT INTO $(mpSim.historyDBname) ($(mpSim.idKey), " *
+        "attribute, timeIndex, strValue) values ('$id', 'status', " *
+        "$(now( mpSim )), $(person[ "status" ]))"
+    SQLite.execute!( mpSim.simDB, command )
+
+    # If a proper retirement scheme has been defined, start this person's
+    #   retirement process.
+    # XXX Needs to be adjusted for update of retirement process implementation.
+    # Necessary to retain expected retirement time in database?
+    # Split retirement process up in two if necessary.
+    timeOfRetirement = computeExpectedRetirementTime( mpSim, id )
+    retProc = nothing
+
+    if isa( mpSim.retirementScheme, Retirement )
+        retProc = @process retireProcess( mpSim.sim, id, timeOfRetirement,
+            mpSim )
+    end  # if isa( mpSim.retirementScheme, Retirement )
+
+    # If a proper attrition scheme has been defined, set the attrition process.
+    #   This must be defined AFTER the retirement scheme because it requires the
+    #   expected time of retirement.
+    # XXX Needs to be adjusted for update of attrition process implementation.
+    if isa( mpSim.attritionScheme, Attrition ) &&
+        ( mpSim.attritionScheme.attrRate > 0.0 )
+        @process attritionProcess( mpSim.sim, id, timeOfRetirement, retProc,
+            mpSim )
+    end  # if isa( mpSim.attritionScheme, Attrition ) && ...
+
+    # Adjust the size of the personnel database.
+    mpSim.personnelSize += 1
+    mpSim.resultSize += 1
+#=
 
     # If a proper retirement scheme has been defined, set the retirement
     #   process.
@@ -229,25 +280,24 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         person[ :processAttrition ] = @process attritionProcess( mpSim.sim,
             person, result, mpSim )
     end  # if isa( mpSim.attritionScheme, Attrition ) && ...
+=#
 end  # createPerson( mpSim, recScheme )
 
 
 # This function performs the recruitment part of a single recruitment cycle.
 function recruitmentCycle( mpSim::ManpowerSimulation, recScheme::Recruitment )
+
     nrToRecruit = generatePoolSize( recScheme )
-    personnelNeeded = mpSim.personnelCap - length( mpSim.workingDbase )
+    personnelNeeded = mpSim.personnelCap - mpSim.personnelSize
 
-    if ( mpSim.personnelCap > 0 ) && ( personnelNeeded < nrToRecruit )
-        nrToRecruit = personnelNeeded
-    end  # if ( mpSim.personnelCap > 0 ) && ...
-
-    if nrToRecruit == 0
-        return
-    end  # if nrToRecruit == 0
+    if mpSim.personnelCap > 0
+        nrToRecruit = min( personnelNeeded, nrToRecruit )
+    end  # if mpSim.personnelCap > 0
 
     for ii in 1:nrToRecruit
         createPerson( mpSim, recScheme )
     end  # for ii in 1:nrToRecruit
+
 end  # recruitmentCycle( mpSim, recScheme )
 
 
@@ -255,6 +305,7 @@ end  # recruitmentCycle( mpSim, recScheme )
 # Version for JuliaBox
 @resumable function recruitProcess( sim::Simulation,
     schemeNr::Integer, mpSim::ManpowerSimulation )
+
     recScheme = mpSim.recruitmentSchemes[ schemeNr ]
     timeToWait = recScheme.recruitOffset
     priority = mpSim.phasePriorities[ :recruitment ]
@@ -264,6 +315,7 @@ end  # recruitmentCycle( mpSim, recScheme )
         timeToWait = recScheme.recruitFreq
         recruitmentCycle( mpSim, recScheme )
     end  # while now( sim ) + timeToWait <= mpSim.simLength
+
 end
 
 #= # Version for Atom
@@ -283,6 +335,7 @@ end
 =#
 
 function Base.show( io::IO, recScheme::Recruitment )
+
     out = "Recruitment schedule: $(recScheme.recruitFreq)"
     out *= " (+ $(recScheme.recruitOffset))"
     out *= "\nMax recruitment per cycle: "
@@ -295,4 +348,5 @@ function Base.show( io::IO, recScheme::Recruitment )
     end  # if length( recScheme.recruitMap ) == 1
 
     print( io, out )
-end  # Base.show( io, recScheme )
+
+end

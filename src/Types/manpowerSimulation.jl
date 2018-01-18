@@ -17,6 +17,17 @@ end  # for reqType in requiredTypes
 
 export ManpowerSimulation
 type ManpowerSimulation
+    # This is the name of this simulation instance.
+    simName::String
+
+    # This is a link to the database file holding the relevant tables for this
+    #   simulation.
+    simDB::SQLite.DB
+
+    # These are the names of the personnel and history databases.
+    personnelDBname::String
+    historyDBname::String
+
     # This flag marks if the simulation has been properly initialised with the
     #   init function.
     isInitialised::Bool
@@ -26,7 +37,7 @@ type ManpowerSimulation
     isVirgin::Bool
 
     # The ID key of the database.
-    idKey::Symbol
+    idKey::String
 
     # The active, working personnel database.
     workingDbase::PersonnelDatabase
@@ -37,6 +48,12 @@ type ManpowerSimulation
     # Maximum number of people in the simulation. If this is set to 0, there is
     #   no cap.
     personnelCap::Int
+
+    # The current number of active personnel members in the simulation.
+    personnelSize::Int
+
+    # The total number of personnel members in the simulation.
+    resultSize::Int
 
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
@@ -58,6 +75,48 @@ type ManpowerSimulation
 
     # The report cache of the simulation.
     simCache::SimulationCache
+
+
+    function ManpowerSimulation( dbName::String = "simDB",
+        simName::String = "testSim" )
+
+        newMPsim = new()
+        newMPsim.simName = simName
+
+        # This block creates the database file if necessary and opens a link to
+        #   it.  XXX Persistent??
+        tmpDBname = dbName * ".sqlite"
+        println( "Database file \"$tmpDBname\" ",
+            isfile( tmpDBname ) ? "exists" : "does not exist", "." )
+        newMPsim.simDB = SQLite.DB( tmpDBname )
+
+        newMPsim.personnelDBname = "Personnel_" * simName
+        newMPsim.historyDBname = "History_" * simName
+
+        # Check if databases are present and issue a warning if so.
+        tmpTableList = SQLite.tables( newMPsim.simDB )[ :name ].values
+
+        if ( newMPsim.personnelDBname ∈ tmpTableList ) ||
+                ( newMPsim.historyDBname ∈ tmpTableList )
+            warn( "Results for a simulation called \"$(newMPsim.simName)\" already in database. These will be overwritten." )
+        end  # if newMPsim.personnelDBname ∈ tmpTableList
+
+        newMPsim.isInitialised = false
+        newMPsim.isVirgin = false
+        newMPsim.idKey = "id"
+        newMPsim.personnelCap = 0
+        newMPsim.personnelSize = 0
+        newMPsim.resultSize = 0
+        newMPsim.recruitmentSchemes = Vector{Recruitment}()
+        newMPsim.attritionScheme = nothing
+        newMPsim.retirementScheme = nothing
+        newMPsim.sim = Simulation()
+        newMPsim.phasePriorities = Dict( :recruitment => 1, :retirement => 2, :attrition => 3 )
+        newMPsim.simLength = 1.0
+        newMPsim.simCache = SimulationCache()
+        return newMPsim
+
+    end  # ManpowerSimulation( dbName, simName )
 
 
     function ManpowerSimulation()

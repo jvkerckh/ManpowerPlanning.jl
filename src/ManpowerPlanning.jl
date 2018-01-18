@@ -12,6 +12,7 @@ module ManpowerTypes
     using SimJulia
     using ResumableFunctions
     using Distributions
+    using SQLite
 
     types = [
         "historyEntry",
@@ -55,6 +56,7 @@ module ManpowerPlanning
     using ResumableFunctions
     using Distributions
     using FileIO
+    using SQLite
     using ManpowerTypes
     using ExcelWrapper
 

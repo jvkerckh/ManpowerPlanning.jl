@@ -31,7 +31,8 @@ type Recruitment
     ageDist::Function
 
 
-    function Recruitment( freq::Real, offset::Real = 0.0 )
+    function Recruitment( freq::T1, offset::T2 = 0.0 ) where T1 <: Real where T2 <: Real
+
         if freq <= 0.0
             error( "Recruitment frequency must be > 0.0." )
         end  # if freq <= 0.0
@@ -43,5 +44,6 @@ type Recruitment
         newRec.recruitMap = [ 0 ]
         newRec.ageDist = function() return 0.0 end
         return newRec
+
     end  # Recruitment( freq, offset )
 end  # type Recruitment
