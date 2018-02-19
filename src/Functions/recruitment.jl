@@ -217,30 +217,25 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # Create the person in the database.
     # XXX Additional attributes need to be implemented
     id = "Sim" * string( mpSim.resultSize + 1 )
-    person = Dict{String, Any}()
-    person[ mpSim.idKey ] = "'$id'"
-    person[ "status" ] = "'active'"
-    person[ "timeEntered" ] = now( mpSim )
-    person[ "ageAtRecruitment" ] = recScheme.ageDist()
+    ageAtRecruitment = recScheme.ageDist()
 
-    command = "INSERT INTO $(mpSim.personnelDBname) (" *
-        join( keys( person ), "," ) * ") values (" *
-        join( values( person ), "," ) * ")"
+    # Add person to the personnel database.
+    command = "INSERT INTO $(mpSim.personnelDBname)
+        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment) values
+        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment)"
     SQLite.execute!( mpSim.simDB, command )
-
-    # Add the person's entry to the history database.
+    # Add entry of person to the history database.
     # XXX Additional attributes need to be implemented(?)
-    command = "INSERT INTO $(mpSim.historyDBname) ($(mpSim.idKey), " *
-        "attribute, timeIndex, strValue) values ('$id', 'status', " *
-        "$(now( mpSim )), $(person[ "status" ]))"
+    command = "INSERT INTO $(mpSim.historyDBname)
+        ($(mpSim.idKey), attribute, timeIndex, strValue) values
+        ('$id', 'status', $(now( mpSim )), 'active');"
     SQLite.execute!( mpSim.simDB, command )
 
     # If a proper retirement scheme has been defined, start this person's
     #   retirement process.
-    # XXX Needs to be adjusted for update of retirement process implementation.
     # Necessary to retain expected retirement time in database?
-    # Split retirement process up in two if necessary.
-    timeOfRetirement = computeExpectedRetirementTime( mpSim, id )
+    timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
+        ageAtRecruitment, now( mpSim ) )
     retProc = nothing
 
     if isa( mpSim.retirementScheme, Retirement )
@@ -251,7 +246,6 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # If a proper attrition scheme has been defined, set the attrition process.
     #   This must be defined AFTER the retirement scheme because it requires the
     #   expected time of retirement.
-    # XXX Needs to be adjusted for update of attrition process implementation.
     if isa( mpSim.attritionScheme, Attrition ) &&
         ( mpSim.attritionScheme.attrRate > 0.0 )
         @process attritionProcess( mpSim.sim, id, timeOfRetirement, retProc,
@@ -261,26 +255,7 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # Adjust the size of the personnel database.
     mpSim.personnelSize += 1
     mpSim.resultSize += 1
-#=
 
-    # If a proper retirement scheme has been defined, set the retirement
-    #   process.
-    if isa( mpSim.retirementScheme, Retirement )
-        person[ :processRetirement ] = @process retireProcess( mpSim.sim,
-            person, result, mpSim )
-    else
-        person[ :expectedRetirementTime ] = +Inf
-    end  # if isa( mpSim.retirementScheme, Retirement )
-
-    # If a proper attrition scheme has been defined, set the attrition process.
-    #   This must be defined AFTER the retirement scheme because it requires the
-    #   expected time of retirement.
-    if isa( mpSim.attritionScheme, Attrition ) &&
-        ( mpSim.attritionScheme.attrRate > 0.0 )
-        person[ :processAttrition ] = @process attritionProcess( mpSim.sim,
-            person, result, mpSim )
-    end  # if isa( mpSim.attritionScheme, Attrition ) && ...
-=#
 end  # createPerson( mpSim, recScheme )
 
 
@@ -294,9 +269,24 @@ function recruitmentCycle( mpSim::ManpowerSimulation, recScheme::Recruitment )
         nrToRecruit = min( personnelNeeded, nrToRecruit )
     end  # if mpSim.personnelCap > 0
 
+    # Stop here if no recruitments happen in this period.
+    if nrToRecruit == 0
+        return
+    end  # if nrToRecruit == 0
+
+#    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+
     for ii in 1:nrToRecruit
         createPerson( mpSim, recScheme )
     end  # for ii in 1:nrToRecruit
+
+#    command = "INSERT INTO $(mpSim.personnelDBname) ($(mpSim.idKey), status, " *
+#        "timeEntered, ageAtRecruitment) values " * join( persBuffer, ", " )
+#    SQLite.execute!( mpSim.simDB, command )
+    # command = "INSERT INTO $(mpSim.historyDBname) ($(mpSim.idKey), " *
+    #     "attribute, timeIndex, strValue) values " * join( histBuffer, ", " )
+    # SQLite.execute!( mpSim.simDB, command )
+#    SQLite.execute!( mpSim.simDB, "COMMIT" )
 
 end  # recruitmentCycle( mpSim, recScheme )
 

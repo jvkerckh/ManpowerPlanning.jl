@@ -46,6 +46,20 @@ function setPersonnelCap( mpSim::ManpowerSimulation, cap::T ) where T <: Integer
 end  # setPersonnelCap( mpSim, cap )
 
 
+# This function sets the time between two database commits.
+export setDatabaseCommitTime
+function setDatabaseCommitTime( mpSim::ManpowerSimulation, commitFreq::T ) where T <: Real
+
+    if commitFreq <= 0.0
+        warn( "Time between two database commits must be > 0.0." )
+        return
+    end  # if commitFreq <= 0.0
+
+    mpSim.commitFrequency = commitFreq
+
+end  # setDatabaseCommitTime( mpSim, commitFreq )
+
+
 # This function adds a recruitment scheme to the simulation.
 # This function does nothing if the simulation is already running. XXX (desirable??)
 export addRecruitmentScheme!
@@ -246,6 +260,10 @@ function Dates.now( mpSim::ManpowerSimulation )
 end
 
 
+# This file holds the database commit process.
+include( "dbManagement.jl" )
+
+
 # This function runs the manpower simulation if it has been properly
 #   initialised.
 function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
@@ -266,11 +284,19 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
 
     oldSimTime = now( mpSim )
 
+    # Start the database commits.
+    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+    @process dbCommitProcess( mpSim.sim,
+        toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
+
     if toTime > 0.0
         run( mpSim.sim, toTime )
     else
         run( mpSim.sim )
     end  # if toTime > 0.0
+
+    # Final commit.
+    SQLite.execute!( mpSim.simDB, "COMMIT" )
 
     # Empty the simulation cache if the simulation time has advanced.
     if oldSimTime < now( mpSim )

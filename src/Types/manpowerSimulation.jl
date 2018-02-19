@@ -55,6 +55,9 @@ type ManpowerSimulation
     # The total number of personnel members in the simulation.
     resultSize::Int
 
+    # The time between successive SQLite commits.
+    commitFrequency::Float64
+
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
 
@@ -107,6 +110,7 @@ type ManpowerSimulation
         newMPsim.personnelCap = 0
         newMPsim.personnelSize = 0
         newMPsim.resultSize = 0
+        newMPsim.commitFrequency = 1.0
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
         newMPsim.attritionScheme = nothing
         newMPsim.retirementScheme = nothing
@@ -119,6 +123,7 @@ type ManpowerSimulation
     end  # ManpowerSimulation( dbName, simName )
 
 
+#=
     function ManpowerSimulation()
         newMPsim = new()
         newMPsim.isInitialised = false
@@ -136,4 +141,5 @@ type ManpowerSimulation
         newMPsim.simCache = SimulationCache()
         return newMPsim
     end  # ManpowerSimulation()
+    =#
 end  # type ManpowerSimulation

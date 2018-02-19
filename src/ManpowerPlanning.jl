@@ -57,6 +57,7 @@ module ManpowerPlanning
     using Distributions
     using FileIO
     using SQLite
+    using StatsBase
     using ManpowerTypes
     using ExcelWrapper
 

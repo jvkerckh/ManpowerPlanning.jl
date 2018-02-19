@@ -181,25 +181,28 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
         error( "$reason -- unknown retirement reason." )
     end  # if !in( reason, retirementReasons )
 
+    mpSim.personnelSize -= 1
+
+#    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
     # Change the person's status in the personnel database.
     command = "UPDATE $(mpSim.personnelDBname)
         SET status = '$reason', timeExited = $(now( mpSim ))
         WHERE $(mpSim.idKey) = '$id'"
     SQLite.execute!( mpSim.simDB, command )
-    mpSim.personnelSize -= 1
-
     # Add the person's retirement event to the history database.
     command = "INSERT INTO $(mpSim.historyDBname)
         ( $(mpSim.idKey), attribute, timeIndex, strValue ) values
         ( '$id', 'status', $(now( mpSim )), '$reason' )"
     SQLite.execute!( mpSim.simDB, command )
+#    SQLite.execute!( mpSim.simDB, "COMMIT" )
 
 end  # retirePerson( mpSim, id, reason )
 
 
 # This function computes the person's expected retirement time and returns it.
 export computeExpectedRetirementTime
-function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String )
+function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String,
+    ageAtRecruitment::T1, timeEntered::T2 ) where T1 <: Real where T2 <: Real
 
     retScheme = mpSim.retirementScheme
 
@@ -209,17 +212,17 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String )
     end  # if retScheme === nothing
 
     # Get the person from the database.
-    command = "SELECT timeEntered, ageAtRecruitment
-        FROM $(mpSim.personnelDBname)
-        WHERE $(mpSim.idKey) = '$id'"
-    person = SQLite.query( mpSim.simDB, command )
+    # command = "SELECT timeEntered, ageAtRecruitment
+    #     FROM $(mpSim.personnelDBname)
+    #     WHERE $(mpSim.idKey) = '$id'"
+    # person = SQLite.query( mpSim.simDB, command )
 
     # Compute how long the person is in the system already. Usually 0.0.
-    timeInSystem = now( mpSim ) - person[ 1, :timeEntered ].value
+    timeInSystem = now( mpSim ) - timeEntered
 
     # Compute the time left until retirement.
     timeToRetireAge = retScheme.retireAge > 0.0 ? retScheme.retireAge -
-        person[ 1, :ageAtRecruitment ].value - timeInSystem : +Inf
+        ageAtRecruitment - timeInSystem : +Inf
     timeToCareerEnd = retScheme.maxCareerLength > 0.0 ?
         retScheme.maxCareerLength - timeInSystem : +Inf
     timeToRetire = min( timeToRetireAge, timeToCareerEnd )
@@ -233,7 +236,7 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String )
         timeToRetire += extraTime
         timeOfRetirement += extraTime
     end  # if ( retScheme.retireFreq > 0.0 ) && ...
-
+#=
     # Enter the time in the database if needed.
     if timeToRetire < +Inf
         command = "UPDATE $(mpSim.personnelDBname)
@@ -241,7 +244,7 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String )
             WHERE $(mpSim.idKey) = '$id'"
         SQLite.execute!( mpSim.simDB, command )
     end
-
+=#
     return timeOfRetirement
 
 end  # computeExpectedRetirementTime( mpSim )
@@ -259,6 +262,15 @@ end  # computeExpectedRetirementTime( mpSim )
     end  # if timeOfRetirement > mpSim.simLength
 
     try
+        # XXX Testing code
+        # timeToRetire = timeOfRetirement - now( sim )
+        # @yield timeout( sim, timeToRetire / 2,
+        #     priority = mpSim.phasePriorities[ :retirement ] )
+        # command = "INSERT INTO $(mpSim.historyDBname)
+        #     ( $(mpSim.idKey), attribute, timeIndex, strValue ) values
+        #     ( '$id', 'status', $(now( mpSim )), 'halfway' )"
+        # SQLite.execute!( mpSim.simDB, command )
+        # End testing code
         @yield timeout( sim, timeOfRetirement - now( sim ),
             priority = mpSim.phasePriorities[ :retirement ] )
         retirePerson( mpSim, id, "retired" )
