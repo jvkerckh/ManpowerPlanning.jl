@@ -12,17 +12,16 @@ for reqType in requiredTypes
 end  # for reqType in requiredTypes
 
 
-# This function sets the attrition rate of the attrition scheme. This rate is
-#   given as a percentage.
+# This function sets the attrition rate of the attrition scheme.
 export setAttritionRate
 function setAttritionRate( attrScheme::Attrition, rate::T ) where T <: Real
 
-    if ( rate < 0.0 ) || ( rate >= 100.0 )
+    if ( rate < 0.0 ) || ( rate >= 1.0 )
         warn( "Attrition rate must be a percentage between 0.0 and 100.0, not making any changes." )
         return
     end  # if ( rate < 0.0 ) || ( rate > 100.0 )
 
-    attrScheme.attrRate = rate / 100.0
+    attrScheme.attrRate = rate
 
     # If the attrition rate becomes 0.0, reset the period to 1.0.
     if rate == 0.0
@@ -71,7 +70,7 @@ function setAttritionParameters( mpSim::ManpowerSimulation, rate::T1,
     period::T2 ) where T1 <: Real where T2 <: Real
 
     oldAttritionRate = mpSim.attritionScheme === nothing ? 0.0 :
-        mpSim.attritionScheme.attrRate * 100.0
+        mpSim.attritionScheme.attrRate
     oldAttritionPeriod = oldAttritionRate == 0.0 ? 1.0 :
         mpSim.attritionScheme.attrPeriod
 

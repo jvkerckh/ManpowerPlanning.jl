@@ -21,10 +21,9 @@ type Attrition
     attrRate::Float64
 
 
-    # Rate is given as a percentage, so between 0 and 100.
     function Attrition( rate::T1 = 0.0, period::T2 = 1.0 ) where T1 <: Real where T2 <: Real
-        if ( rate < 0.0 ) || ( rate >= 100.0 )
-            error( "Attrition rate must be a percentage between 0.0 and 100.0." )
+        if ( rate < 0.0 ) || ( rate >= 1.0 )
+            error( "Attrition rate must be between 0.0 and 1.0." )
         end  # if ( rate < 0.0 ) || ( rate > 100.0 )
 
         if period <= 0.0
@@ -32,7 +31,7 @@ type Attrition
         end  # if period <= 0.0
 
         newAttr = new()
-        newAttr.attrRate = rate / 100.0
+        newAttr.attrRate = rate
         # If there's no attrition, the period doesn't matter.
         newAttr.attrPeriod = rate == 0.0 ? 1.0 : period
         return newAttr

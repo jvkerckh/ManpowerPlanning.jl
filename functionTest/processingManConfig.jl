@@ -7,71 +7,128 @@ if !isdefined( :ManpowerSimulation )
     println( "ManpowerPlanning module initialised." )
 end
 
-configurationFileName = joinpath( dirname( Base.source_path() ),
-    configurationFileName )
 
 # Initialise the simulation.
 if !isdefined( :isSimInitialised )
-    mpSim = ManpowerSimulation( configurationFileName )
-    isSimInitialised = true
-    # println( "Manpower simulation mpSim initialised and ready for configuration." )
+    mpSim = ManpowerSimulation()
     # println( mpSim )
-end  #  if !isdefined( :isSimInitialised )
+# end
+
+# if !isdefined( :isSimInitialised )
+    initialise( mpSim )
+    isSimInitialised = true
+    println( "Manpower simulation mpSim initialised and ready for configuration." )
+    # println( mpSim )
+end
 
 # Reset simulation if necessary.
 if isdefined( :isSimulationFinished ) && isSimulationFinished && rerunSimulation
     resetSimulation( mpSim )
-    initialiseFromExcel( mpSim, configurationFileName )
+    isRecruitmentOkay = false
+    isAttritionOkay = false
+    isRetirementOkay = false
     println( "Manpower simulation mpSim reset." )
 end
 
 if !isdefined( :isSimulationFinished ) || rerunSimulation
 
 isSimulationFinished = false
-monthFactor = 12 # isSimTimeInMonths ? 12 : 1
 
-println( "\nPersonnel cap set at $(mpSim.personnelCap) personnel members." )
-println( "Length of the simulation set at $(mpSim.simLength / monthFactor) years." )
-println( "Time between two database commits set at $(mpSim.commitFrequency) months." )
+# Set cap of simulation.
+setPersonnelCap( mpSim, pars[ "maxPersonnelMembers" ] )
+println( "Personnel cap set at $(pars[ "maxPersonnelMembers" ]) personnel members." )
 
+# Set length of simulation.
+monthFactor = isSimTimeInMonths ? 12 : 1
+simLength = pars[ "simulationLengthInYears" ] * monthFactor
+setDatabaseCommitTime( mpSim, simLength / pars[ "numDBupdates" ] )
+setSimulationLength( mpSim, simLength )
+println( "Length of the simulation set at $(pars[ "simulationLengthInYears" ]) years." )
 
-println( "Recruitment schemes added to the simulation." )
+# Set up recruitment scheme.
+recFreq = pars[ "timeBetweenRecruitmentCyclesInMonths" ] * monthFactor / 12
+recOffset = pars[ "offsetOfRecruitmentCycleInMonths" ] * monthFactor / 12
+recAge = pars[ "ageAtRecruitmentInYears" ] * monthFactor
+recOff = ( recOffset % recFreq ) * 12 / monthFactor
+recOff += recOff < 0 ? 12 : 0
+recScheme = Recruitment( recFreq, recOffset )
+setRecruitmentCap( recScheme, pars[ "maxNumberToRecruitEachCycle" ] )
+println( "\nRecruitment scheme" )
+println( "Time between two recruitment cycles is $(pars[ "timeBetweenRecruitmentCyclesInMonths" ]) months." )
+println( "First recruitment cycle starts after $recOff months." )
+println( "At most $(pars[ "maxNumberToRecruitEachCycle" ]) persons recruited every cycle." )
 
+if isRecruitmentAgeFixed
+    setRecruitmentAge( recScheme, recAge )
+    println( "Recruits are $(pars[ "ageAtRecruitmentInYears" ]) years old." )
+else
+    recAgeDist = Dict{Float64, Float64}()
+    map( ii -> recAgeDist[ pars[ "ageAtRecruitmentDistributionInYears" ][ ii ][ 1 ] * monthFactor ] =
+        pars[ "ageAtRecruitmentDistributionInYears" ][ ii ][ 2 ],
+        eachindex( pars[ "ageAtRecruitmentDistributionInYears" ] ) )
+    minAge = minimum( keys( recAgeDist ) )
+    maxAge = maximum( keys( recAgeDist ) )
+    setAgeDistribution( recScheme, recAgeDist,
+        pars[ "recruitmentAgeDistributionType" ] )
+    println( "Recruits are between $minAge and $maxAge years old." )
+end
 
-# Attrition scheme.
+if !isdefined( :isRecruitmentOkay ) || !isRecruitmentOkay
+    clearRecruitmentSchemes!( mpSim )
+    addRecruitmentScheme!( mpSim, recScheme )
+    # println( mpSim )
+    isRecruitmentOkay = true
+end
+
+println( "Recruitment scheme configured and added to the simulation." )
+
+# Set up attrition scheme.
+attrPeriod = pars[ "lengthOfAttritionPeriodInMonths" ] * monthFactor / 12
+attrProb = pars[ "probabilityOfAttritionPerPeriod" ] *
+    ( isProbabilityInPercent ? 1 : 100 )
+attrScheme = Attrition( attrProb, attrPeriod )
 println( "\nAttrition" )
-isAttrSchemeAvailable = mpSim.attritionScheme !== nothing
-attrRate = isAttrSchemeAvailable ? mpSim.attritionScheme.attrRate : 0
+println( "Attrition rate of $attrProb% every $(pars[ "lengthOfAttritionPeriodInMonths" ]) months." )
 
-if attrRate > 0
-    println( "Attrition rate of $(attrRate * 100)% every $(mpSim.attritionScheme.attrPeriod) months." )
-end  # if attrRate > 0
+if !isdefined( :isAttritionOkay ) || !isAttritionOkay
+    setAttrition( mpSim, attrScheme )
+    isAttritionOkay = true
+end
 
+println( "Attrition configured and added to the simulation." )
 
-# Retirement scheme.
+# Set up retirement scheme.
+maxTenure = pars[ "maxCareerLengthInYears" ] * monthFactor
+maxAge = pars[ "mandatoryRetirementAgeInYears" ] * monthFactor
+retFreq = pars[ "timeBetweenRetirementCyclesInMonths" ] * monthFactor / 12
+retOffset = pars[ "offsetOfRetiretmentCycleInMonths" ] * monthFactor / 12
 println( "\nRetirement" )
-isRetSchemeAvailable = mpSim.retirementScheme !== nothing
-maxTenure = isRetSchemeAvailable ? mpSim.retirementScheme.maxCareerLength : 0
-maxAge = isRetSchemeAvailable ? mpSim.retirementScheme.retireAge : 0
 
-if maxTenure > 0
-    println( "Mandatory retirement after $(maxTenure / monthFactor) years of service." )
-end  # if maxTenure > 0
+if ( maxTenure > 0 )
+    println( "Mandatory retirement after $(pars[ "maxCareerLengthInYears" ]) years of service." )
+end
 
-if maxAge > 0
-    println( "Mandatory retirement at the age of $(maxAge / monthFactor) years." )
-end  # if maxAge > 0
+if ( maxAge > 0 )
+    println( "Mandatory retirement at the age of $(pars[ "mandatoryRetirementAgeInYears" ]) years." )
+end
 
 if ( maxTenure > 0 ) || ( maxAge > 0 )
-    println( "Time between two retirement cycles is $(mpSim.retirementScheme.retireFreq) months." )
-    println( "First retirement cycle starts after $(mpSim.retirementScheme.retireOffset) months." )
+    retScheme = Retirement( freq = retFreq, offset = retOffset, maxCareer = maxTenure, retireAge = maxAge )
+    println( "Time between two retirement cycles is $(pars[ "timeBetweenRetirementCyclesInMonths" ]) months." )
+    println( "First retirement cycle starts after $recOff months." )
 else
+    retScheme = nothing
     println( "No retirement occurring." )
-end  # if ( maxTenure > 0 ) || ...
+end
 
+if !isdefined( :isRetirementOkay ) || !isRetirementOkay
+    setRetirement( mpSim, retScheme )
+    # println( mpSim )
+    isRetirementOkay = true
+end
 
-println( "\nSimulation is now ready to run." )
-
+println( "Retirement scheme configured and added to the simulation." )
+println( "Simulation is now ready to run." )
 
 # Run simulation.
 tStart = now()
@@ -83,17 +140,16 @@ isSimulationFinished = true
 
 end  # if rerunSimulation
 
-
 # Process results.
 tStart = now()
 println( "\nReport generation start at $tStart" )
-timeResolution = graphTimeResolutionInMonths
+timeResolution = pars[ "graphTimeResolutionInMonths" ] * monthFactor / 12
 
 nRec = countRecords( mpSim, timeResolution, true )
 nFluxIn = countFluxIn( mpSim, timeResolution )
 nFluxOut = countFluxOut( mpSim, timeResolution, true )
 nNetFlux = ( nFluxIn[ 1 ], nFluxIn[ 2 ] - nFluxOut[ 2 ] )
-simAgeDist = getAgeDistEvolution( mpSim, timeResolution, monthFactor, true )
+simAgeDist = getAgeDistEvolution( mpSim, timeResolution, 12, true )
 tStop = now()
 println( "Report generation completed at $tStop. Elapsed time: $(tStop - tStart)" )
 

@@ -13,6 +13,8 @@ if !isdefined( :Taro )
     Taro.init()  # And properly initialized
 end  # !isdefined( :Taro )
 
+export Taro, Workbook
+
 if !isdefined( :JavaCall )
     using JavaCall
 end
@@ -62,11 +64,9 @@ function valueOf( valType::DataType, value::AbstractString )
     return jcall( valType, "valueOf", valType, ( JString, ), tmpVal )
 end  # valueOf( valType, value )
 
-# From Taro, to use inside other modules.
-export Workbook
 
 export getSheet, getRow, getCell, getCellValue, getColumnWidth, getRowHeight,
-    getCellStyle, createSheet, createRow, cloneCellStyle, createCell,
+    getCellStyle, createSheet, createRow, cloneCellStyle, createCell, numRows,
     setCellValue, setColumnWidth, setRowHeight, mergeCells, setCellStyle,
     setHorizontalAlignment, setBorder, setBorderBottom, setBorderTop,
     setBorderLeft, setBorderRight, setBorders
@@ -192,6 +192,60 @@ createCell( r::Taro.Row, c::AbstractString ) = createCell( r, colnum( c ) )
 #   the function creates the new row as well and returns the new cell.
 createCell( s::Taro.Sheet, c::ColIndex, r::Integer ) =
     createCell( createRow( s, r ), c )
+
+
+# This function counts the number of defined rows in an Excel sheet. If the
+#   second argument is not zero, it checks if the first 'nCols' columns have
+#   content and returns the last row that has content in one of those columns.
+function numRows( s::Taro.Sheet, nCols::T = 0 ) where T <: Integer
+    nRows = jcall( s, "getLastRowNum", jint, () ) + 1
+
+    if nCols <= 0
+        return nRows
+    end  # if nCols <= 0
+
+    # Check the first nCols of each row to see if anything's actually been
+    #   defined in the row, starting from the last.
+    isRowEmpty = true
+
+    while ( nRows > 0 ) && isRowEmpty
+        isRowEmpty = all( ii -> s[ ii, nRows ] === nothing, 1:nCols )
+        nRows -= isRowEmpty ? 1 : 0
+    end  # ( nRows > 0 ) && !isRowEmpty
+
+    return nRows
+end  # numRows( s, nCols )
+
+function numRows( s::Taro.Sheet, colEnd::String )
+    return numRows( s, colnum( colEnd ) )
+end  # numRows( s, colEnd )
+
+
+# This function does the same as the previous numRows function, but checks the
+#   columns with a number between "colStart" and "colEnd"
+function numRows( s::Taro.Sheet, colStart::T1, colEnd::T2 ) where T1 <: Integer where T2 <: Integer
+    nRows = jcall( s, "getLastRowNum", jint, () ) + 1
+
+    if colStart > colEnd
+        return nRows
+    end  # if colStart > colEnd
+
+    # Check all columns between column "colStart" and "colEnd" to see if
+    #   anything's defined in those cells of that row, starting from the last.
+    isRowEmpty = true
+
+    while ( nRows > 0 ) && isRowEmpty
+        isRowEmpty = all( ii -> s[ ii, nRows ] === nothing, colStart:colEnd )
+        nRows -= isRowEmpty ? 1 : 0
+    end  # ( nRows > 0 ) && !isRowEmpty
+
+    return nRows
+end  # numRows( s, colStart, colEnd )
+
+function numRows( s::Taro.Sheet, colStart::String, colEnd::String )
+    return numRows( s, colnum( colStart ), colnum( colEnd ) )
+end  # numRows( s, colStart, colEnd )
+
 
 # Redefines the setCellValue function to bundle the setCellValue and
 #   setCellFormula functions. If the string starts with '=', it is considered to

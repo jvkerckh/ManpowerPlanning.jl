@@ -34,6 +34,9 @@ function setKey( mpSim::ManpowerSimulation, id::Union{Symbol, String} = "id" )
 end  # setKey!( mpSim, id )
 
 
+include( joinpath( dirname( Base.source_path() ), "parFileProcessing.jl" ) )
+
+
 # This function sets the cap on the number of personnel in the simulation. Note
 #   that this cap can be (temporarily) violated if the initial manpower force is
 #   larger than the personnel cap. If this function receives a value ⩽ 0, there
@@ -64,15 +67,56 @@ end  # setDatabaseCommitTime( mpSim, commitFreq )
 # This function does nothing if the simulation is already running. XXX (desirable??)
 export addRecruitmentScheme!
 function addRecruitmentScheme!( mpSim::ManpowerSimulation,
-    retScheme::Recruitment )
+    recScheme::Recruitment )
 
     if now( mpSim ) != 0.0
         return
     end  # if now( mpSim ) != 0.0
 
-    push!( mpSim.recruitmentSchemes, retScheme )
+    push!( mpSim.recruitmentSchemes, recScheme )
 
-end  # addRecruitmentScheme!( mpSim, retScheme )
+end  # addRecruitmentScheme!( mpSim, recScheme )
+
+
+function addRecruitmentScheme!( mpSim::ManpowerSimulation, s::Taro.Sheet,
+    ii::T ) where T <: Integer
+
+    dataColNr = ii * 4 + 2
+    recScheme = Recruitment( s[ dataColNr, 6 ], s[ dataColNr, 7 ] )
+    setRecruitmentCap( recScheme, Int( s[ dataColNr, 8 ] ) )
+    isFixedAge = s[ dataColNr, 9 ] ≈ 1.0
+
+    # Add the age distribution.
+    if isFixedAge
+        setRecruitmentAge( recScheme, s[ dataColNr, 10 ] * 12 )
+    else
+        rowNrOfDist = numRows( s, dataColNr - 1, dataColNr - 1 )
+        distType = s[ dataColNr, rowNrOfDist ] == "Pointwise" ? :disc : :pUnif
+        rowNrOfDistEnd = numRows( s, dataColNr, dataColNr )
+
+        if rowNrOfDist + 2 > rowNrOfDistEnd
+            warn( "Improper recruitment age distribution. Ignoring recruitment scheme." )
+            return
+        end
+
+        ageDist = Dict{Float64, Float64}()
+
+        for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+            age = s[ dataColNr, jj ] * 12
+            pMass = s[ dataColNr + 1, jj ]
+
+            # Only add the entry if it makes sense.
+            if isa( age, Real ) && isa( pMass, Real ) && !haskey( ageDist, age )
+                ageDist[ age ] = pMass
+            end  # if isa( age, Real ) && ...
+        end  # for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+
+        setAgeDistribution( recScheme, ageDist, distType )
+    end  # if isFixedAge
+
+    addRecruitmentScheme!( mpSim, recScheme )
+
+end  # function addRecruitmentScheme!( mpSim, s, ii )
 
 
 # This function clears the recruitment schemes from the simulation.
@@ -102,7 +146,7 @@ function setAttrition( mpSim::ManpowerSimulation,
 
     mpSim.attritionScheme = attrScheme
 
-end
+end  # setAttrition( mpSim, attrScheme )
 
 
 # This function sets the length of the simulation.
