@@ -3,11 +3,12 @@ if !isdefined( :ManpowerPlanning )
     using Plots
     plotly()
     include( "../src/ManpowerPlanning.jl" )
+    using ManpowerPlanning
     println( "Package loaded okay." )
 end  # if isdefined( :ManpowerPlanning )
 
 
-mpSim = ManpowerSimulation( "mpSim" )
+mpSim = ManpowerSimulation()
 
 persCap = 5000
 ManpowerPlanning.setPersonnelCap( mpSim, persCap )
@@ -21,7 +22,7 @@ ManpowerPlanning.setRecruitmentAge( recScheme, recAge )
 ManpowerPlanning.addRecruitmentScheme!( mpSim, recScheme )
 
 attrFreq = 3
-attrRate = 3
+attrRate = 0.03
 attrScheme = Attrition( attrRate, attrFreq )
 ManpowerPlanning.setAttrition( mpSim, attrScheme )
 

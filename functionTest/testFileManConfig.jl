@@ -21,8 +21,8 @@ pars = Dict{String, Any}()
 
 # General parameters
 isSimTimeInMonths = true
-pars[ "maxPersonnelMembers" ] = 100000
-pars[ "simulationLengthInYears" ] = 250
+pars[ "maxPersonnelMembers" ] = 10000
+pars[ "simulationLengthInYears" ] = 50
 
 # Recruitment
 isRecruitmentAgeFixed = false
@@ -60,7 +60,7 @@ rerunSimulation = true
 pars[ "graphTimeResolutionInMonths" ] = 12
 pars[ "numDBupdates" ] = 100
 
-include( "processing.jl" )  # Do not change this line!
+include( "processingManConfig.jl" )  # Do not change this line!
 
 plotSim( mpSim, "flux in", "flux out", "net flux", "resigned", "retired" )
 gui( surface( simAgeDist[ 2 ] / monthFactor, simAgeDist[ 1 ] / monthFactor,

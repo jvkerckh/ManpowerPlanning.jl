@@ -84,11 +84,11 @@ println( "Recruitment scheme configured and added to the simulation." )
 
 # Set up attrition scheme.
 attrPeriod = pars[ "lengthOfAttritionPeriodInMonths" ] * monthFactor / 12
-attrProb = pars[ "probabilityOfAttritionPerPeriod" ] *
-    ( isProbabilityInPercent ? 1 : 100 )
+attrProb = pars[ "probabilityOfAttritionPerPeriod" ] /
+    ( isProbabilityInPercent ? 100 : 1 )
 attrScheme = Attrition( attrProb, attrPeriod )
 println( "\nAttrition" )
-println( "Attrition rate of $attrProb% every $(pars[ "lengthOfAttritionPeriodInMonths" ]) months." )
+println( "Attrition rate of $(attrProb * 100)% every $(pars[ "lengthOfAttritionPeriodInMonths" ]) months." )
 
 if !isdefined( :isAttritionOkay ) || !isAttritionOkay
     setAttrition( mpSim, attrScheme )
