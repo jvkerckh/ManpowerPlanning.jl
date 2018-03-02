@@ -104,7 +104,7 @@ type ManpowerSimulation
         newMPsim.historyDBname = "History_" * simName
 
         # Check if databases are present and issue a warning if so.
-        tmpTableList = SQLite.tables( newMPsim.simDB )[ :name ].values
+        tmpTableList = SQLite.tables( newMPsim.simDB )[ :name ]
 
         if ( newMPsim.personnelDBname ∈ tmpTableList ) ||
                 ( newMPsim.historyDBname ∈ tmpTableList )
