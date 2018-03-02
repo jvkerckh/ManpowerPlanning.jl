@@ -91,8 +91,8 @@ function getActiveAgeDistAtTime( mpSim::ManpowerSimulation, timePoint::T1,
 
     activePersonnel = getActiveAtTime( mpSim, timePoint,
         [ "timeEntered", "ageAtRecruitment" ] )
-    personnelAge = activePersonnel[ :ageAtRecruitment ].values
-    personnelAge -= activePersonnel[ :timeEntered ].values
+    personnelAge = activePersonnel[ :ageAtRecruitment ]
+    personnelAge -= activePersonnel[ :timeEntered ]
     personnelAge += timePoint
     personnelAge = floor.( Int, personnelAge / ageRes )
     ageCounts = counts( personnelAge )
@@ -460,7 +460,7 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
             FROM $(mpSim.historyDBname)
             WHERE attribute = 'status'"
         listOfReasons = SQLite.query( mpSim.simDB, queryCmd )
-        listOfReasons = unique( listOfReasons[ 1 ].values )
+        listOfReasons = unique( listOfReasons[ 1 ] )
         tmpBreakdown = zeros( Int, length( tmpTimes - 1 ),
             length( listOfReasons ) )
     end  # if includeByType
@@ -475,10 +475,10 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
             if tmpFlux[ ii ] > 0
                 queryCmd = "SELECT strValue
                     FROM $(mpSim.historyDBname)
-                    WHERE $(mpSim.idKey) IN ('$(join( outFlux.values, "', '" ))') AND
+                    WHERE $(mpSim.idKey) IN ('$(join( outFlux, "', '" ))') AND
                     attribute = 'status' AND
                     $(tmpTimes[ ii ]) < timeIndex AND timeIndex <= $(tmpTimes[ ii + 1 ])"
-                outReasons = SQLite.query( mpSim.simDB, queryCmd )[ 1 ].values
+                outReasons = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
             else
                 outReasons = Vector{String}()
             end  # if tmpFlux[ ii ] > 0
