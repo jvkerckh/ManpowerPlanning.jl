@@ -213,8 +213,7 @@ function resetSimulation( mpSim::ManpowerSimulation )
     mpSim.resultSize = 0
 
     # And the cache.
-    # XXX Cache still needed?
-    empty!( mpSim.simCache )
+    setCacheMaxTime( mpSim.simCache, 0 )
 
     mpSim.isVirgin = true
 
@@ -344,7 +343,7 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
 
     # Empty the simulation cache if the simulation time has advanced.
     if oldSimTime < now( mpSim )
-        empty!( mpSim.simCache )
+        setCacheMaxTime( mpSim.simCache, min( now( mpSim ), mpSim.simLength ) )
     end
 end  # run( mpSim, toTime )
 

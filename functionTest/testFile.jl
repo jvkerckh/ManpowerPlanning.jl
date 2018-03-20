@@ -2,8 +2,6 @@
 if !isdefined( :isUpToDate ) || !isUpToDate
     isUpToDate = false
     ENV[ "PLOTS_USE_ATOM_PLOTPANE" ] = "false"  # To open plots in external window
-    using Plots
-    plotly()
 
     try
         Pkg.update()
@@ -12,6 +10,9 @@ if !isdefined( :isUpToDate ) || !isUpToDate
     catch
         warn( "No internet connection. Packages not updated." )
     end
+
+    using Plots
+    plotly()
 end
 
 
@@ -24,6 +25,7 @@ graphTimeResolutionInMonths = 12
 
 
 include( "processing.jl" )  # Do not change this line!
+
 
 plotSim( mpSim, "flux in", "flux out", "net flux", "resigned", "retired" )
 plotSim( mpSim, "personnel", "net flux" )

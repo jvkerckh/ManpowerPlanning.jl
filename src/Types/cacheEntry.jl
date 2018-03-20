@@ -25,8 +25,15 @@ type CacheEntry
     # The fluxOut cache.
     fluxOutCache::Vector{Int}
 
+    # The fluxResigned cache.
+    fluxResignedCache::Vector{Int}
+
+    # The fluxRetired cache.
+    fluxRetiredCache::Vector{Int}
+
 
     function CacheEntry( res::T ) where T <: Real
+
         if res <= 0.0
             error( "Time resolution must be > 0.0." )
         end  # if res <= 0.0
@@ -36,6 +43,9 @@ type CacheEntry
         newEntry.countCache = Vector{Int}()
         newEntry.fluxInCache = Vector{Int}()
         newEntry.fluxOutCache = Vector{Int}()
+        newEntry.fluxResignedCache = Vector{Int}()
+        newEntry.fluxRetiredCache = Vector{Int}()
         return newEntry
+
     end  # CacheEntry( res )
 end  # type CacheEntry

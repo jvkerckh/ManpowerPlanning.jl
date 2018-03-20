@@ -85,17 +85,19 @@ end  # if rerunSimulation
 
 
 # Process results.
+
 tStart = now()
 println( "\nReport generation start at $tStart" )
 timeResolution = graphTimeResolutionInMonths
 
-nRec = countRecords( mpSim, timeResolution, true )
+nRec = countRecords( mpSim, timeResolution )
 nFluxIn = countFluxIn( mpSim, timeResolution )
 nFluxOut = countFluxOut( mpSim, timeResolution, true )
 nNetFlux = ( nFluxIn[ 1 ], nFluxIn[ 2 ] - nFluxOut[ 2 ] )
 simAgeDist = getAgeDistEvolution( mpSim, timeResolution, monthFactor, true )
 tStop = now()
 println( "Report generation completed at $tStop. Elapsed time: $(tStop - tStart)" )
+
 
 #=
 tStart = now()

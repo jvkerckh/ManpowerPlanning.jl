@@ -145,7 +145,7 @@ tStart = now()
 println( "\nReport generation start at $tStart" )
 timeResolution = pars[ "graphTimeResolutionInMonths" ] * monthFactor / 12
 
-nRec = countRecords( mpSim, timeResolution, true )
+nRec = countRecords( mpSim, timeResolution )
 nFluxIn = countFluxIn( mpSim, timeResolution )
 nFluxOut = countFluxOut( mpSim, timeResolution, true )
 nNetFlux = ( nFluxIn[ 1 ], nFluxIn[ 2 ] - nFluxOut[ 2 ] )

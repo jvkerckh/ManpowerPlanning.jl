@@ -2,8 +2,6 @@
 if !isdefined( :isUpToDate ) || !isUpToDate
     isUpToDate = false
     ENV[ "PLOTS_USE_ATOM_PLOTPANE" ] = "false"  # To open plots in external window
-    using Plots
-    plotly()
 
     try
         Pkg.update()
@@ -12,6 +10,9 @@ if !isdefined( :isUpToDate ) || !isUpToDate
     catch
         warn( "No internet connection. Packages not updated." )
     end
+
+    using Plots
+    plotly()
 end
 
 pars = Dict{String, Any}()

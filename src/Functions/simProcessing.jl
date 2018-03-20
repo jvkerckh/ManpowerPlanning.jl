@@ -89,16 +89,19 @@ function getActiveAgeDistAtTime( mpSim::ManpowerSimulation, timePoint::T1,
         return
     end  # if ( timePoint < 0 ) || ...
 
+    # Get all necessary information from the database.
     activePersonnel = getActiveAtTime( mpSim, timePoint,
         [ "timeEntered", "ageAtRecruitment" ] )
+
+    # Compute the current age of all active personnel members.
     personnelAge = activePersonnel[ :ageAtRecruitment ]
-    personnelAge -= activePersonnel[ :timeEntered ]
-    personnelAge += timePoint
+    personnelAge += timePoint - activePersonnel[ :timeEntered ]
     personnelAge = floor.( Int, personnelAge / ageRes )
     ageCounts = counts( personnelAge )
     minAge = minimum( personnelAge )
     maxAge = minAge + length( ageCounts ) - 1
 
+    # Sanity checks.
     if any( ageCounts .< 0 )
         println( "Age distribution: ", [ collect( linspace( minAge, maxAge, length( ageCounts ) ) ) *
             ageRes, ageCounts ] )
@@ -157,9 +160,9 @@ function getDatabaseAtTime( mpSim::ManpowerSimulation, timePoint::T,
         activeDB[ changedAttr ] =
             changeList[ ii + (0:(nPers - 1)) * nAttrs,
             isNum ? :numValue : :strValue ].values
-        # This works (or should work) because the view from the personnel
-        #   database is sorted by personnel ID, and the view from the historic
-        #   database is sorted by personnel ID, then by attribute.
+        # This works because the view from the personnel database is sorted by
+        #   personnel ID, and the view from the historic database is sorted by
+        #   personnel ID, then by attribute.
         # In addition, any attribute that shows up in the historic database
         #   must show up for ALL personnel records as the starting value of the
         #   attribute must be stored for later recall.
@@ -255,14 +258,13 @@ countRecords(
     includeFinalTime::Bool = false ) where T <: Real
 ```
 This version of the `countRecords` method counts the number of active people on
-a time grid with resolution `timeDelta`, starting from time 0. If the flag
-`includeFinalTime` is set to `true`, the current simulation time or the length
-of the simulation (whichever is smaller) is added at the end.
+a time grid with resolution `timeDelta`, starting from time 0. The current
+simulation time or the length of the simulation (whichever is smaller) is added
+at the end.
 
 If the argument `timeDelta` is not > 0, this function will return `nothing`.
 """
-function countRecords( mpSim::ManpowerSimulation, timeDelta::T,
-    includeFinalTime::Bool = false ) where T <: Real
+function countRecords( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
 
     # Check validity of timeDelta.
     if timeDelta <= 0
@@ -274,18 +276,26 @@ function countRecords( mpSim::ManpowerSimulation, timeDelta::T,
     tmpTimes = collect( 0:timeDelta:tMax )
 
     # Add final time point if necessary.
-    if includeFinalTime && ( tmpTimes[ end ] < tMax )
+    if tmpTimes[ end ] < tMax
         push!( tmpTimes, tMax )
-    end  # if includeFinalTime && ...
+    end  # if tmpTimes[ end ] < tMax
+
+    # Check if the counts have been cached already and return it in that case.
+    tmpCounts = mpSim.simCache[ timeDelta, :count ]
+
+    if tmpCounts !== nothing
+        return ( tmpTimes, tmpCounts )
+    end  # if tmpCounts !== nothing
 
     tmpCounts = similar( tmpTimes, Int )
     map( ii -> tmpCounts[ ii ] =
         size( getActiveAtTime( mpSim, tmpTimes[ ii ] ) )[ 1 ],
         eachindex( tmpTimes ) )
+    addToCache( mpSim.simCache, timeDelta, :count, tmpCounts )
 
     return ( tmpTimes, tmpCounts )
 
-end  # countRecords( mpSim, timeDelta, includeFinalTime )
+end  # countRecords( mpSim, timeDelta )
 
 
 export countFluxIn
@@ -357,10 +367,19 @@ function countFluxIn( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
         push!( tmpTimes, tMax )
     end  # if tmpTimes[ end ] < tMax
 
+    # Check if the counts have been cached already and return it in that case.
+    tmpFlux = mpSim.simCache[ timeDelta, :fluxIn ]
+
+    if tmpFlux !== nothing
+        return ( tmpTimes[ 2:end ], tmpFlux )
+    end  # if tmpCounts !== nothing
+
     tmpFlux = similar( tmpTimes[ 2:end ], Int )
     tmpFlux = map( ii -> tmpFlux[ ii ] =
         size( getInFlux( mpSim, tmpTimes[ ii ], tmpTimes[ ii + 1 ] ) )[ 1 ],
         eachindex( tmpFlux ) )
+    addToCache( mpSim.simCache, timeDelta, :fluxIn, tmpFlux )
+
     return ( tmpTimes[ 2:end ], tmpFlux )
 
 end  # countfluxIn( mpSim, timeDelta )
@@ -453,6 +472,27 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
         push!( tmpTimes, tMax )
     end  # if tmpTimes[ end ] < tMax
 
+    # Check if the reports have been cached already.
+    tmpFlux = mpSim.simCache[ timeDelta, :fluxIn ]
+
+    if includeByType
+        tmpFluxRes = mpSim.simCache[ timeDelta, :resigned ]
+        tmpFluxRet = mpSim.simCache[ timeDelta, :retired ]
+
+        # If all caches are present, return all flux out caches in the proper
+        #   format.
+        if ( tmpFlux !== nothing ) && ( tmpFluxRes !== nothing ) &&
+            ( tmpFluxRet !== nothing )
+            breakdownDict = Dict{String, Vector{Int}}( "resigned" => tmpFluxRes,
+                "retired" => tmpFluxRet )
+            return ( tmpTimes[ 2:end ], tmpFlux, breakdownDict )
+        end  # if ( tmpFlux !== nothing ) && ...
+    elseif tmpFlux !== nothing
+        return ( tmpTimes[ 2:end ], tmpFlux )
+    end  # if includeByType
+
+    tmpFlux = similar( tmpTimes[ 2:end ], Int )
+
     # If we need to break down the fluxes by reason for leaving, we need to
     #   initalise a matrix to store the information.
     if includeByType
@@ -461,13 +501,42 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
             WHERE attribute = 'status'"
         listOfReasons = SQLite.query( mpSim.simDB, queryCmd )
         listOfReasons = unique( listOfReasons[ 1 ] )
-        tmpBreakdown = zeros( Int, length( tmpTimes - 1 ),
-            length( listOfReasons ) )
+        tmpBreakdown = zeros( Int, length( tmpFlux ), length( listOfReasons ) )
     end  # if includeByType
 
-    tmpFlux = similar( tmpTimes[ 2:end ], Int )
-
     for ii in eachindex( tmpFlux )
+        # This query retrieves the list of personnel IDs that left the
+        #   organisation in the time period.
+        queryCmd = "SELECT $(mpSim.idKey)
+            FROM $(mpSim.personnelDBname)
+            WHERE $(tmpTimes[ ii ]) < timeExited AND
+                timeExited <= $(tmpTimes[ ii + 1 ])"
+
+        # If we need a breakdown, get the last entry per ID for changes in the
+        #   status attribute. The number of rows in this query is the same as
+        #   the number of rows in the above query.
+        if includeByType
+            queryCmd = "SELECT strValue, max( timeIndex ) timeIndex
+                FROM $(mpSim.historyDBname)
+                WHERE attribute = 'status' AND
+                    $(mpSim.idKey) IN ($queryCmd)
+                GROUP BY $(mpSim.idKey)"
+        end
+
+        outFlux = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+        tmpFlux[ ii ] = length( outFlux )
+
+        # If a breakdown by reason is needed, and people left the organisation,
+        #   count them by reason.
+        if includeByType && ( tmpFlux[ ii ] > 0 )
+            reasonCounts = countmap( outFlux )
+
+            map( jj -> tmpBreakdown[ ii, jj ] =
+                get( reasonCounts, listOfReasons[ jj ], 0 ),
+                eachindex( listOfReasons ) )
+        end  # if includeByType && ...
+
+        #=
         outFlux = getOutFlux( mpSim, tmpTimes[ ii ], tmpTimes[ ii + 1 ] )[ 1 ]
         tmpFlux[ ii ] = length( outFlux )
 
@@ -489,6 +558,7 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
                 get( reasonCounts, listOfReasons[ jj ], 0 ),
                 eachindex( listOfReasons ) )
         end  # if includeByType
+        =#
     end  # for ii in eachindex( tmpFlux )
 
     if includeByType
@@ -607,7 +677,7 @@ function generateReport( mpSim::ManpowerSimulation, timeDelta::T,
     fileName::String ) where T <: Real
 
     tic()
-    nRecords = countRecords( mpSim, timeDelta, true )
+    nRecords = countRecords( mpSim, timeDelta )
     nFluxIn = countFluxIn( mpSim, timeDelta )
     nFluxOut = countFluxOut( mpSim, timeDelta, true )
 
