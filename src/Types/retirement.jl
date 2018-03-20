@@ -27,6 +27,7 @@ type Retirement
 
     function Retirement( ; freq::T1 = 0.0, offset::T2 = 0.0,
         maxCareer::T3 = 0.0, retireAge::T4 = 0.0 ) where T1 <: Real where T2 <: Real where T3 <: Real where T4 <: Real
+
         if freq < 0.0
             error( "Retirement cycle length must be ⩾ 0.0." )
         end  # if freq < 0.0
@@ -46,5 +47,6 @@ type Retirement
         newRet.retireOffset = freq > 0.0 ?
             ( offset % freq + ( offset < 0.0 ? freq : 0.0 ) ) : 0.0
         return newRet
+        
     end  # Retirement( freq, offset, maxCareer, retireAge )
 end  # type Retirement

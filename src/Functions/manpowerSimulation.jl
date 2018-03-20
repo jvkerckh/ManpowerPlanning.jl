@@ -19,15 +19,22 @@ end  # for reqType in requiredTypes
 # This function tests if the simulation has been properly initialised.
 export isInitialised
 function isInitialised( mpSim::ManpowerSimulation )
+
     return mpSim.isInitialised
+
 end  # isInitialised( mpSim )
 
 
 # This function sets the ID key in the simulation to the given attribute. This
 #   does NOT update the databases.
-function setKey( mpSim::ManpowerSimulation, id::Union{Symbol, String} = :id )
-    mpSim.idKey = Symbol( id )
+function setKey( mpSim::ManpowerSimulation, id::Union{Symbol, String} = "id" )
+
+    mpSim.idKey = String( id )
+
 end  # setKey!( mpSim, id )
+
+
+include( joinpath( dirname( Base.source_path() ), "parFileProcessing.jl" ) )
 
 
 # This function sets the cap on the number of personnel in the simulation. Note
@@ -36,28 +43,89 @@ end  # setKey!( mpSim, id )
 #   will not be a personnel cap.
 export setPersonnelCap
 function setPersonnelCap( mpSim::ManpowerSimulation, cap::T ) where T <: Integer
+
     mpSim.personnelCap = cap > 0 ? cap : 0
+
 end  # setPersonnelCap( mpSim, cap )
+
+
+# This function sets the time between two database commits.
+export setDatabaseCommitTime
+function setDatabaseCommitTime( mpSim::ManpowerSimulation, commitFreq::T ) where T <: Real
+
+    if commitFreq <= 0.0
+        warn( "Time between two database commits must be > 0.0." )
+        return
+    end  # if commitFreq <= 0.0
+
+    mpSim.commitFrequency = commitFreq
+
+end  # setDatabaseCommitTime( mpSim, commitFreq )
 
 
 # This function adds a recruitment scheme to the simulation.
 # This function does nothing if the simulation is already running. XXX (desirable??)
 export addRecruitmentScheme!
 function addRecruitmentScheme!( mpSim::ManpowerSimulation,
-    retScheme::Recruitment )
+    recScheme::Recruitment )
+
     if now( mpSim ) != 0.0
         return
     end  # if now( mpSim ) != 0.0
 
-    push!( mpSim.recruitmentSchemes, retScheme )
-end  # addRecruitmentScheme!( mpSim, retScheme )
+    push!( mpSim.recruitmentSchemes, recScheme )
+
+end  # addRecruitmentScheme!( mpSim, recScheme )
+
+
+function addRecruitmentScheme!( mpSim::ManpowerSimulation, s::Taro.Sheet,
+    ii::T ) where T <: Integer
+
+    dataColNr = ii * 4 + 2
+    recScheme = Recruitment( s[ dataColNr, 6 ], s[ dataColNr, 7 ] )
+    setRecruitmentCap( recScheme, Int( s[ dataColNr, 8 ] ) )
+    isFixedAge = s[ dataColNr, 9 ] ≈ 1.0
+
+    # Add the age distribution.
+    if isFixedAge
+        setRecruitmentAge( recScheme, s[ dataColNr, 10 ] * 12 )
+    else
+        rowNrOfDist = numRows( s, dataColNr - 1, dataColNr - 1 )
+        distType = s[ dataColNr, rowNrOfDist ] == "Pointwise" ? :disc : :pUnif
+        rowNrOfDistEnd = numRows( s, dataColNr, dataColNr )
+
+        if rowNrOfDist + 2 > rowNrOfDistEnd
+            warn( "Improper recruitment age distribution. Ignoring recruitment scheme." )
+            return
+        end
+
+        ageDist = Dict{Float64, Float64}()
+
+        for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+            age = s[ dataColNr, jj ] * 12
+            pMass = s[ dataColNr + 1, jj ]
+
+            # Only add the entry if it makes sense.
+            if isa( age, Real ) && isa( pMass, Real ) && !haskey( ageDist, age )
+                ageDist[ age ] = pMass
+            end  # if isa( age, Real ) && ...
+        end  # for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+
+        setAgeDistribution( recScheme, ageDist, distType )
+    end  # if isFixedAge
+
+    addRecruitmentScheme!( mpSim, recScheme )
+
+end  # function addRecruitmentScheme!( mpSim, s, ii )
 
 
 # This function clears the recruitment schemes from the simulation.
 # This function should NOT be called while running a simulation!
 export clearRecruitmentSchemes!
 function clearRecruitmentSchemes!( mpSim::ManpowerSimulation )
+
     empty!( mpSim.recruitmentSchemes )
+
 end  # clearRecruitmentSchemes!( mpSim )
 
 
@@ -65,7 +133,9 @@ end  # clearRecruitmentSchemes!( mpSim )
 export setRetirement
 function setRetirement( mpSim::ManpowerSimulation,
     retScheme::Union{Void, Retirement} = nothing )
+
     mpSim.retirementScheme = retScheme
+
 end  # setRetirement( mpSim, retScheme )
 
 
@@ -73,25 +143,30 @@ end  # setRetirement( mpSim, retScheme )
 export setAttrition
 function setAttrition( mpSim::ManpowerSimulation,
     attrScheme::Union{Void, Attrition} = nothing )
+
     mpSim.attritionScheme = attrScheme
-end
+
+end  # setAttrition( mpSim, attrScheme )
 
 
 # This function sets the length of the simulation.
 export setSimulationLength
 function setSimulationLength( mpSim::ManpowerSimulation, simLength::T ) where T <: Real
+
     if simLength <= 0.0
         warn( "Simulation length must be > 0.0" )
         return
     end  # if simLength <= 0
 
     mpSim.simLength = simLength
+
 end  # setSimulationLength( mpSim, simLength )
 
 
 export setPhasePriority
 function setPhasePriority( mpSim::ManpowerSimulation, phase::Symbol,
     priority::T ) where T <: Integer
+
     if ( phase ∉ [ :recruitment, :retirement, :attrition ] ) &&
         ( phase ∉ mpSim.workingDbase.attrs )
         warn( "Unknown simulation phase, not setting priority." )
@@ -99,33 +174,49 @@ function setPhasePriority( mpSim::ManpowerSimulation, phase::Symbol,
     end
 
     mpSim.phasePriorities[ phase ] = priority
+
 end  # setPhasePriority( mpSim, phase, priority )
 
 
 export resetSimulation
 function resetSimulation( mpSim::ManpowerSimulation )
+
     mpSim.sim = Simulation()
 
-    # Clear the working database...
-    clearPDB!( mpSim.workingDbase, mpSim.idKey )
-    addAttributes!( mpSim.workingDbase, [
-        :timeEntered,
-        :ageAtRecruitment,
-        :processRetirement,
-        :expectedRetirementTime,
-        :processAttrition,
-        :status ] )
+    # First, drop the tables with the same name if they exist.
+    SQLite.drop!( mpSim.simDB, mpSim.historyDBname, ifexists = true )
+    SQLite.drop!( mpSim.simDB, mpSim.personnelDBname, ifexists = true )
 
-    # The results database...
-    clearPDB!( mpSim.simResult, mpSim.idKey )
-    addAttributes!( mpSim.simResult, [
-        :history,
-        :ageAtRecruitment ] )
+    # Then, create the personnel and history databases.
+    # XXX Other defined attributes need to be introduced here as well.
+    command = "CREATE TABLE $(mpSim.personnelDBname)(
+        $(mpSim.idKey) varchar(16) NOT NULL PRIMARY KEY,
+        timeEntered float,
+        timeExited float,
+        ageAtRecruitment float,
+        expectedRetirementTime float,
+        status varchar(16)
+    )"
+    SQLite.execute!( mpSim.simDB, command )
+
+    command = "CREATE TABLE $(mpSim.historyDBname)(
+        $(mpSim.idKey) varchar(16),
+        attribute varchar(255),
+        timeIndex float,
+        numValue float,
+        strValue varchar(255),
+        FOREIGN KEY ($(mpSim.idKey)) REFERENCES $(mpSim.personnelDBname)($(mpSim.idKey))
+    )"
+    SQLite.execute!( mpSim.simDB, command )
+
+    mpSim.personnelSize = 0
+    mpSim.resultSize = 0
 
     # And the cache.
-    empty!( mpSim.simCache )
+    setCacheMaxTime( mpSim.simCache, 0 )
 
     mpSim.isVirgin = true
+
 end  # resetSimulation( mpSim )
 
 
@@ -189,30 +280,31 @@ end
 
 # This function (re)initialises the simulation.
 export initialise
-function initialise( mpSim::ManpowerSimulation;
-    id::Union{Symbol, String} = :id, cap::T1 = 0,
-    recSchemes::Vector{Recruitment} = Vector{Recruitment}(),
-    retScheme::Union{Void, Retirement} = nothing, initPop::T2 = 0,
-    simLength::T3 = 1.0 ) where T1 <: Integer where T2 <: Integer where T3 <: Real
+function initialise( mpSim::ManpowerSimulation,
+    id::Union{Symbol, String} = "id" )
 
     setKey( mpSim, id )
-    setPersonnelCap( mpSim, cap )
-    mpSim.recruitmentSchemes = recSchemes
-    setRetirement( mpSim, retScheme )
-    setPhasePriority( mpSim, :recruitment, 1 )
-    setPhasePriority( mpSim, :retirement, 2 )
-    setPhasePriority( mpSim, :attrition, 3 )
-    populate( mpSim, initPop )
+    # setPhasePriority( mpSim, :recruitment, 1 )
+    # setPhasePriority( mpSim, :retirement, 2 )
+    # setPhasePriority( mpSim, :attrition, 3 )
+    resetSimulation( mpSim )
 
     # The simulation is correctly initialised.
     mpSim.isInitialised = true
+
 end  # initialise( mpSim, id, cap, recSchemes, retScheme, initPop )
 
 
 # This function returns the current time of the manpower simulation.
 function Dates.now( mpSim::ManpowerSimulation )
+
     return now( mpSim.sim )
+
 end
+
+
+# This file holds the database commit process.
+include( "dbManagement.jl" )
 
 
 # This function runs the manpower simulation if it has been properly
@@ -235,15 +327,23 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
 
     oldSimTime = now( mpSim )
 
+    # Start the database commits.
+    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+    @process dbCommitProcess( mpSim.sim,
+        toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
+
     if toTime > 0.0
         run( mpSim.sim, toTime )
     else
         run( mpSim.sim )
     end  # if toTime > 0.0
 
+    # Final commit.
+    SQLite.execute!( mpSim.simDB, "COMMIT" )
+
     # Empty the simulation cache if the simulation time has advanced.
     if oldSimTime < now( mpSim )
-        empty!( mpSim.simCache )
+        setCacheMaxTime( mpSim.simCache, min( now( mpSim ), mpSim.simLength ) )
     end
 end  # run( mpSim, toTime )
 
@@ -303,14 +403,10 @@ include( "simProcessing.jl" )
 
 
 function Base.show( io::IO, mpSim::ManpowerSimulation )
-    if !isInitialised( mpSim )
-        print( io, "Manpower simulation not initialised." )
-        return
-    end
 
-    print( io, "Manpower simulation initialised." )
-    print( io, "\nSimulation length: $(mpSim.simLength)" )
-    print( io, "\nID key: $(string( mpSim.idKey ))" )
+    print( io, "Simulation name: \"$(mpSim.simName)\"" )
+    print( io, "\nInitialization state: " )
+    print( io, isInitialised( mpSim ) ? "OK" : "not properly initialized" )
 
     if mpSim.personnelCap > 0
         print( io, "\nPersonnel cap: $(mpSim.personnelCap)" )
@@ -328,14 +424,25 @@ function Base.show( io::IO, mpSim::ManpowerSimulation )
         print( io, "\nRetirement scheme: $(mpSim.retirementScheme)" )
     end  # if isa( mpSim.retirementScheme, Retirement )
 
+    print( io, "\nSimulation length: $(mpSim.simLength)" )
+
+    if isInitialised( mpSim )
+        print( io, "\nCurrent simulation time: $(now( mpSim ))" )
+    end  # if isInitialised( mpSim )
+
+    print( io, "\nID key: $(string( mpSim.idKey ))" )
+
     print( io, "\nSimulation phase priorities: " )
     print( io, join( map( phase -> "$phase: $(mpSim.phasePriorities[ phase ])",
         keys( mpSim.phasePriorities ) ), "; " ) )
 
-    if !mpSim.isVirgin
-        print( io, "\nWorking database: $(mpSim.workingDbase)" )
-        print( io, "\nResults database: $(mpSim.simResult)" )
-    else
-        print( io, "\nNo entries in databases." )
-    end  # if !mpSim.isVirgin
+    if !isInitialised( mpSim )
+        return
+    end  # if !isInitialised( mpSim )
+
+    print( io, "\nCurrent number of active personnel in database: ",
+        "$(mpSim.personnelSize)" )
+    print( io, "\nTotal number of personnel in simulation: ",
+        "$(mpSim.resultSize)" )
+
 end  # show( io, mpSim )
