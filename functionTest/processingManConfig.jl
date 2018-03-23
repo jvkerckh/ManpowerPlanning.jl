@@ -1,7 +1,7 @@
 # Initalise ManpowerPlanning module
 if !isdefined( :ManpowerSimulation )
-    include( joinpath( dirname( Base.source_path() ), "..", "src",
-        "ManpowerPlanning.jl" ) )
+    # include( joinpath( dirname( Base.source_path() ), "..", "src",
+    #     "ManpowerPlanning.jl" ) )
     using ManpowerPlanning
     isUpToDate = true
     println( "ManpowerPlanning module initialised." )

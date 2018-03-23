@@ -3,4 +3,5 @@
 *.jl.mem
 *.sqlite*
 *.xlsx#
+testReport.xlsx
 .cache*

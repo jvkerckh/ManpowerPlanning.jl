@@ -246,11 +246,10 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # If a proper attrition scheme has been defined, set the attrition process.
     #   This must be defined AFTER the retirement scheme because it requires the
     #   expected time of retirement.
-    if isa( mpSim.attritionScheme, Attrition ) &&
-        ( mpSim.attritionScheme.attrRate > 0.0 )
+    if isa( mpSim.attritionScheme, Attrition )
         @process attritionProcess( mpSim.sim, id, timeOfRetirement, retProc,
             mpSim )
-    end  # if isa( mpSim.attritionScheme, Attrition ) && ...
+    end  # if isa( mpSim.attritionScheme, Attrition )
 
     # Adjust the size of the personnel database.
     mpSim.personnelSize += 1

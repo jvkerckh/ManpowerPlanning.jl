@@ -41,10 +41,11 @@ println( "Recruitment schemes added to the simulation." )
 # Attrition scheme.
 println( "\nAttrition" )
 isAttrSchemeAvailable = mpSim.attritionScheme !== nothing
-attrRate = isAttrSchemeAvailable ? mpSim.attritionScheme.attrRate : 0
 
-if attrRate > 0
-    println( "Attrition rate of $(attrRate * 100)% every $(mpSim.attritionScheme.attrPeriod) months." )
+if isAttrSchemeAvailable
+    println( mpSim.attritionScheme )
+else
+    println( "No attrition acheme in the simulation." )
 end  # if attrRate > 0
 
 

@@ -8,9 +8,10 @@ end  # !isdefined( :Taro )
 module ExcelWrapper
 
 # Including inside the module!
-if !isdefined( :Taro )
+if !isdefined( :isJavaInit )
     using Taro
     Taro.init()  # And properly initialized
+    global isJavaInit = true
 end  # !isdefined( :Taro )
 
 export Taro, Workbook

@@ -84,7 +84,7 @@ function addRecruitmentScheme!( mpSim::ManpowerSimulation, s::Taro.Sheet,
     dataColNr = ii * 4 + 2
     recScheme = Recruitment( s[ dataColNr, 6 ], s[ dataColNr, 7 ] )
     setRecruitmentCap( recScheme, Int( s[ dataColNr, 8 ] ) )
-    isFixedAge = s[ dataColNr, 9 ] ≈ 1.0
+    isFixedAge = Bool( s[ dataColNr, 9 ] )
 
     # Add the age distribution.
     if isFixedAge
@@ -406,7 +406,7 @@ function Base.show( io::IO, mpSim::ManpowerSimulation )
 
     print( io, "Simulation name: \"$(mpSim.simName)\"" )
     print( io, "\nInitialization state: " )
-    print( io, isInitialised( mpSim ) ? "OK" : "not properly initialized" )
+    print( io, isInitialised( mpSim ) ? "OK" : "not properly initialised" )
 
     if mpSim.personnelCap > 0
         print( io, "\nPersonnel cap: $(mpSim.personnelCap)" )

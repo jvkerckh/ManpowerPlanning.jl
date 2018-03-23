@@ -12,16 +12,27 @@ for reqType in requiredTypes
 end  # for reqType in requiredTypes
 
 
-# This function sets the attrition rate of the attrition scheme.
 export setAttritionRate
+"""
+setAttritionRate( attrScheme::Attrition,
+                  rate::T )
+    where T <: Real
+
+This function sets the attrition curve of the attrition scheme `attrScheme` to a
+constant value of `rate` for all terms. If the given attrition rate is 0, this
+function will also set the attrition period to 1.
+
+This function returns `nothing`.
+"""
 function setAttritionRate( attrScheme::Attrition, rate::T ) where T <: Real
 
     if ( rate < 0.0 ) || ( rate >= 1.0 )
-        warn( "Attrition rate must be a percentage between 0.0 and 100.0, not making any changes." )
+        warn( "Attrition rate must be a percentage between 0.0 and 1.0, not making any changes." )
         return
-    end  # if ( rate < 0.0 ) || ( rate > 100.0 )
+    end  # if ( rate < 0.0 ) || ( rate > 1.0 )
 
-    attrScheme.attrRate = rate
+    attrScheme.attrCurvePoints = [ 0.0 ]
+    attrScheme.attrRates = [ rate ]
 
     # If the attrition rate becomes 0.0, reset the period to 1.0.
     if rate == 0.0
@@ -31,15 +42,23 @@ function setAttritionRate( attrScheme::Attrition, rate::T ) where T <: Real
 end  # setAttritionRate( attrScheme, rate )
 
 
-# This function sets the attrition period of the attrition scheme. If the
-#   attrition rate is 0.0, nothing happens.
 export setAttritionPeriod
+"""
+setAttritionPeriod( attrScheme::Attrition,
+                    period::T )
+    where T <: Real
+
+This function sets the attrition period of the attrition scheme `attrScheme` to
+`period`. If the attrition curve is a flat 0, the attrition period is kept at 1.
+
+This function returns `nothing`.
+"""
 function setAttritionPeriod( attrScheme::Attrition, period::T ) where T <: Real
 
-    if attrScheme.attrRate == 0.0
-        warn( "Attrition rate is 0.0, changing the period has no effect so not making any changes." )
+    if attrScheme.attrRates == [ 0.0 ]
+        warn( "Attrition rate is a flat 0.0, changing the period has no effect so not making any changes." )
         return
-    end  # if attrScheme.attrRate == 0.0
+    end  # if attrScheme.attrRates == [ 0.0 ]
 
     if period <= 0.0
         warn( "Attrition period must be > 0.0, not making any changes." )
@@ -51,10 +70,18 @@ function setAttritionPeriod( attrScheme::Attrition, period::T ) where T <: Real
 end  # setAttritionPeriod( attrScheme, period )
 
 
-# This function sets both attrition parameters of the attrition scheme. If the
-#   attrition rate is 0.0, the period parameter is ignored, and the period will
-#   be set to 1.0.
 export setAttritionParameters
+"""
+setAttritionParameters( attrScheme::Attrition,
+                        rate::T1,
+                        period::T2 )
+    where T1 <: Real where T2 <: Real
+
+This function sets the attrition rate of attrition scheme `attrScheme` to a
+fixed attrition rate `rate` per period of length `period`.
+
+This function returns `nothing`.
+"""
 function setAttritionParameters( attrScheme::Attrition, rate::T1, period::T2 ) where T1 <: Real where T2 <: Real
 
     setAttritionRate( attrScheme, rate )
@@ -66,22 +93,20 @@ function setAttritionParameters( attrScheme::Attrition, rate::T1, period::T2 ) w
 end  # setAttritionParameters( attrScheme, rate, period )
 
 
+"""
+setAttritionParameters( mpSim::ManpowerSimulation,
+                        rate::T1,
+                        period::T2 )
+    where T1 <: Real where T2 <: Real
+
+This function sets the attrition rate of attrition scheme in the manpower
+simulation `mpSim` to a fixed attrition rate `rate` per period of length
+`period`.
+
+This function returns `nothing`.
+"""
 function setAttritionParameters( mpSim::ManpowerSimulation, rate::T1,
     period::T2 ) where T1 <: Real where T2 <: Real
-
-    oldAttritionRate = mpSim.attritionScheme === nothing ? 0.0 :
-        mpSim.attritionScheme.attrRate
-    oldAttritionPeriod = oldAttritionRate == 0.0 ? 1.0 :
-        mpSim.attritionScheme.attrPeriod
-
-    # Check if the attrition scheme must be updated or not.
-    isUpdateNeeded = ( oldAttritionRate != rate ) && ( rate != 0.0 ) &&
-        ( oldAttritionPeriod != period )
-
-    # Don't make unnecessary changes.
-    if !isUpdateNeeded
-        return
-    end  # if !isUpdateNeeded
 
     if rate == 0.0
         mpSim.attritionScheme = nothing
@@ -94,50 +119,175 @@ function setAttritionParameters( mpSim::ManpowerSimulation, rate::T1,
 end  # setAttritionParameters( mpSim, rate, period )
 
 
-# This function generates a time to attrition. This is drawn from an
-#   exponential distribution T, where lambda is chosen such that
-#   P( T < period ) = rate.
-export generateAttritionTime
-function generateAttritionTime( attrScheme::Attrition )  # XXX will need to be refined
+export setAttritionCurve
+"""
+setAttritionCurve( attrScheme::Attrition,
+                   curve::Array{Float64, 2} )
 
-    lambda = - log( 1 - attrScheme.attrRate ) / attrScheme.attrPeriod
-    return rand( Exponential( 1 / lambda ) )
+This function sets the attrition curve of attrition scheme `attrScheme` to
+`curve`. The attrition curve is passed as a 2-dimensional `Array{Float64, 2}`
+with 2 columns. The first column has the time a person exists in the simulation,
+and the second column has the attrition rates per period from the time specified
+by that key to the next.
 
-end  # generateAttritionTime( attrScheme )
+This function returns `nothing`. If the given array does not have exactly 2
+columns, or if there are duplicate entries in the first column, this function
+does not make any changes.
+
+This function ignores negative terms and non sensical attrition rates. If this
+results in an empty set of eligible curve points, the attrition rate is set to a
+constant 0 instead. The first eligible node has its term set to 0.
+"""
+function setAttritionCurve( attrScheme::Attrition, curve::Array{Float64, 2} )
+
+    # Check for correct dimensions.
+    if size( curve )[ 2 ] != 2
+        warn( "Invalid array given to define attrition curve, not making any changes." )
+        return
+    end  # if size( curve )[ 2 ] != 2
+
+    # Check for duplicate terms.
+    if length( curve[ :, 1 ] ) != length( unique( curve[ :, 1 ] ) )
+        warn( "Duplicate entries in the terms of the attrition curve, not making any changes." )
+        return
+    end  # if length( curve[ :, 1 ] ) != length( unique( curve[ :, 1 ] ) )
+
+    # Remove curve points with non sensical attrition rates.
+    tmpCurve = curve[ map( ii -> 0 <= curve[ ii, 2 ] < 1,
+        eachindex( curve[ :, 1 ] ) ), : ]
+
+    # Flat 0 rate if no more nodes are eligible.
+    if isempty( tmpCurve )
+        setAttritionRate( attrScheme, 0 )
+        return
+    end  # if isempty( tmpNodes )
+
+    # Remove curve points with negative terms.
+    tmpCurve = sortrows( tmpCurve, by = x -> x[ 1 ] )
+    lastNegIndex = findlast( tmpCurve[ :, 1 ] .<= 0 )
+    tmpCurve = tmpCurve[ lastNegIndex:end, : ]
+
+    # Filter out consecutive nodes with the same attrition rate.
+    tmpCurve[ 1, 1 ] = 0.0
+    isDiffFromPrevious = vcat( true,
+        tmpCurve[ 2:end, 2 ] .!= tmpCurve[ 1:( end - 1 ), 2 ] )
+
+    # Update the attrition scheme.
+    attrScheme.attrCurvePoints = tmpCurve[ isDiffFromPrevious, 1 ]
+    attrScheme.attrRates = tmpCurve[ isDiffFromPrevious, 2 ]
+
+end  # setAttritionCurve( attrScheme, curve )
 
 
-# This is the process in the simulation that handles the attrition of a person.
+"""
+setAttritionCurve( attrScheme::Attrition,
+                   curve::Dict{Float64, Float64} )
+
+This function sets the attrition curve of attrition scheme `attrScheme` to
+`curve`. The attrition curve is passed as a `Dict{Float64, Float64}` with the
+keys as the time a person exists in the simulation, and the values as the
+attrition rates per period from the time specified by that key to the next.
+
+This function returns `nothing`.
+
+This function ignores negative keys and non sensical attrition rates. If this
+results in an empty set of eligible curve points, the attrition rate is set to a
+constant 0 instead. The first eligible node has its term set to 0.
+"""
+function setAttritionCurve( attrScheme::Attrition,
+    curve::Dict{Float64, Float64} )
+
+    terms = keys( curve )
+    rates = map( term -> curve[ term ], nodes )
+    setAttritionCurve( attrScheme, hcat( terms, rates ) )
+
+end  # setAttritionCurve( attrScheme, curve )
+
+
+#=
+@resumable
+attritionProcess( sim::SimJulia.Simulation,
+                  id::String,
+                  timeOfRetirement::T,
+                  retProc::ResumableFunctions.Process,
+                  mpSim::ManpowerSimulation )
+    where T <: Real
+
+This SimJulia process handles the career attrition for the person with ID `id`
+in the manpower simulation `mpSim`.
+
+The expected time of retirement for this person is `timeOfRetirement`, and the
+associated retirement process is `retProc`. The argument `sim` is the
+SimJulia.Simulation component of the manpower simulation, and is required by the
+@process macro.
+=#
 @resumable function attritionProcess( sim::Simulation, id::String,
     timeOfRetirement::T, retProc::Process, mpSim::ManpowerSimulation ) where T <: Real
 
     attrScheme = mpSim.attritionScheme
+    timeOfEntry = now( sim )
     checkForAttrition = true
+    rateIndex = 1
+    attrRate = -1
+    lambda = 0
+    timeOfRateChange = 0
 
     while checkForAttrition
-        attrTime = generateAttritionTime( attrScheme )
-        timeOfAttr = now( sim ) + attrTime
-        nextAttrPeriodStart = now( sim ) + attrScheme.attrPeriod
+        # Update attrition rate and time of next rate change if necessary.
+        if attrScheme.attrRates[ rateIndex ] != attrRate
+            attrRate = attrScheme.attrRates[ rateIndex ]
+            lambda = - log( 1 - attrRate ) / attrScheme.attrPeriod
+            timeOfRateChange = length( attrScheme.attrRates ) == rateIndex ?
+                +Inf : attrScheme.attrCurvePoints[ rateIndex + 1 ] + timeOfEntry
+        end  # if attrScheme.attrRates[ rateIndex ] != attrRate
 
-        # Check if attrition happens in the current attrition period.
-        # 1. Attrition happens in simulation timeframe
-        # 2. If yes, attrition happens in attrition period.
-        # 3. If yes, attrition happens before retirement.
-        # 4. If yes, interrupt retirement process.
-        if ( timeOfAttr <= mpSim.simLength ) &&
-            ( attrTime <= attrScheme.attrPeriod ) &&
-            ( timeOfAttr <= timeOfRetirement )
-            @yield timeout( sim, attrTime,
-                priority = mpSim.phasePriorities[ :attrition ] )
-            retirePerson( mpSim, id, "resigned" )
-            checkForAttrition = false
+        # If the attrition rate is 0, skip right ahead or terminate the
+        #   attrition process, whichever is required.
+        if attrRate == 0
+            # Terminate if the rest of the curve is a flat 0 attrition rate.
+            if length( attrScheme.attrRates ) == rateIndex
+                checkForAttrition = false
+            # Terminate if the time of the next rate change is
+            # 1. Outside the simulation time frame, or
+            # 2. Past the expected retirement time.
+            elseif ( timeOfRateChange > mpSim.simLength ) ||
+                ( timeOfRateChange > timeOfRetirement )
+                checkForAttrition = false
+            # Otherwise, skip ahead to the next attrition rate change.
+            else
+                @yield timeout( sim, timeOfRateChange - now( sim ),
+                    priority = mpSim.phasePriorities[ :attrition ] )
+                rateIndex += 1
+            end  # if length( attrScheme.attrRates ) == rateIndex
+        # Otherwise, perform attrition checks.
+        else
+            attrTime = rand( Exponential( 1 / lambda ) )
+            timeOfAttr = now( sim ) + attrTime
+            nextAttrPeriodStart = now( sim ) + attrScheme.attrPeriod
 
-            # The interrupt is only sensible if the retirement process (still)
-            #   exists. This can be detected by testing for finite exptected
-            #   retirement time.
-            if timeOfRetirement < +Inf
-                interrupt( retProc )
-            end  # if timeOfRetirement < +Inf
-        end  # if ( timeOfAttr <= mpSim.simLength ) && ...
+            # Check if attrition happens in the current attrition period.
+            # 1. Attrition happens in simulation timeframe
+            # 2. If yes, attrition happens in attrition period.
+            # 3. If yes, attrition happens before next rate change.
+            # 4. If yes, attrition happens before retirement.
+            # 5. If yes, interrupt retirement process.
+            if ( timeOfAttr <= mpSim.simLength ) &&
+                ( attrTime <= attrScheme.attrPeriod ) &&
+                ( timeOfAttr <= timeOfRateChange ) &&
+                ( timeOfAttr <= timeOfRetirement )
+                @yield timeout( sim, attrTime,
+                    priority = mpSim.phasePriorities[ :attrition ] )
+                retirePerson( mpSim, id, "resigned" )
+                checkForAttrition = false
+
+                # The interrupt is only sensible if the retirement process (still)
+                #   exists. This can be detected by testing for finite exptected
+                #   retirement time.
+                if timeOfRetirement < +Inf
+                    interrupt( retProc )
+                end  # if timeOfRetirement < +Inf
+            end  # if ( timeOfAttr <= mpSim.simLength ) && ...
+        end  # if attrRate == 0
 
         # Check if it's sensible to start a next attrition period.
         # 1. Attrition hasn't happened yet.
@@ -146,8 +296,15 @@ end  # generateAttritionTime( attrScheme )
         # 4. If yes, wait for next attrition period.
         if checkForAttrition && ( nextAttrPeriodStart <= mpSim.simLength ) &&
             ( nextAttrPeriodStart < timeOfRetirement )
-            @yield timeout( sim, attrScheme.attrPeriod,
+            tmpWaitTime = min( attrScheme.attrPeriod,
+                timeOfRateChange - now( sim ) )
+            @yield timeout( sim, tmpWaitTime,
                 priority = mpSim.phasePriorities[ :attrition ] )
+
+            # Prepare to update attrition rate if necessary.
+            if now( sim ) == timeOfRateChange
+                rateIndex += 1
+            end
         else
             checkForAttrition = false
         end  # if checkForAttrition && ...
@@ -156,62 +313,24 @@ end  # generateAttritionTime( attrScheme )
 end  # attritionProcess( sim, id, timeOfRetirement, retProc, mpSim )
 
 
-@resumable function attritionProcess( sim::Simulation, person::Personnel,
-    result::Personnel, mpSim::ManpowerSimulation )
-
-    attrScheme = mpSim.attritionScheme
-    checkForAttrition = true
-
-    while checkForAttrition
-        attrTime = generateAttritionTime( attrScheme )
-        timeOfAttr = now( sim ) + attrTime
-        nextAttrPeriodStart = now( sim ) + attrScheme.attrPeriod
-
-        # Checks to perform:
-        # 1. Attrition happens in simulation timeframe
-        # 2. If yes, attrition happens in attrition period.
-        # 3. If yes, attrition happens before retirement.
-        # 4. If yes, interrupt retirement process.
-        if ( timeOfAttr <= mpSim.simLength ) &&
-            ( attrTime <= attrScheme.attrPeriod ) &&
-            ( timeOfAttr <= person[ :expectedRetirementTime ] )
-            @yield timeout( sim, attrTime,
-                priority = mpSim.phasePriorities[ :attrition ] )
-            retirePerson( mpSim, person, result, :resigned )
-            checkForAttrition = false
-
-            # The interrupt is only sensible if the retirement process (still)
-            #   exists. This can be detected by testing for finite exptected
-            #   retirement time.
-            if person[ :expectedRetirementTime ] < +Inf
-                interrupt( person[ :processRetirement ] )
-            end  # if person[ :expectedRetirementTime ] < +Inf
-        end  # if ( timeOfAttr <= mpSim.simLength ) && ...
-
-        # 1. Attrition hasn't happened yet.
-        # 2. If yes, next attrition period starts in simulation timeframe.
-        # 3. If yes, next attrition period starts before retirement.
-        # 4. If yes, wait for next attrition period.
-        if checkForAttrition && ( nextAttrPeriod <= mpSim.simLength ) &&
-            ( nextAttrPeriodStart < person[ :expectedRetirementTime ] )
-            @yield timeout( sim, attrScheme.attrPeriod,
-                priority = mpSim.phasePriorities[ :attrition ] )
-        else
-            checkForAttrition = false
-        end  # if checkForAttrition && ...
-    end  # while checkForAttrition
-
-end  # attritionProcess( sim, person, result, mpSim )
-
-
 function Base.show( io::IO, attrScheme::Attrition )
 
-    if attrScheme.attrRate == 0.0
+    if attrScheme.attrRates == [ 0.0 ]
         print( io, "No attrition scheme." )
         return
-    end  # if attrScheme.attrRate == 0.0
+    end  # if attrScheme.attrRates == [ 0.0 ]
 
-    print( io, "Attrition rate: $(attrScheme.attrRate * 100)%" )
-    print( io, "\nAttrition period: $(attrScheme.attrPeriod)" )
+    print( io, "Attrition period: $(attrScheme.attrPeriod)" )
+
+    if length( attrScheme.attrRates ) == 1
+        print( io, "\nAttrition rate: $(attrScheme.attrRates[ 1 ] * 100)%" )
+    else
+        print( io, "\nAttrition curve" )
+
+        for ii in eachindex( attrScheme.attrRates )
+            print( io, "\n    term: $(attrScheme.attrCurvePoints[ ii ]);" )
+            print( io, " rate: $(attrScheme.attrRates[ ii ] * 100)%" )
+        end  # for ii in eachindex( attrScheme.attrRates )
+    end  # if length( attrScheme.attrRates ) == 1
 
 end  # Base.show( io, retScheme )

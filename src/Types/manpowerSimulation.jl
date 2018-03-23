@@ -134,50 +134,6 @@ type ManpowerSimulation
         newMPsim = ManpowerSimulation()
         initialiseFromExcel( newMPsim, configFileName )
         initialise( newMPsim )
-
-#=
-        w = Workbook( configFileName )
-
-        # General parameters
-        s = getSheet( w, "General" )
-        newMPsim = ManpowerSimulation( dbName = s[ "B", 3 ],
-            simName = s[ "B", 4 ] )
-        setPersonnelCap( newMPsim, Int( s[ "B", 5 ] ) )
-        setSimulationLength( newMPsim, s[ "B", 8 ] * 12 )
-        setDatabaseCommitTime( newMPsim, s[ "B", 8 ] * 12 / s[ "B", 9 ] )
-
-        # Recruitment parameters
-        s = getSheet( w, "Recruitment" )
-        numSchemes = Int( s[ "B", 3 ] )
-
-        for ii in 1:numSchemes
-            addRecruitmentScheme!( newMPsim, s, ii - 1 )
-        end  # for ii in 1:numSchemes
-
-        # Attrition parameters
-        s = getSheet( w, "Attrition" )
-
-        # No attrition scheme is attached by default, so it needs to be created
-        #   only if the attrition rate is larger than 0.
-        if s[ "B", 4 ] > 0
-            attrScheme = Attrition( s[ "B", 4 ], s[ "B", 3 ] )
-            setAttrition( newMPsim, attrScheme )
-        end  # if s[ "B", 4 ] > 0
-
-        # Retirement parameters
-        s = getSheet( w, "Retirement" )
-        maxTenure = s[ "B", 5 ] * 12
-        maxAge = s[ "B", 6 ] * 12
-
-        # No retirement scheme is attached by default, so it needs to be created
-        #   only if a retirement scheme has been provided in the parameter file.
-        if ( maxTenure > 0 ) || ( maxAge > 0 )
-            retScheme = Retirement( freq = s[ "B", 3 ], offset = s[ "B", 4 ],
-                maxCareer = maxTenure, retireAge = maxAge )
-            setRetirement( newMPsim, retScheme )
-        end  # if ( maxTenure > 0 ) || ...
-=#
-
         return newMPsim
 
     end  # ManpowerSimulation( configFileName )

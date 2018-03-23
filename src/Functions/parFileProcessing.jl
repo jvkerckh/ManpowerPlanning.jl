@@ -104,12 +104,28 @@ end  # readRecruitmentPars( mpSim, s )
 
 function readAttritionPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
-    if s[ "B", 4 ] > 0
-        attrScheme = Attrition( s[ "B", 4 ], s[ "B", 3 ] )
-        setAttrition( mpSim, attrScheme )
+    isAttritionFixed = Bool( s[ "B", 4 ] )
+
+    if Bool( s[ "B", 4 ] )
+        if s[ "B", 5 ] > 0
+            attrScheme = Attrition( s[ "B", 5 ], s[ "B", 3 ] )
+            setAttrition( mpSim, attrScheme )
+        else
+            setAttrition( mpSim )
+        end  # if s[ "B", 5 ] > 0
     else
-        setAttrition( mpSim )
-    end  # if s[ "B", 4 ] > 0
+        lastRow = numRows( s, "C" )
+        nAttrEntries = lastRow - 7  # 7 is the header row of the attrition curve
+        attrCurve = zeros( Float64, nAttrEntries, 2 )
+
+        for ii in 1:nAttrEntries
+            attrCurve[ ii, 1 ] = s[ "B", ii + 7 ] * 12
+            attrCurve[ ii, 2 ] = s[ "C", ii + 7 ]
+        end  # for ii in 1:nAttrEntries
+
+        attrScheme = Attrition( attrCurve, s[ "B", 3 ] )
+        setAttrition( mpSim, attrScheme )
+    end  # if Bool( s[ "B", 4 ] )
 
 end  # readAttritionPars( mpSim, s )
 
