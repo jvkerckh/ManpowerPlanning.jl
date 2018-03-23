@@ -65,6 +65,37 @@ end  # getLastChanges( mpSim, timePoint, fields )
 
 
 """
+```
+getActiveAgesAtTime( mpSim::ManpowerSimulation,
+                     timePoint::T )
+    where T <: Real
+```
+This function returns the ages of all personnel members in the manpower
+simulation `mpSim` who were active at time `timePoint`.
+
+If the given time is < 0 or larger than the current simulation time or the
+length of the simulation (whichever is smaller), the function returns `nothing`.
+Otherwise, it returns a `Vector{float64}` with the ages.
+"""
+function getActiveAgesAtTime( mpSim::ManpowerSimulation, timePoint::T ) where T <: Real
+
+    if ( timePoint < 0 ) || ( timePoint > min( now( mpSim ), mpSim.simLength ) )
+        return
+    end  # if ( timePoint < 0 ) || ...
+
+    # Get all necessary information from the database.
+    activePersonnel = getActiveAtTime( mpSim, timePoint,
+        [ "timeEntered", "ageAtRecruitment" ] )
+
+    # Compute the current age of all active personnel members.
+    personnelAge = activePersonnel[ :ageAtRecruitment ]
+    personnelAge += timePoint - activePersonnel[ :timeEntered ]
+    return personnelAge
+
+end  # getActiveAgesAtTime( mpSim, timePoint )
+
+
+"""
 This function returns the age distribution of all the personnel in the
 simulation `mpSim` who were active at time `timePoint`, with ages rounded down
 to the nearest multiple of `ageRes`.
@@ -89,14 +120,9 @@ function getActiveAgeDistAtTime( mpSim::ManpowerSimulation, timePoint::T1,
         return
     end  # if ( timePoint < 0 ) || ...
 
-    # Get all necessary information from the database.
-    activePersonnel = getActiveAtTime( mpSim, timePoint,
-        [ "timeEntered", "ageAtRecruitment" ] )
-
     # Compute the current age of all active personnel members.
-    personnelAge = activePersonnel[ :ageAtRecruitment ]
-    personnelAge += timePoint - activePersonnel[ :timeEntered ]
-    personnelAge = floor.( Int, personnelAge / ageRes )
+    personnelAge = floor.( Int, getActiveAgesAtTime( mpSim, timePoint ) /
+        ageRes )
     ageCounts = counts( personnelAge )
     minAge = minimum( personnelAge )
     maxAge = minAge + length( ageCounts ) - 1
@@ -255,7 +281,7 @@ end  # countRecords( mpSim::ManpowerSimulation, times::Vector{Float64} )
 countRecords(
     mpSim::ManpowerSimulation,
     timeDelta::T,
-    includeFinalTime::Bool = false ) where T <: Real
+    includeFinalTime::Bool = true ) where T <: Real
 ```
 This version of the `countRecords` method counts the number of active people on
 a time grid with resolution `timeDelta`, starting from time 0. The current
@@ -264,7 +290,8 @@ at the end.
 
 If the argument `timeDelta` is not > 0, this function will return `nothing`.
 """
-function countRecords( mpSim::ManpowerSimulation, timeDelta::T ) where T <: Real
+function countRecords( mpSim::ManpowerSimulation, timeDelta::T,
+    includeFinalTime::Bool = true ) where T <: Real
 
     # Check validity of timeDelta.
     if timeDelta <= 0
@@ -535,30 +562,6 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
                 get( reasonCounts, listOfReasons[ jj ], 0 ),
                 eachindex( listOfReasons ) )
         end  # if includeByType && ...
-
-        #=
-        outFlux = getOutFlux( mpSim, tmpTimes[ ii ], tmpTimes[ ii + 1 ] )[ 1 ]
-        tmpFlux[ ii ] = length( outFlux )
-
-        if includeByType
-            if tmpFlux[ ii ] > 0
-                queryCmd = "SELECT strValue
-                    FROM $(mpSim.historyDBname)
-                    WHERE $(mpSim.idKey) IN ('$(join( outFlux, "', '" ))') AND
-                    attribute = 'status' AND
-                    $(tmpTimes[ ii ]) < timeIndex AND timeIndex <= $(tmpTimes[ ii + 1 ])"
-                outReasons = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
-            else
-                outReasons = Vector{String}()
-            end  # if tmpFlux[ ii ] > 0
-
-            reasonCounts = countmap( outReasons )
-
-            map( jj -> tmpBreakdown[ ii, jj ] =
-                get( reasonCounts, listOfReasons[ jj ], 0 ),
-                eachindex( listOfReasons ) )
-        end  # if includeByType
-        =#
     end  # for ii in eachindex( tmpFlux )
 
     if includeByType
@@ -572,6 +575,55 @@ function countFluxOut( mpSim::ManpowerSimulation, timeDelta::T,
     return ( tmpTimes[ 2:end ], tmpFlux )
 
 end  # countFluxOut( mpSim, timeDelta )
+
+
+export getAgeStatistics
+"""
+```
+getAgeStatistics( mpSim::ManpowerSimulation,
+                  timeDelta::T,
+                  includeFinalTime::Bool = true )
+    where T <: Real
+```
+This function generates statistics for the active personnel in the manpower
+simulation `mpSim` on a timegrid with resolution `timeDelta`.
+
+If the resolution of the time grid is ⩽ 0, the function returns `nothing`.
+Otherwise, it returns a `Tuple{Vector{Float64}, Array{Float64, 2}}` where the
+first element is a vector holding the times of the grid, and the second element
+is a matrix with 5 columns, and one row for each time in the time grid. The
+columns of this matrix hold, in this order, the average age, the standard
+deviation, the median age, the minimum age, and the maximum age.
+"""
+function getAgeStatistics( mpSim::ManpowerSimulation, timeDelta::T,
+    includeFinalTime::Bool = true ) where T <: Real
+
+    # Check validity of timeDelta.
+    if timeDelta <= 0
+        warn( "Cannot have a time grid with step size ⩽ 0.0, nothing returned." )
+        return
+    end  # if timeDelta <= 0.0
+
+    tMax = min( mpSim.simLength, now( mpSim ) )
+    tmpTimes = collect( 0:timeDelta:tMax )
+
+    # Add final time point if necessary.
+    if includeFinalTime && ( tmpTimes[ end ] < tMax )
+        push!( tmpTimes, tMax )
+    end  # if includeFinalTime && ...
+
+    tmpStats = zeros( Float64, length( tmpTimes), 5 )
+
+    for ii in eachindex( tmpTimes )
+        personnelAge = getActiveAgesAtTime( mpSim, tmpTimes[ ii ] )
+        sumStats = summarystats( personnelAge )
+        tmpStats[ ii, : ] = [ sumStats.mean, std( personnelAge ),
+            sumStats.median, sumStats.min, sumStats.max ]
+    end  # for ii in eachindex( tmpTimes )
+
+    return ( tmpTimes, tmpStats )
+
+end  # getAgeStatistics( mpSim, timeDelta, includeFinalTime )
 
 
 export getAgeDistEvolution
@@ -589,7 +641,7 @@ active personnel members having a certain age at a certain time, with each row
 corresponding to a single time point.
 """
 function getAgeDistEvolution( mpSim::ManpowerSimulation, timeDelta::T1,
-    ageRes::T2, includeFinalTime::Bool = false ) where T1 <: Real where T2 <: Real
+    ageRes::T2, includeFinalTime::Bool = true ) where T1 <: Real where T2 <: Real
 
     # Check validity of ageRes
     if ageRes <= 0

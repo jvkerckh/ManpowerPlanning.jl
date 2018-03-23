@@ -149,7 +149,8 @@ nRec = countRecords( mpSim, timeResolution )
 nFluxIn = countFluxIn( mpSim, timeResolution )
 nFluxOut = countFluxOut( mpSim, timeResolution, true )
 nNetFlux = ( nFluxIn[ 1 ], nFluxIn[ 2 ] - nFluxOut[ 2 ] )
-simAgeDist = getAgeDistEvolution( mpSim, timeResolution, 12, true )
+simAgeDist = getAgeDistEvolution( mpSim, timeResolution, 12 )
+simAgeStats = getAgeStatistics( mpSim, timeResolution )
 tStop = now()
 println( "Report generation completed at $tStop. Elapsed time: $(tStop - tStart)" )
 
@@ -244,4 +245,18 @@ if !isdefined( :plotSim )
         println( "Plot generation completed at $tStop. Elapsed time: $(tStop - tStart)" )
 
     end
+
+    function plotAgeStats( mpSim::ManpowerSimulation, timeRes::T ) where T <: Real
+
+        ageStats = getAgeStatistics( mpSim, timeRes )
+        minAge = minimum( ageStats[ 2 ][ :, 4 ] )
+        maxAge = maximum( ageStats[ 2 ][ :, 5 ] )
+        plt = plot( ageStats[ 1 ], ageStats[ 2 ][ :, 1 ], label = "Mean age",
+            ylim = [ minAge, maxAge ] + 0.01 * ( maxAge - minAge ) * [ -1, 1 ] )
+        plot!( ageStats[ 1 ], ageStats[ 2 ][ :, 2 ], label = "Median age" )
+        plot!( ageStats[ 1 ], ageStats[ 2 ][ :, 4 ], label = "Minimum age" )
+        plot!( ageStats[ 1 ], ageStats[ 2 ][ :, 5 ], label = "Maximum age" )
+        gui( plt )
+
+    end  # plotAgeStats( mpSim, timeRes )
 end

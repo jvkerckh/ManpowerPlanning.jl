@@ -32,6 +32,7 @@ plotSim( mpSim, "personnel", "net flux" )
 gui( surface( simAgeDist[ 2 ] / monthFactor, simAgeDist[ 1 ] / monthFactor,
     simAgeDist[ 3 ], size = ( 800, 600 ), xlabel = "Age (y)",
     ylabel = "Simulation time (y)", zlabel = "Amount" ) )
+plotAgeStats( mpSim, timeResolution )
 # Allowed arguments, separated by commas, are:
 # "personnel"
 # "flux in"
