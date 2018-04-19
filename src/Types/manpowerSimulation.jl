@@ -6,7 +6,7 @@
 
 # The ManpowerSimulation type requires all the other types.
 requiredTypes = [ "personnel", "personnelDatabase", "prerequisite",
-    "prerequisiteGroup", "recruitment", "retirement", "simulationCache" ]
+    "prerequisiteGroup", "recruitment", "retirement", "simulationReport" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
@@ -74,14 +74,17 @@ type ManpowerSimulation
     # SimJulia simulation.
     sim::Simulation
 
+    # Processor time of the simulation.
+    simTimeElapsed::Dates.Millisecond
+
     # The priorities of the various simulation phases.
     phasePriorities::Dict{Symbol, Int8}
 
     # The length of the simulation.
     simLength::Float64
 
-    # The report cache of the simulation.
-    simCache::SimulationCache
+    # The generated reports of the simulation.
+    simReports::Dict{Float64, SimulationReport}
 
 
     function ManpowerSimulation( ; dbName::String = "simDB",
@@ -122,9 +125,10 @@ type ManpowerSimulation
         newMPsim.attritionScheme = nothing
         newMPsim.retirementScheme = nothing
         newMPsim.sim = Simulation()
+        newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
         newMPsim.phasePriorities = Dict( :recruitment => 1, :retirement => 2, :attrition => 3 )
         newMPsim.simLength = 1.0
-        newMPsim.simCache = SimulationCache()
+        newMPsim.simReports = Dict{Float64, SimulationReport}()
         return newMPsim
 
     end  # ManpowerSimulation( ; dbName, simName )

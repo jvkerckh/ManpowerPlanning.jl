@@ -27,12 +27,16 @@ graphTimeResolutionInMonths = 12
 include( "processing.jl" )  # Do not change this line!
 
 
-plotSim( mpSim, "flux in", "flux out", "net flux", "resigned", "retired" )
-plotSim( mpSim, "personnel", "net flux" )
-gui( surface( simAgeDist[ 2 ] / monthFactor, simAgeDist[ 1 ] / monthFactor,
-    simAgeDist[ 3 ], size = ( 800, 600 ), xlabel = "Age (y)",
-    ylabel = "Simulation time (y)", zlabel = "Amount" ) )
-plotAgeStats( mpSim, timeResolution )
+generateExcelReport( mpSim, graphTimeResolutionInMonths, 12 )
+plot( mpSim, graphTimeResolutionInMonths, ageRes = graphTimeResolutionInMonths,
+    timeFactor = 12,
+    "flux in", "flux out", "net flux", "resigned", "retired" )
+plot( mpSim, graphTimeResolutionInMonths, ageRes = graphTimeResolutionInMonths,
+    timeFactor = 12,
+    "personnel", "flux in", "flux out", "net flux" )
+plot( mpSim, graphTimeResolutionInMonths, ageRes = graphTimeResolutionInMonths,
+    timeFactor = 12,
+    "age dist", "age stats" )
 # Allowed arguments, separated by commas, are:
 # "personnel"
 # "flux in"
@@ -40,3 +44,5 @@ plotAgeStats( mpSim, timeResolution )
 # "net flux"
 # "resigned"
 # "retired"
+# "age dist"
+# "age stats"

@@ -4,11 +4,13 @@
 # XXX Not sure if this file needs to be defined outside the module...
 include( joinpath( dirname( Base.source_path() ), "Functions",
     "ExcelWrapper.jl" ) )
+isExcelOkay = true
 
 
 module ManpowerPlanning
     using SimJulia
     using ResumableFunctions
+    using Plots
     using Distributions
     using FileIO
     using SQLite
@@ -25,8 +27,7 @@ module ManpowerPlanning
         "recruitment",
         "retirement",
         "attrition",
-        "cacheEntry",
-        "simulationCache",
+        "simulationReport",
         "manpowerSimulation"
     ]
 

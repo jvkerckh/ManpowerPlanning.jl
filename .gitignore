@@ -5,3 +5,4 @@
 *.xlsx#
 testReport.xlsx
 .cache*
+dependency graphs/*

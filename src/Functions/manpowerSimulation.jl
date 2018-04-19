@@ -6,7 +6,7 @@
 # The functions of the ManpowerSimulation type require all types.
 requiredTypes = [ "personnel", "personnelDatabase", "prerequisite",
     "prerequisiteGroup", "historyEntry", "history", "retirement", "attrition",
-    "cacheEntry", "simulationCache", "manpowerSimulation" ]
+    "simulationReport", "manpowerSimulation" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
@@ -182,6 +182,7 @@ export resetSimulation
 function resetSimulation( mpSim::ManpowerSimulation )
 
     mpSim.sim = Simulation()
+    mpSim.simTimeElapsed = Dates.Millisecond( 0 )
 
     # First, drop the tables with the same name if they exist.
     SQLite.drop!( mpSim.simDB, mpSim.historyDBname, ifexists = true )
@@ -212,8 +213,8 @@ function resetSimulation( mpSim::ManpowerSimulation )
     mpSim.personnelSize = 0
     mpSim.resultSize = 0
 
-    # And the cache.
-    setCacheMaxTime( mpSim.simCache, 0 )
+    # And wipe all existing simulation reports.
+    empty!( mpSim.simReports )
 
     mpSim.isVirgin = true
 
@@ -310,6 +311,7 @@ include( "dbManagement.jl" )
 # This function runs the manpower simulation if it has been properly
 #   initialised.
 function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
+
     if !mpSim.isInitialised
         error( "Simulation not properly initialised. Cannot run." )
     end  # if !mpSim.isInitialised
@@ -331,6 +333,7 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
     SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
     @process dbCommitProcess( mpSim.sim,
         toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
+    startTime = now()
 
     if toTime > 0.0
         run( mpSim.sim, toTime )
@@ -338,13 +341,16 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
         run( mpSim.sim )
     end  # if toTime > 0.0
 
+    mpSim.simTimeElapsed += now() - startTime
+
     # Final commit.
     SQLite.execute!( mpSim.simDB, "COMMIT" )
 
-    # Empty the simulation cache if the simulation time has advanced.
+    # Wipe the simulation reports if the simulation time has advanced.
     if oldSimTime < now( mpSim )
-        setCacheMaxTime( mpSim.simCache, min( now( mpSim ), mpSim.simLength ) )
-    end
+        empty!( mpSim.simReports )
+    end  # if oldSimTime < now( mpSim )
+
 end  # run( mpSim, toTime )
 
 
@@ -428,6 +434,10 @@ function Base.show( io::IO, mpSim::ManpowerSimulation )
 
     if isInitialised( mpSim )
         print( io, "\nCurrent simulation time: $(now( mpSim ))" )
+
+        if now( mpSim ) > 0.0
+            print( io, "\nSimulation run time: $(mpSim.simTimeElapsed.value / 1000) seconds" )
+        end  # if now( mpSim ) > 0.0
     end  # if isInitialised( mpSim )
 
     print( io, "\nID key: $(string( mpSim.idKey ))" )

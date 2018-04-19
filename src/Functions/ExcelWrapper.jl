@@ -8,17 +8,17 @@ end  # !isdefined( :Taro )
 module ExcelWrapper
 
 # Including inside the module!
-if !isdefined( :isJavaInit )
+try
     using Taro
     Taro.init()  # And properly initialized
-    global isJavaInit = true
-end  # !isdefined( :Taro )
+catch
+end  # try
 
 export Taro, Workbook
 
 if !isdefined( :JavaCall )
     using JavaCall
-end
+end  # if !isdefined( :JavaCall )
 
 colnum( c::AbstractString ) = Taro.colnum( c ) + 1
 
