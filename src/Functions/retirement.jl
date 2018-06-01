@@ -4,7 +4,7 @@
 
 # The functions of the Retirement type require the Personnel, PersonnelDatabase,
 #   and ManpowerSimulation types.
-requiredTypes = [ "personnel", "personnelDatabase", "manpowerSimulation",
+requiredTypes = [ "manpowerSimulation",
     "retirement" ]
 
 for reqType in requiredTypes
@@ -161,6 +161,7 @@ function setRetirementAge( mpSim::ManpowerSimulation, retireAge::T,
 end # setRetirementAge( mpSim, retireAge, updateRetirement )
 
 
+#=
 function retirePerson( mpSim::ManpowerSimulation, person::Personnel,
     result::Personnel, reason::Symbol )
 
@@ -174,6 +175,7 @@ function retirePerson( mpSim::ManpowerSimulation, person::Personnel,
     # println( "Person $id has retired at $(now( mpSim ))." )
 
 end  # retirePerson( mpSim, person, result, reason )
+=#
 
 function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
 
@@ -299,7 +301,7 @@ function retireFunction( mpsim::ManpowerSimulation, id::String )
 
 end  # retireFunction( mpSim, id )
 
-
+#=
 @resumable function retireProcess( sim::Simulation, person::Personnel,
     result::Personnel, mpSim::ManpowerSimulation )
 
@@ -320,7 +322,7 @@ end  # retireFunction( mpSim, id )
         end  # if !isa( err, InterruptException )
     end
 end  # retireProcess( sim, person, result, mpSim )
-
+=#
 
 function Base.show( io::IO, retScheme::Retirement )
 

@@ -4,7 +4,7 @@
 
 # The functions of the Retirement type require the Personnel, PersonnelDatabase,
 #   ManpowerSimulation, Attrition, and Retirement types.
-requiredTypes = [ "personnel", "personnelDatabase", "manpowerSimulation",
+requiredTypes = [ "manpowerSimulation",
     "attrition", "retirement" ]
 
 for reqType in requiredTypes
@@ -30,6 +30,45 @@ function setRecruitmentSchedule( recScheme::Recruitment, freq::T1,
 end  # setRecruitmentSchedule( recScheme, freq, offset )
 
 
+export setRecruitmentLimits
+"""
+```
+setRecruitmentLimits( recScheme::Recruitment,
+                      minRec::T1,
+                      maxRec::T2 )
+    where T1 <: Real
+    where T2 <: Real
+```
+This function sets the minimum and maximum number of people to recruit using
+recruitment scheme `recScheme` to `minRec` and `maxRec` respectively. If the
+values don't make sense (maxRec <= 0 or minRec > maxRec), no change is made.
+
+This function returns `nothing`. If the arguments don't make sense, the function
+issues a warning.
+"""
+function setRecruitmentLimits( recScheme::Recruitment, minRec::T1,
+    maxRec::T2 )::Void where T1 <: Real where T2 <: Real
+
+    if maxRec <= 0
+        warn( "Max recruitment must be > 0. Not making any changes." )
+        return
+    end  # if maxRec <= 0
+
+    if minRec > maxRec
+        warn( "Min recruitment must be <= max recruitment. Not making any changes." )
+        return
+    end  # if minRec > maxRec
+
+    recScheme.isAdaptive = true
+    recScheme.minRecruit = max( 0, minRec )
+    recScheme.maxRecruit = maxRec
+
+    return
+
+end  # setRecruitmentLimits( recScheme, minRec, maxRec )
+
+
+#=
 # This function defines the distribution for the number of available people
 #   each recruiting period. If the number of available positions is lower than
 #   this, a smaller number of people will of course be recruited.
@@ -56,22 +95,141 @@ function setRecruitmentDistribution( recScheme::Recruitment,
     recScheme.recruitMap = tmpMap
 
 end  #  setRecruitmentDistribution( recScheme, recDist )
+=#
 
 
-# This function sets the maximum number of people to recruit during every
+# This function sets the fixed number of people to recruit during every
 #   recruitment cycle.
-export setRecruitmentCap
-function setRecruitmentCap( recScheme::Recruitment, cap::T ) where T <: Integer
+export setRecruitmentFixed
+function setRecruitmentFixed( recScheme::Recruitment, amount::T ) where T <: Integer
 
-    if cap < 0
-        warn( "Negative recruitment cap entered. Not making changes to recruitment scheme." )
+    if amount <= 0
+        warn( "Negative number of people to recruit entered. Not making changes to recruitment scheme." )
         return
+    end  # if amount <= 0
+
+    recScheme.isAdaptive = false
+    recScheme.recDistType = :disc
+    recScheme.recDistNodes = Dict( Float64( amount ) => 1.0 )
+    recScheme.recDist = function() return amount end
+
+end  # setRecruitmentFixed( recScheme, amount )
+
+
+# This function sets the recruitment distribution of the recruitment scheme to
+#   the given distribution with the given nodes.
+export setRecruitmentDistribution
+function setRecruitmentDistribution( recScheme::Recruitment,
+    recDist::Dict{Int, Float64}, recDistType::Symbol )
+
+    # Check if the distribution type is known.
+    if recDistType ∉ [ :disc, :pUnif, :pLin ]
+        warn( "Unknown distribution type. Recruitment distribution not set." )
+        return
+    end  # if recDistType ∉ [ :disc, :pUnif, :pLin ]
+
+    # Get the list of proper nodes (recruitment >= 0 and p >= 0).
+    tmpNodes = collect( keys( recDist ) )
+    tmpNodes = tmpNodes[ map( node -> ( node >= 0.0 ) &&
+        ( recDist[ node ] >= 0.0 ), tmpNodes ) ]
+    sort!( tmpNodes )
+
+    # Check if there are sufficient nodes.
+    if length( tmpNodes ) < ( recDistType === :disc ? 1 : 2 )
+        warn( "Not enough distribution nodes. Recruitment distribution not set." )
+        return
+    end  # if length( tmpNodes ) < ( recDistType === :disc ? 1 : 2 )
+
+    # Check if the total probability mass is non-zero.
+    pMass = 0.0
+    foreach( node -> pMass += recDist[ node ], tmpNodes )
+
+    if ( pMass == 0.0 ) || ( ( recDistType === :pUnif ) &&
+        ( recDist[ tmpNodes[ end ] ] == pMass ) )
+        warn( "Proposed distribution has 0 probability mass. Recruitment distribution not set." )
+        return
+    end  # if pMass == 0.0
+
+    # Set the distribution
+    recScheme.isAdaptive = false
+    recScheme.recDistType = recDistType
+    recScheme.recDistNodes = recDist
+    distFuncs = Dict{Symbol, Function}(
+        :disc => setDiscRecDist,
+        :pUnif => setPunifRecDist,
+        :pLin => setPlinRecDist )
+    ( distFuncs[ recDistType ] )( recScheme, recDist, tmpNodes )
+
+end  # setRecruitmentDistribution( recScheme, recDist, recDistType )
+
+
+# This function sets the recruitment distribution of the recruitment scheme to a
+#   discrete distribution with the given nodes.
+function setDiscRecDist( recScheme::Recruitment, recDist::Dict{Int, Float64},
+    nodes::Vector{Int} )
+
+    # Get the point probabilities of the nodes.
+    pNodes = map( node -> recDist[ node ], nodes )
+    pNodes /= sum( pNodes )
+
+    recScheme.recDist = function()
+        return nodes[ rand( Categorical( pNodes ) ) ]
     end
 
-    recScheme.recruitDist = Categorical( [ 1.0 ] )
-    recScheme.recruitMap = [ cap ]
+end  # setDiscAgeDist( recScheme, ageDist, nodes )
 
-end
+
+# This function sets the recruitment distribution of the recruitment scheme to a
+#   piecewise uniform distribution with the given nodes.
+function setPunifRecDist( recScheme::Recruitment, recDist::Dict{Int, Float64},
+    nodes::Vector{Int} )
+
+    # Get the point probabilities of the intervals.
+    pInts = map( node -> recDist[ node ], nodes[1:(end-1)] )
+    pInts /= sum( pInts )
+
+    recScheme.recDist = function()
+        intI = rand( Categorical( pInts ) )
+        return rand( DiscreteUniform( nodes[ intI ], nodes[ intI + 1 ] - 1 ) )
+    end
+
+end  # setPunifRecDist( recScheme, recDist, nodes )
+
+
+# This function sets the recruitment distribution of the recruitment scheme to a
+#   piecewise linear distribution with the given nodes.
+function setPlinRecDist( recScheme::Recruitment, recDist::Dict{Int, Float64},
+    nodes::Vector{Int} )
+
+    # Get the point probabilities of the intervals.
+    pointWeights = map( node -> recDist[ node ], nodes )
+    nodeDiff = nodes[ 2:end ] - nodes[ 1:(end-1) ]
+    weightDiff = pointWeights[ 2:end ] - pointWeights[ 1:(end-1) ]
+    bracketWeights = map(
+        ii -> 0.5 * ( pointWeights[ ii + 1 ] * ( nodeDiff[ ii ] + 1.0 ) +
+        pointWeights[ ii ] * ( nodeDiff[ ii ] - 1.0 ) ),
+        1:length( weightDiff ) )
+    cumulWeights = cumsum( vcat( pointWeights[ 1 ], bracketWeights ) )
+
+    recScheme.recDist = function()
+        weight = rand( Uniform( 0, cumulWeights[ end ] ) )
+        intI = findlast( weight .>= cumulWeights )
+
+        if intI == 0
+            return nodes[ 1 ]
+        end  # if intI == 0
+
+        wTilde = weight - cumulWeights[ intI ]
+        weightNodeRatio = weightDiff[ intI ] / nodeDiff[ intI ]
+        polyEq = Poly( [ -wTilde, pointWeights[ intI ] + weightNodeRatio / 2,
+            weightNodeRatio / 2 ] )
+        pos = filter( root -> 0 <= root < nodeDiff[ intI ],
+            roots( polyEq ) )[ 1 ]
+
+        return nodes[ intI ] + ceil( Int, pos )
+    end
+
+end  # setPunifRecDist( recScheme, recDist, nodes )
 
 
 # This function sets the recruitment age to a single, fixed number.
@@ -83,6 +241,8 @@ function setRecruitmentAge( recScheme::Recruitment, age::T ) where T <: Real
         return
     end
 
+    recScheme.ageDistType = :disc
+    recScheme.ageDistNodes = Dict( Float64( age ) => 1.0 )
     recScheme.ageDist = function() return age end
 
 end  # setRecruitmentAge( recScheme, age )
@@ -114,7 +274,7 @@ function setAgeDistribution( recScheme::Recruitment,
 
     # Check if the total probability mass is non-zero.
     pMass = 0.0
-    map( node -> pMass += ageDist[ node ], tmpNodes )
+    foreach( node -> pMass += ageDist[ node ], tmpNodes )
 
     if ( pMass == 0.0 ) || ( ( ageDistType === :pUnif ) &&
         ( ageDist[ tmpNodes[ end ] ] == pMass ) )
@@ -123,6 +283,8 @@ function setAgeDistribution( recScheme::Recruitment,
     end  # if pMass == 0.0
 
     # Set the distribution
+    recScheme.ageDistType = ageDistType
+    recScheme.ageDistNodes = ageDist
     distFuncs = Dict{Symbol, Function}(
         :disc => setDiscAgeDist,
         :pUnif => setPUnifAgeDist,
@@ -199,13 +361,24 @@ function setPLinAgeDist( recScheme::Recruitment,
 
 end  # setPLinAgeDist( recScheme, ageDist, nodes )
 
-# This function generates and returns the number of available personnel members
+
+# This function generates and returns the number of personnel members to recruit
 #   in a recruitment cycle.
-function generatePoolSize( recScheme::Recruitment )
+function generatePoolSize( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
-    return recScheme.recruitMap[ rand( recScheme.recruitDist ) ]
+    nrToRecruit = recScheme.maxRecruit
 
-end  # generatePoolSize( recScheme )
+    if ( mpSim.personnelTarget > 0 ) && ( recScheme.isAdaptive )
+        personnelNeeded = mpSim.personnelTarget - mpSim.personnelSize
+        nrToRecruit = max( min( personnelNeeded, nrToRecruit ),
+            recScheme.minRecruit )
+    elseif !recScheme.isAdaptive
+        nrToRecruit = recScheme.recDist()
+    end  # if ( mpSim.personnelTarget > 0 ) && ...
+
+    return nrToRecruit
+
+end  # generatePoolSize( mpSim, recScheme )
 
 
 # This function generates a single personnel member using the information in
@@ -219,16 +392,34 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     id = "Sim" * string( mpSim.resultSize + 1 )
     ageAtRecruitment = recScheme.ageDist()
 
+    # Generate initial values
+    initVals = Array{Any}( 3, length( mpSim.initAttrList ) )
+
+    for ii in eachindex( mpSim.initAttrList )
+        attr = mpSim.initAttrList[ ii ]
+        initVals[ :, ii ] = [ attr.name, "'" * generateAttrValue( attr ) * "'",
+            attr.isFixed ]
+    end  # for attr in mpSim.initAttrList
+
     # Add person to the personnel database.
     command = "INSERT INTO $(mpSim.personnelDBname)
-        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment) values
-        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment)"
+        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
+        $(join( initVals[ 1, : ], ", " ))) values
+        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment,
+        $(join( initVals[ 2, : ], ", " )))"
     SQLite.execute!( mpSim.simDB, command )
+
     # Add entry of person to the history database.
-    # XXX Additional attributes need to be implemented(?)
     command = "INSERT INTO $(mpSim.historyDBname)
         ($(mpSim.idKey), attribute, timeIndex, strValue) values
-        ('$id', 'status', $(now( mpSim )), 'active');"
+        ('$id', 'status', $(now( mpSim )), 'active')"
+
+    # Additional variable attributes.
+    for ii in find( .!initVals[ 3, : ] )
+        command *= ", ('$id', '$(initVals[ 1, ii ])', $(now( mpSim )),
+            $(initVals[ 2, ii ]))"
+    end  # for ii in find( !initVals[ 3, : ] )
+
     SQLite.execute!( mpSim.simDB, command )
 
     # If a proper retirement scheme has been defined, start this person's
@@ -261,12 +452,7 @@ end  # createPerson( mpSim, recScheme )
 # This function performs the recruitment part of a single recruitment cycle.
 function recruitmentCycle( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
-    nrToRecruit = generatePoolSize( recScheme )
-    personnelNeeded = mpSim.personnelCap - mpSim.personnelSize
-
-    if mpSim.personnelCap > 0
-        nrToRecruit = min( personnelNeeded, nrToRecruit )
-    end  # if mpSim.personnelCap > 0
+    nrToRecruit = generatePoolSize( mpSim, recScheme )
 
     # Stop here if no recruitments happen in this period.
     if nrToRecruit == 0
@@ -297,7 +483,8 @@ end  # recruitmentCycle( mpSim, recScheme )
 
     recScheme = mpSim.recruitmentSchemes[ schemeNr ]
     timeToWait = recScheme.recruitOffset
-    priority = mpSim.phasePriorities[ :recruitment ]
+    priority = mpSim.phasePriorities[ recScheme.isAdaptive ? :recruitment :
+        :retirement ]
 
     while now( sim ) + timeToWait <= mpSim.simLength
         @yield timeout( sim, timeToWait, priority = priority )
@@ -307,35 +494,15 @@ end  # recruitmentCycle( mpSim, recScheme )
 
 end
 
-#= # Version for Atom
-@resumable function recruitProcess( sim::Simulation,
-    schemeNr::T, mpSim::ManpowerSimulation ) where T <: Integer
-    recScheme = mpSim.recruitmentSchemes[ schemeNr ]
-    timeToWait = recScheme.recruitOffset
-    priority = mpSim.phasePriorities[ :recruitment ]
-
-    while now( sim ) + timeToWait <= mpSim.simLength
-        @yield timeout( sim, timeToWait, priority = priority )
-        timeToWait = recScheme.recruitFreq
-#        println( "Recruitment at time $(now( sim ))" )
-        recruitmentCycle( mpSim, recScheme )
-    end  # while now( sim ) + timeToWait <= mpSim.simLength
-end
-=#
 
 function Base.show( io::IO, recScheme::Recruitment )
 
-    out = "Recruitment schedule: $(recScheme.recruitFreq)"
-    out *= " (+ $(recScheme.recruitOffset))"
-    out *= "\nMax recruitment per cycle: "
+    print( io, "Recruitment schedule: $(recScheme.recruitFreq) (+ $(recScheme.recruitOffset))\n" )
+    print( io, recScheme.isAdaptive ? "A" : "Non-a" )
+    print( io, "daptive recruitment scheme" )
 
-    if length( recScheme.recruitMap ) == 1
-        out *= "$(recScheme.recruitMap[ 1 ])"
-    else
-        out *= join( map( ( val, p ) -> "$val: $p", recScheme.recruitMap,
-            recScheme.recruitDist.p ), "; " )
-    end  # if length( recScheme.recruitMap ) == 1
+    if recScheme.isAdaptive
+        print( io, "\nRecruitment per cycle: $(recScheme.minRecruit) - $(recScheme.maxRecruit)" )
+    end  # if recScheme.isAdaptive || ...
 
-    print( io, out )
-
-end
+end  # show( io, recScheme )

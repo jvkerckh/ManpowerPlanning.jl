@@ -3,7 +3,7 @@
 
 # The functions of the Personnel type require the HistoryEvent and HistoryEntry
 #   types.
-requiredTypes = [ "historyEntry", "history", "personnel" ]
+requiredTypes = [ "personnel" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )

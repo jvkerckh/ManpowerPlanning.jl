@@ -4,8 +4,8 @@
 #   ResumableFunctions, and Distributions.
 
 # The functions of the ManpowerSimulation type require all types.
-requiredTypes = [ "personnel", "personnelDatabase", "prerequisite",
-    "prerequisiteGroup", "historyEntry", "history", "retirement", "attrition",
+requiredTypes = [ "prerequisite",
+    "prerequisiteGroup", "retirement", "attrition",
     "simulationReport", "manpowerSimulation" ]
 
 for reqType in requiredTypes
@@ -35,6 +35,9 @@ end  # setKey!( mpSim, id )
 
 
 include( joinpath( dirname( Base.source_path() ), "parFileProcessing.jl" ) )
+include( joinpath( dirname( Base.source_path() ), "parFileToSQLite.jl" ) )
+include( joinpath( dirname( Base.source_path() ), "sqLiteToSim.jl" ) )
+include( joinpath( dirname( Base.source_path() ), "simToSQLite.jl" ) )
 
 
 # This function sets the cap on the number of personnel in the simulation. Note
@@ -44,7 +47,7 @@ include( joinpath( dirname( Base.source_path() ), "parFileProcessing.jl" ) )
 export setPersonnelCap
 function setPersonnelCap( mpSim::ManpowerSimulation, cap::T ) where T <: Integer
 
-    mpSim.personnelCap = cap > 0 ? cap : 0
+    mpSim.personnelTarget = cap > 0 ? cap : 0
 
 end  # setPersonnelCap( mpSim, cap )
 
@@ -63,60 +66,49 @@ function setDatabaseCommitTime( mpSim::ManpowerSimulation, commitFreq::T ) where
 end  # setDatabaseCommitTime( mpSim, commitFreq )
 
 
+# This function adds a personnel attribute to the manpower simulation. Note that
+#   it does not check whether the attribute has been defined already or not.
+# This function only works if the simulation hasn't started yet.
+export addAttribute!
+function addAttribute!( mpSim::ManpowerSimulation, attr::PersonnelAttribute )
+
+    if now( mpSim ) == 0
+        push!( isempty( attr.values ) ? mpSim.otherAttrList :
+            mpSim.initAttrList, attr )
+    end  # if now( mpSim ) == 0
+
+    return
+
+end  # addAttribute!( mpSim, attr )
+
+
+# This function clears the list of personnel attributes.
+# This function only works if the simulation is in a virgin state.
+export clearAttributes!
+function clearAttributes!( mpSim::ManpowerSimulation )
+
+    if now( mpSim ) == 0
+        empty!( mpSim.initAttrList )
+        empty!( mpSim.otherAttrList )
+    end  # if now( mpSim ) == 0
+
+    return
+
+end  # clearAttributes!( mpSim )
+
 # This function adds a recruitment scheme to the simulation.
 # This function does nothing if the simulation is already running. XXX (desirable??)
 export addRecruitmentScheme!
 function addRecruitmentScheme!( mpSim::ManpowerSimulation,
     recScheme::Recruitment )
 
-    if now( mpSim ) != 0.0
-        return
-    end  # if now( mpSim ) != 0.0
+    if now( mpSim ) == 0
+        push!( mpSim.recruitmentSchemes, recScheme )
+    end  # if now( mpSim ) == 0
 
-    push!( mpSim.recruitmentSchemes, recScheme )
+    return
 
 end  # addRecruitmentScheme!( mpSim, recScheme )
-
-
-function addRecruitmentScheme!( mpSim::ManpowerSimulation, s::Taro.Sheet,
-    ii::T ) where T <: Integer
-
-    dataColNr = ii * 4 + 2
-    recScheme = Recruitment( s[ dataColNr, 6 ], s[ dataColNr, 7 ] )
-    setRecruitmentCap( recScheme, Int( s[ dataColNr, 8 ] ) )
-    isFixedAge = Bool( s[ dataColNr, 9 ] )
-
-    # Add the age distribution.
-    if isFixedAge
-        setRecruitmentAge( recScheme, s[ dataColNr, 10 ] * 12 )
-    else
-        rowNrOfDist = numRows( s, dataColNr - 1, dataColNr - 1 )
-        distType = s[ dataColNr, rowNrOfDist ] == "Pointwise" ? :disc : :pUnif
-        rowNrOfDistEnd = numRows( s, dataColNr, dataColNr )
-
-        if rowNrOfDist + 2 > rowNrOfDistEnd
-            warn( "Improper recruitment age distribution. Ignoring recruitment scheme." )
-            return
-        end
-
-        ageDist = Dict{Float64, Float64}()
-
-        for jj in (rowNrOfDist + 2):rowNrOfDistEnd
-            age = s[ dataColNr, jj ] * 12
-            pMass = s[ dataColNr + 1, jj ]
-
-            # Only add the entry if it makes sense.
-            if isa( age, Real ) && isa( pMass, Real ) && !haskey( ageDist, age )
-                ageDist[ age ] = pMass
-            end  # if isa( age, Real ) && ...
-        end  # for jj in (rowNrOfDist + 2):rowNrOfDistEnd
-
-        setAgeDistribution( recScheme, ageDist, distType )
-    end  # if isFixedAge
-
-    addRecruitmentScheme!( mpSim, recScheme )
-
-end  # function addRecruitmentScheme!( mpSim, s, ii )
 
 
 # This function clears the recruitment schemes from the simulation.
@@ -124,7 +116,11 @@ end  # function addRecruitmentScheme!( mpSim, s, ii )
 export clearRecruitmentSchemes!
 function clearRecruitmentSchemes!( mpSim::ManpowerSimulation )
 
-    empty!( mpSim.recruitmentSchemes )
+    if now( mpSim ) == 0
+        empty!( mpSim.recruitmentSchemes )
+    end  # if now( mpSim ) == 0
+
+    return
 
 end  # clearRecruitmentSchemes!( mpSim )
 
@@ -196,6 +192,8 @@ function resetSimulation( mpSim::ManpowerSimulation )
         timeExited float,
         ageAtRecruitment float,
         expectedRetirementTime float,
+        $(join( map( attr -> attr.name * " varcar(64)",
+            vcat( mpSim.initAttrList, mpSim.otherAttrList ) ), ", " )),
         status varchar(16)
     )"
     SQLite.execute!( mpSim.simDB, command )
@@ -228,7 +226,7 @@ export populate
 function populate( mpSim::ManpowerSimulation, cap::T = 0 ) where T <: Integer
     # Throw an error if a populate to cap is requested for a simulation without
     #   personnel cap.
-    if ( cap < 0 ) && ( mpSim.personnelCap == 0 )
+    if ( cap < 0 ) && ( mpSim.personnelTarget == 0 )
         error( "Simulation has no cap, cannot populate to cap." )
     end  # if ( cap < 0 ) ...
 
@@ -241,7 +239,7 @@ function populate( mpSim::ManpowerSimulation, cap::T = 0 ) where T <: Integer
     end  # if cap == 0
 
     # Set the actual number of personnel to seed.
-    tmpCap = cap < 0 ? mpSim.personnelCap : cap
+    tmpCap = cap < 0 ? mpSim.personnelTarget : cap
     isRetirement = mpSim.retirementScheme !== nothing
     timeDist = isRetirement ?
         Uniform( 0.0, mpSim.retirementScheme.maxCareerLength ) : nothing
@@ -305,7 +303,7 @@ end
 
 
 # This file holds the database commit process.
-include( "dbManagement.jl" )
+include( joinpath( dirname( Base.source_path() ), "dbManagement.jl" ) )
 
 
 # This function runs the manpower simulation if it has been properly
@@ -405,21 +403,43 @@ end  # loadSimulation( fileName )
 
 
 # These are the functions that process simulation results.
-include( "simProcessing.jl" )
+include( joinpath( dirname( Base.source_path() ), "simProcessing.jl" ) )
 
 
 function Base.show( io::IO, mpSim::ManpowerSimulation )
 
-    print( io, "Simulation name: \"$(mpSim.simName)\"" )
+    if mpSim.dbName == ""
+        print( io, "Simulation database kept in memory." )
+    else
+        print( io, "Simulation database file: \"$(mpSim.dbName)\"" )
+    end  # if mpSim.dbName == ""
+
+    print( io, "\nSimulation name: \"$(mpSim.simName)\"" )
     print( io, "\nInitialization state: " )
     print( io, isInitialised( mpSim ) ? "OK" : "not properly initialised" )
 
-    if mpSim.personnelCap > 0
-        print( io, "\nPersonnel cap: $(mpSim.personnelCap)" )
-    end  # if mpSim.personnelCap > 0
+    if mpSim.personnelTarget > 0
+        print( io, "\nPersonnel cap: $(mpSim.personnelTarget)" )
+    end  # if mpSim.personnelTarget > 0
+
+    if isempty( mpSim.initAttrList )
+        print( io, "\nNo initialised attributes" )
+    else
+        print( io, "\initialised attributes" )
+        foreach( attr -> print( io, "\n$attr" ), mpSim.initAttrList )
+    end  # if isempty( mpSim.initAttrList )
+
+    if isempty( mpSim.otherAttrList )
+        print( io, "\nNo other attributes" )
+    else
+        print( io, "\Other attributes" )
+        foreach( attr -> print( io, "\n$attr" ), mpSim.otherAttrList )
+    end  # if isempty( mpSim.otherAttrList )
 
     if !isempty( mpSim.recruitmentSchemes )
-        print( io, "\nRecruitment schemes: $(mpSim.recruitmentSchemes)" )
+        print( io, "\nRecruitment schemes" )
+        foreach( recScheme -> print( io, "\n$recScheme" ),
+            mpSim.recruitmentSchemes )
     end  # if !isempty( mpSim.recruitmentSchemes )
 
     if isa( mpSim.attritionScheme, Attrition )

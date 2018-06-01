@@ -441,15 +441,15 @@ function generateFluxOutReports( mpSim::ManpowerSimulation,
     # We perform multiple tests on the flux out queries, so vectors need to be
     #   initialised in advance.
     simRep.fluxOut = zeros( simRep.timeGrid[ 2:end ], Int )
-    map( reason -> simRep.fluxOutBreakdown[ reason ] = zeros( simRep.fluxOut ),
-        fluxOutReasons )
+    foreach( reason -> simRep.fluxOutBreakdown[ reason ] =
+        zeros( simRep.fluxOut ), fluxOutReasons )
 
     for ii in eachindex( simRep.fluxOut )
         outFlux = getOutFlux( mpSim, simRep.timeGrid[ ii ],
             simRep.timeGrid[ ii + 1 ], [ "status" ] )
         simRep.fluxOut[ ii ] = size( outFlux )[ 1 ]
         reasonCount = countmap( outFlux[ :status ] )
-        map( reason -> simRep.fluxOutBreakdown[ reason ][ ii ] =
+        foreach( reason -> simRep.fluxOutBreakdown[ reason ][ ii ] =
             reasonCount[ reason ], keys( reasonCount ) )
     end  # for ii in eachindex( simRep.fluxOut )
 
@@ -686,7 +686,7 @@ function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
     genSheet[ "B", 1 ] = min( now( mpSim ), mpSim.simLength )
     genSheet[ "B", 2 ] = timeRes
     genSheet[ "B", 3 ] = ageRes > 0 ? ageRes : "Invalid"
-    genSheet[ "B", 4 ] = mpSim.personnelCap
+    genSheet[ "B", 4 ] = mpSim.personnelTarget
     genSheet[ "C", 5 ] = "s"
 
     # Retrieve other reports.
@@ -703,7 +703,7 @@ function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
     headers = [ "sim time", "personnel", "flux in", "flux out", "net flux" ]
     headers = vcat( headers, fluxOutReasons )
     nReasons = length( fluxOutReasons )
-    map( ii -> genSheet[ ii, 7 ] = headers[ ii ], eachindex( headers ) )
+    foreach( ii -> genSheet[ ii, 7 ] = headers[ ii ], eachindex( headers ) )
 
     # Headers of age sheet.
     headers = [ "sim time", "mean", "st. dev.", "median", "min", "max" ]
@@ -713,7 +713,7 @@ function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
         headers = vcat( headers, "ages", ageDist[ 2 ] )
     end  # if ageDist !== nothing
 
-    map( ii -> ageSheet[ ii, 1 ] = headers[ ii ], eachindex( headers ) )
+    foreach( ii -> ageSheet[ ii, 1 ] = headers[ ii ], eachindex( headers ) )
 
     # Tables.
     for ii in eachindex( timeSteps )
@@ -726,7 +726,7 @@ function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
             genSheet[ "C", tmpIndex ] = nFluxIn[ ii - 1 ]
             genSheet[ "D", tmpIndex ] = nFluxOut[ ii - 1 ]
             genSheet[ "E", tmpIndex ] = "=C$(tmpIndex)-D$(tmpIndex)"
-            map( jj -> genSheet[ jj + 5, tmpIndex ] =
+            foreach( jj -> genSheet[ jj + 5, tmpIndex ] =
                 nFluxOutBreakdown[ fluxOutReasons[ jj ] ][ ii - 1 ],
                 eachindex( fluxOutReasons ) )
         end  # if ii > 1
@@ -734,10 +734,10 @@ function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
         # Age sheet.
         tmpIndex = ii + 1
         ageSheet[ "A", tmpIndex ] = timeSteps[ ii ]
-        map( jj -> ageSheet[ jj + 1, tmpIndex ] = ageStats[ ii, jj ], 1:5 )
+        foreach( jj -> ageSheet[ jj + 1, tmpIndex ] = ageStats[ ii, jj ], 1:5 )
 
         if ageDist !== nothing
-            map( jj -> ageSheet[ jj + 7, tmpIndex ] = ageDist[ 3 ][ ii, jj ],
+            foreach( jj -> ageSheet[ jj + 7, tmpIndex ] = ageDist[ 3 ][ ii, jj ],
                 eachindex( ageDist[ 2 ] ) )
         end  # if ageDist !== nothing
     end  # for ii in eachindex( nRec )
@@ -1031,7 +1031,7 @@ function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
     toShow::Vector{String} ) where T1 <: Real where T2 <: Real
 
     yMin = 0
-    yMax = mpSim.personnelCap
+    yMax = mpSim.personnelTarget
 
     # Retrieve all the information.
     nPers = getCountReport( mpSim, timeRes )
@@ -1050,6 +1050,8 @@ function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
     # Adjust the maximum if a graph of the personnel count is not requested.
     if "personnel" ∉ toShow
         yMax = max( maximum( nFluxIn ), maximum( nFluxOut ) )
+    else
+        yMax = maximum( nPers )
     end  # if "personnel" ∉ toShow
 
     # These need to be initialised, otherwise there will be issues with knowing

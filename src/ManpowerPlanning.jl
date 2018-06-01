@@ -12,18 +12,21 @@ module ManpowerPlanning
     using ResumableFunctions
     using Plots
     using Distributions
+    using Polynomials
     using FileIO
     using SQLite
+    using DataFrames
     using StatsBase
     using ExcelWrapper
 
     types = [
-        "historyEntry",
-        "history",
-        "personnel",
-        "personnelDatabase",
-        "prerequisite",
-        "prerequisiteGroup",
+#        "historyEntry",
+#        "history",
+        "personnelAttribute",
+#        "personnel",
+#        "personnelDatabase",
+#        "prerequisite",
+#        "prerequisiteGroup",
         "recruitment",
         "retirement",
         "attrition",

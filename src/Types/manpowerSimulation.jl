@@ -5,7 +5,7 @@
 #   Distributions.
 
 # The ManpowerSimulation type requires all the other types.
-requiredTypes = [ "personnel", "personnelDatabase", "prerequisite",
+requiredTypes = [ "prerequisite",
     "prerequisiteGroup", "recruitment", "retirement", "simulationReport" ]
 
 for reqType in requiredTypes
@@ -20,6 +20,9 @@ type ManpowerSimulation
     # This is the name of the parameter configuration file. If this is an empty
     #   string, the simulation must be configured manually.
     parFileName::String
+
+    # this is the name of the simulation database file.
+    dbName::String
 
     # This is the name of this simulation instance.
     simName::String
@@ -43,15 +46,9 @@ type ManpowerSimulation
     # The ID key of the database.
     idKey::String
 
-    # The active, working personnel database.
-    workingDbase::PersonnelDatabase
-
-    # The simulation result.
-    simResult::PersonnelDatabase
-
     # Maximum number of people in the simulation. If this is set to 0, there is
     #   no cap.
-    personnelCap::Int
+    personnelTarget::Int
 
     # The current number of active personnel members in the simulation.
     personnelSize::Int
@@ -61,6 +58,10 @@ type ManpowerSimulation
 
     # The time between successive SQLite commits.
     commitFrequency::Float64
+
+    # The additional attributes.
+    initAttrList::Vector{PersonnelAttribute}
+    otherAttrList::Vector{PersonnelAttribute}
 
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
@@ -95,9 +96,17 @@ type ManpowerSimulation
 
         # This block creates the database file if necessary and opens a link to
         #   it.  XXX Persistent??
-        tmpDBname = dbName * ".sqlite"
-        println( "Database file \"$tmpDBname\" ",
-            isfile( tmpDBname ) ? "exists" : "does not exist", "." )
+        tmpDBname = ( dbName == "" ) || endswith( dbName, ".sqlite" ) ?
+            dbName : dbName * ".sqlite"
+
+        if tmpDBname == ""
+            println( "Results database kept in memory." )
+        else
+            println( "Database file \"$tmpDBname\" ",
+                isfile( tmpDBname ) ? "exists" : "does not exist", "." )
+        end  # if tmpDBname == ""
+
+        newMPsim.dbName = tmpDBname
         newMPsim.simDB = SQLite.DB( tmpDBname )
 
         # This line ensures that foreign key logic works.
@@ -117,10 +126,12 @@ type ManpowerSimulation
         newMPsim.isInitialised = false
         newMPsim.isVirgin = false
         newMPsim.idKey = "id"
-        newMPsim.personnelCap = 0
+        newMPsim.personnelTarget = 0
         newMPsim.personnelSize = 0
         newMPsim.resultSize = 0
         newMPsim.commitFrequency = 1.0
+        newMPsim.initAttrList = Vector{PersonnelAttribute}()
+        newMPsim.otherAttrList = Vector{PersonnelAttribute}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
         newMPsim.attritionScheme = nothing
         newMPsim.retirementScheme = nothing

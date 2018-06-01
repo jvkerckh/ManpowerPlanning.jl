@@ -269,7 +269,7 @@ function generateReport( mpSim::ManpowerSimulation, timeDelta::T,
     sheet[ "A", 2 ] = "Report time resolution"
     sheet[ "B", 2 ] = timeDelta
     sheet[ "A", 3 ] = "Personnel cap"
-    sheet[ "B", 3 ] = mpSim.personnelCap
+    sheet[ "B", 3 ] = mpSim.personnelTarget
     sheet[ "A", 4 ] = "Report generated in"
     sheet[ "C", 4 ] = "s"
 

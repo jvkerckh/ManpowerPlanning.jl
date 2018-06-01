@@ -19,64 +19,51 @@ end  # for reqType in requiredTypes
 
 
 export Prerequisite
+"""
+This type defines a prerequisite on a single attribute of a personnel member.
+
+The type contains the following fields:
+* `attr::String`: the attribute upon which the prerequisite is defined.
+* `val::Union{String,Vector{String}}`: the value with which the the attribute is
+compared.
+* `rel::Function`: the relation between the attribute and the value. Valid
+relations are `==`, `!=`, `∈`, and `∉`.
+
+The prerequisites are always of the form `attr rel val`.
+"""
 type Prerequisite
-    # This is the varaible for which there is a prerequisite.
-    prereqVar::Symbol
 
-    # This is the specific value that the prerequisite has to satisfy.
-    prereqValue
+    attr::String
+    val::Union{String, Vector{String}}
+    rel::Function
 
-    # This states how the prerequisite must be satisfied.
-    prereqRelation::Function
+    # Constructors.
+    function Prerequisite( attr::String, rel::Function, val::String )
 
-    # Constructor.
-    function Prerequisite( key::Symbol, value; valType::Type = String,
-        relation::Function = == )
-        prereq = new()
-        prereq.prereqVar = key
+        if rel ∉ [ ==, != ]
+            error( "A String value permits only == and != as operators for a Prerequisite." )
+        end  # if rel ∉ [ ==, != ]
 
-        isStringLike = issubtype( valType, AbstractString ) ||
-            issubtype( valType, Symbol )
+        newPrereq = new()
+        newPrereq.attr = attr
+        newPrereq.val = val
+        newPrereq.rel = rel
+        return newPrereq
 
-        # Check if the given relation is appropriate.
-        if relation ∈ [ ==, !=, <, >, <=, >=, ∈, ∉ ]
-            if isStringLike && ( relation ∈ [ <, >, <=, >= ] )
-                error( "Relation \"$relation\" inappropriate for argument of type $valType." )
-            elseif !isStringLike && ( relation ∈ [ ∈, ∉ ] )
-                error( "Relation \"$relation\" inappropriate for argument of type $valType." )
-            else
-                prereq.prereqRelation = relation
-            end  # if isStringLike ...
-        else
-            error( "Unknown value for prerequisite relation parameter. Must be one of ==, !=, <, >, <=, >=, ∈, ∉." )
-        end  # if relation ∈ ...
+    end  # Prerequisite( attr, rel, val )
 
-        # If the argument is supposed to be a string, cast the given argument as
-        #   one.
-        if issubtype( valType, AbstractString )
-            prereq.prereqValue = string( value )
-        # If the argument is a string, try to parse it to what it's supposed to
-        #   be.
-        #   If the argument can't be parsed propoerly,
-        elseif isa( value, AbstractString )
-            try
-                prereq.prereqValue = parse( valType, value )
-            catch err
-                if isa( err, MethodError )
-                    error( "Cannot cast argument towards a $valType." )
-                elseif isa( err, ArgumentError )
-                    error( "Cannot parse $value as a $valType." )
-                else
-                    error( "Unknown error in Prerequisite( $key, $value, $valType, relation )" )
-                end  # if isa( err, MethodError )
-            end  # try
-        # If the argument's type is a subtype of the given type, accept it.
-        elseif isa( value, valType )
-            prereq.prereqValue = value
-        else
-            error( "$value (of type $(typeof( value ))) must be a subtype of $valType." )
-        end  # if valType <: String
+    function Prerequisite( attr::String, rel::Function, valList::Vector{String} )
 
-        return prereq
-    end  # Prerequisite( key, value; valType, relation )
+        if rel ∉ [ ∈, ∉ ]
+            error( "A Vector{String} value permits only ∈ and ∉ as operators for a Prerequisite." )
+        end  # if rel ∉ [ ==, != ]
+
+        newPrereq = new()
+        newPrereq.attr = attr
+        newPrereq.val = valList
+        newPrereq.rel = rel
+        return newPrereq
+
+    end  # Prerequisite( attr, rel, valList )
+
 end  # type Prerequisite

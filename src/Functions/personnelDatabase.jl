@@ -3,7 +3,7 @@
 
 # The functions of the PersonnelDatabase require the HistoryEntry, History, and
 #   Personnel types.
-requiredTypes = [ "historyEntry", "history", "personnel", "personnelDatabase" ]
+requiredTypes = [ "personnel", "personnelDatabase" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )

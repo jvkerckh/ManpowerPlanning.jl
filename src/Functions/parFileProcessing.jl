@@ -24,7 +24,11 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
 
     # Check if the file has the required sheets.
     w = Workbook( fileName )
-    sheets = [ "General", "Recruitment", "Attrition", "Retirement" ]
+    sheets = [ "General",
+               "Atributes",
+               "Recruitment",
+               "Attrition",
+               "Retirement" ]
 
     if any( shName -> getSheet( w, shName ) === Ptr{Void}( 0 ), sheets )
         warn( "Improperly formatted Excel parameter file. Not making any changes." )
@@ -39,6 +43,10 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     end  # if initDB
 
     readGeneralPars( mpSim, s )
+
+    # Read attributes.
+    s = getSheet( w, "Attributes" )
+    readAttributes( mpSim, s )
 
     # Read recruitment parameters.
     s = getSheet( w, "Recruitment" )
@@ -84,10 +92,30 @@ end  # readDBpars( mpSim, s )
 function readGeneralPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
     setPersonnelCap( mpSim, Int( s[ "B", 5 ] ) )
-    setSimulationLength( mpSim, s[ "B", 8 ] * 12 )
-    setDatabaseCommitTime( mpSim, s[ "B", 8 ] * 12 / s[ "B", 9 ] )
+    setSimulationLength( mpSim, s[ "B", 7 ] * 12 )
+    setDatabaseCommitTime( mpSim, s[ "B", 7 ] * 12 / s[ "B", 8 ] )
 
 end  # readGeneralPars( mpSim, s )
+
+
+function readAttributes( mpSim::ManpowerSimulation, s::Taro.Sheet )
+
+    nAttrs = s[ "B", 3 ]
+    clearAttributes!( mpSim )
+    sLine = 5
+    lastLine = numRows( s, "C" )
+    ii = 1
+
+    # Read every single attribute.
+    while ( sLine <= lastLine ) && ( ii <= nAttrs )
+        newAttr, sLine = readAttribute( s, sLine )
+        addAttribute!( mpSim, newAttr )
+        ii += 1
+    end  # while ( sLine <= lastLine ) && ...
+
+    return
+
+end  # readAttributes( mpSim, s )
 
 
 function readRecruitmentPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
@@ -96,17 +124,90 @@ function readRecruitmentPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
     numSchemes = Int( s[ "B", 3 ] )
 
     for ii in 1:numSchemes
-        addRecruitmentScheme!( mpSim, s, ii - 1 )
+        recScheme = generateRecruitmentScheme( s, ii )
+        addRecruitmentScheme!( mpSim, recScheme )
     end  # for ii in 1:numSchemes
 
 end  # readRecruitmentPars( mpSim, s )
 
 
+function generateRecruitmentScheme( s::Taro.Sheet, ii::T ) where T <: Integer
+
+    dataColNr = ii * 4 - 2
+    recScheme = Recruitment( s[ dataColNr, 5 ], s[ dataColNr, 6 ],
+        s[ dataColNr, 7 ] )
+    isAdaptive = s[ dataColNr, 10 ] == 1
+    isRandom = s[ dataColNr, 11 ] == 1
+
+    if isAdaptive
+        minRec = s[ dataColNr, 8 ] === nothing ? 0 : Int( s[ dataColNr, 8 ] )
+        setRecruitmentLimits( recScheme, minRec, Int( s[ dataColNr, 9 ] ) )
+        println( recScheme )
+    elseif isRandom
+        distTypes = Dict( "Pointwise" => :disc, "Uniform" => :pUnif,
+            "Piecewise Linear" => :pLin )
+        distType = distTypes[ s[ dataColNr, 15 ] ]
+        recDist = Dict{Int, Float64}()
+        jj = 17
+
+        while s[ dataColNr, jj ] !== nothing
+            node = s[ dataColNr, jj ]
+            weight = s[ dataColNr + 1, jj ]
+
+            if isa( node, Float64 ) && ( node == floor( node ) ) &&
+                isa( weight, Float64 )
+                recDist[ Int( node ) ] = weight
+            end  # if isa( node, Float64 ) &&
+
+            jj += 1
+        end  # while s[ "B", jj ] !== nothing
+
+        setRecruitmentDistribution( recScheme, recDist, distType )
+    else
+        setRecruitmentFixed( recScheme, Int( s[ dataColNr, 9 ] ) )
+    end  # if isAdaptive
+
+    println( recScheme )
+
+    isFixedAge = s[ dataColNr, 12 ] == 1
+
+    # Add the age distribution.
+    if isFixedAge
+        setRecruitmentAge( recScheme, s[ dataColNr, 13 ] * 12 )
+    else
+        rowNrOfDist = numRows( s, dataColNr - 1, dataColNr - 1 )
+        distType = s[ dataColNr, rowNrOfDist ] == "Pointwise" ? :disc : :pUnif
+        rowNrOfDistEnd = numRows( s, dataColNr, dataColNr )
+
+        if rowNrOfDist + 2 > rowNrOfDistEnd
+            warn( "Improper recruitment age distribution. Ignoring recruitment scheme." )
+            return
+        end
+
+        ageDist = Dict{Float64, Float64}()
+
+        for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+            age = s[ dataColNr, jj ] * 12
+            pMass = s[ dataColNr + 1, jj ]
+
+            # Only add the entry if it makes sense.
+            if isa( age, Float64 ) && isa( pMass, Float64 ) &&
+                !haskey( ageDist, age )
+                ageDist[ age ] = pMass
+            end  # if isa( age, Float64 ) && ...
+        end  # for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+
+        setAgeDistribution( recScheme, ageDist, distType )
+    end  # if isFixedAge
+
+    return recScheme
+
+end  # function generateRecruitmentScheme( s, ii )
+
+
 function readAttritionPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
-    isAttritionFixed = Bool( s[ "B", 4 ] )
-
-    if Bool( s[ "B", 4 ] )
+    if s[ "B", 4 ] == 1
         if s[ "B", 5 ] > 0
             attrScheme = Attrition( s[ "B", 5 ], s[ "B", 3 ] )
             setAttrition( mpSim, attrScheme )
@@ -117,15 +218,11 @@ function readAttritionPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
         lastRow = numRows( s, "C" )
         nAttrEntries = lastRow - 7  # 7 is the header row of the attrition curve
         attrCurve = zeros( Float64, nAttrEntries, 2 )
-
-        for ii in 1:nAttrEntries
-            attrCurve[ ii, 1 ] = s[ "B", ii + 7 ] * 12
-            attrCurve[ ii, 2 ] = s[ "C", ii + 7 ]
-        end  # for ii in 1:nAttrEntries
-
+        foreach( ii -> attrCurve[ ii, : ] = [ s[ "B", ii + 7 ] * 12,
+            s[ "C", ii + 7 ] ], 1:nAttrEntries )
         attrScheme = Attrition( attrCurve, s[ "B", 3 ] )
         setAttrition( mpSim, attrScheme )
-    end  # if Bool( s[ "B", 4 ] )
+    end  # if s[ "B", 4 ] == 1
 
 end  # readAttritionPars( mpSim, s )
 

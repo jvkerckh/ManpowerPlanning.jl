@@ -1,7 +1,7 @@
 # Initalise ManpowerPlanning module
 if !isdefined( :ManpowerSimulation )
-#    include( joinpath( dirname( Base.source_path() ), "..", "src",
-#        "ManpowerPlanning.jl" ) )
+    include( joinpath( dirname( Base.source_path() ), "..", "src",
+        "ManpowerPlanning.jl" ) )
     using ManpowerPlanning
     isUpToDate = true
     println( "ManpowerPlanning module initialised." )
@@ -30,7 +30,7 @@ if !isdefined( :isSimulationFinished ) || rerunSimulation
 isSimulationFinished = false
 monthFactor = 12 # isSimTimeInMonths ? 12 : 1
 
-println( "\nPersonnel cap set at $(mpSim.personnelCap) personnel members." )
+println( "\nPersonnel target set at $(mpSim.personnelTarget) personnel members." )
 println( "Length of the simulation set at $(mpSim.simLength / monthFactor) years." )
 println( "Time between two database commits set at $(mpSim.commitFrequency) months." )
 
