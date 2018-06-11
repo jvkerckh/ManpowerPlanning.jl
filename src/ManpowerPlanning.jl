@@ -23,6 +23,8 @@ module ManpowerPlanning
 #        "historyEntry",
 #        "history",
         "personnelAttribute",
+        "state",
+        "transition",
 #        "personnel",
 #        "personnelDatabase",
 #        "prerequisite",

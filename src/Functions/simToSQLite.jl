@@ -31,6 +31,8 @@ function saveSimConfigToDatabase( mpSim::ManpowerSimulation, dbName::String,
 
     readGeneralParsFromSim( mpSim, configDB, configName )
     readAttributesFromSim( mpSim, configDB, configName )
+    readStatesFromSim( mpSim, configDB, configName )
+    readTransitionsFromSim( mpSim, configDB, configName )
     readRecruitmentFromSim( mpSim, configDB, configName )
     readAttritionFromSim( mpSim, configDB, configName )
     readRetirementFromSim( mpSim, configDB, configName )
@@ -138,6 +140,65 @@ function readAttributesFromSim( mpSim::ManpowerSimulation,
     return
 
 end  # readAttributesFromSim( mpSim, configDB, configName )
+
+
+"""
+```
+readStatesFromSim( mpSim::ManpowerSimulation,
+                   configDB::SQLite.DB,
+                   configName::String )
+```
+This function reads the personnel states from the manpower simulation `mpSim`
+and writes them to the SQLite database `configDB` in the table with name
+`configName`.
+
+This function returns `nothing`.
+"""
+function readStatesFromSim( mpSim::ManpowerSimulation,
+    configDB::SQLite.DB, configName::String )::Void
+
+    # Read every single state.
+    foreach( state -> saveStateToDatabase( state, configDB, configName ),
+        keys( mpSim.initStateList ) )
+    foreach( state -> saveStateToDatabase( state, configDB, configName ),
+        keys( mpSim.otherStateList ) )
+
+    return
+
+end  # readStatesFromSim( mpSim, configDB, configName )
+
+
+"""
+```
+readTransitionsFromSim( mpSim::ManpowerSimulation,
+                        configDB::SQLite.DB,
+                        configName::String )
+```
+This function reads the state transitions from the manpower simulation `mpSim`
+and writes them to the SQLite database `configDB` in the table with name
+`configName`.
+
+This function returns `nothing`.
+"""
+function readTransitionsFromSim( mpSim::ManpowerSimulation,
+    configDB::SQLite.DB, configName::String )::Void
+
+    # Read every single transition.
+    for state in keys( mpSim.initStateList )
+        foreach( trans -> saveTransitionToDatabase( trans, state.name,
+            trans.endState.name, configDB, configName ),
+            mpSim.initStateList[ state ] )
+    end  # for state in keys( mpSim.initStateList )
+
+    for state in keys( mpSim.otherStateList )
+        foreach( trans -> saveTransitionToDatabase( trans, state.name,
+            trans.endState.name, configDB, configName ),
+            mpSim.otherStateList[ state ] )
+    end  # for state in keys( mpSim.otherStateList )
+
+    return
+
+end  # readStatesFromSim( mpSim, configDB, configName )
 
 
 """

@@ -38,6 +38,8 @@ function configureSimFromDatabase( mpSim::ManpowerSimulation, dbName::String,
     # Get the general parameters
     readGeneralParsFromDatabase( configDB, mpSim, configName )
     readAttributesFromDatabase( configDB, mpSim, configName )
+    readStatesFromDatabase( configDB, mpSim, configName )
+    readTransitionsFromDatabase( configDB, mpSim, configName )
     readRecruitmentFromDatabase( configDB, mpSim, configName )
     readAttritionFromDatabase( configDB, mpSim, configName )
     readRetirementFromDatabase( configDB, mpSim, configName )
@@ -227,6 +229,152 @@ function readAttributesFromDatabase( configDB::SQLite.DB,
 end  # readAttributesFromDatabase( configDB, mpSim, configName )
 
 
+"""
+```
+readStatesFromDatabase( configDB::SQLite.DB,
+                        mpSim::ManpowerSimulation,
+                        configName::String )
+```
+This function reads the personnel states from the SQLite database `configDB`,
+looking in the table with name `configName`, and uses these parameters to
+configure the manpower simulation `mpSim`.
+
+This function returns `nothing`. If information is missing, the function will
+issue warnings, or throw an error depending on the severity.
+"""
+function readStatesFromDatabase( configDB::SQLite.DB,
+    mpSim::ManpowerSimulation, configName::String )::Void
+
+    clearStates!( mpSim )
+    queryCmd = "SELECT * FROM $configName
+        WHERE parType IS 'State'"
+    states = SQLite.query( configDB, queryCmd )
+    nStates = length( states[ :parName ] )
+
+    for ii in 1:nStates
+        # Check if the isInitial attribute can be read properly.
+        isInitial = states[ :boolPar1 ][ ii ]
+        isInitial = isa( isInitial, String ) ?
+            tryparse( Bool, states[ :boolPar1 ][ ii ] ) : Nullable{Bool}()
+
+        if !isInitial.hasvalue
+            error( "Can't determine if the state is an initial state or not." )
+        end  # if !isInitial.hasvalue
+
+        # Check if the values can be read properly.
+        reqList = states[ :strPar1 ][ ii ]
+
+        # Value list can't be missing.
+        if !isa( reqList, String )
+            error( "Can't read the requirements of the state." )
+        end  # if !isa( valList, String )
+
+        newState = State( states[ :parName ][ ii ], isInitial.value )
+        reqList = reqList == "" ? Vector{String}() : split( reqList, ";" )
+
+        for req in reqList
+            attrValPair = split( req, ":" )
+
+            # Value list must consist of attribute, value pairs.
+            if length( attrValPair ) != 2
+                error( "Can't read the requirements of the state." )
+            end  # if length( attrValPair ) != 2
+
+            attr = String( strip( attrValPair[ 1 ] ) )
+            vals = String( strip( attrValPair[ 2 ] ) )
+
+            # If it's a list of possible values, extract them.
+            if startswith( vals, "[" ) && endswith( vals, "]" )
+                vals = split( vals, "," )
+                vals = map( val -> String( strip( val ) ), vals )
+            end  # if startswith( vals, "[" ) && ...
+
+            addRequirement!( newState, attr, vals )
+        end  # for ii in eachindex( valList )
+
+        addState!( mpSim, newState, isInitial.value )
+    end  # for ii in 1:nAttrs
+
+    return
+
+end  # readStatesFromDatabase( configDB, mpSim, configName )
+
+
+"""
+```
+readTransitionsFromDatabase( configDB::SQLite.DB,
+                             mpSim::ManpowerSimulation,
+                             configName::String )
+```
+This function reads the state transitions from the SQLite database `configDB`,
+looking in the table with name `configName`, and uses these parameters to
+configure the manpower simulation `mpSim`.
+
+This function returns `nothing`. If information is missing, the function will
+issue warnings, or throw an error depending on the severity.
+"""
+function readTransitionsFromDatabase( configDB::SQLite.DB,
+    mpSim::ManpowerSimulation, configName::String )::Void
+
+    clearTransitions!( mpSim )
+    queryCmd = "SELECT parName, strPar1 FROM $configName
+        WHERE parType IS 'Transition'"
+    transitions = SQLite.query( configDB, queryCmd )
+    nTrans = length( transitions[ :parName ] )
+    stateList = collect( keys( merge( mpSim.initStateList,
+        mpSim.otherStateList ) ) )
+
+    for ii in 1:nTrans
+        transPars = transitions[ :strPar1 ][ ii ]
+
+        # Check if the parameters can be processed.
+        if !isa( transPars, String )
+            error( "Can't read the parameters of the transitions." )
+        end  # if !isa( transPars, String )
+
+        transPars = split( transPars, ";" )
+
+        if length( transPars ) != 5
+            error( "Can't read the parameters of the transitions." )
+        end  # if length( transPars ) != 5
+
+        transpars = map( par -> String( strip( par ) ), transPars )
+        startInd = findfirst( state -> state.name == transPars[ 1 ], stateList )
+        endInd = findfirst( state -> state.name == transPars[ 2 ], stateList )
+
+        # If either of the states with the given name can't be found, throw an
+        #   error.
+        if startInd * endInd == 0
+            error( "Start state or end state unknown." )
+        end  # if startInd * endInd == 0
+
+        newTrans = Transition( transitions[ :parName ][ ii ],
+            stateList[ startInd ], stateList[ endInd ] )
+
+        # Process the schedule parameters.
+        freq = tryparse( Float64, transPars[ 3 ] )
+        offset = tryparse( Float64, transPars[ 4 ] )
+
+        if !freq.hasvalue || !offset.hasvalue || ( freq.value <= 0.0 )
+            error( "Can't process schedule parameters of transition." )
+        end  # if !freq.hasValue || ...
+
+        setSchedule( newTrans, freq.value, offset.value )
+
+        # Process the min time parameter.
+        minTime = tryparse( Float64, transPars[ 5 ] )
+
+        if !minTime.hasvalue || ( minTime.value <= 0.0 )
+            error( "Can't process min time parameter of transition." )
+        end  # if !minTime.hasValue || ...
+
+        setMinTime( newTrans, minTime.value )
+        addTransition!( mpSim, newTrans )
+    end  # for ii in 1:nTrans
+
+    return
+
+end  # readTransitionsFromDatabase( configDB, mpSim, configName )
 
 """
 ```

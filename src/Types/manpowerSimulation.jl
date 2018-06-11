@@ -63,6 +63,10 @@ type ManpowerSimulation
     initAttrList::Vector{PersonnelAttribute}
     otherAttrList::Vector{PersonnelAttribute}
 
+    # The states.
+    initStateList::Dict{State, Vector{Transition}}
+    otherStateList::Dict{State, Vector{Transition}}
+
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
 
@@ -132,12 +136,15 @@ type ManpowerSimulation
         newMPsim.commitFrequency = 1.0
         newMPsim.initAttrList = Vector{PersonnelAttribute}()
         newMPsim.otherAttrList = Vector{PersonnelAttribute}()
+        newMPsim.initStateList = Dict{State, Vector{Transition}}()
+        newMPsim.otherStateList = Dict{State, Vector{Transition}}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
         newMPsim.attritionScheme = nothing
         newMPsim.retirementScheme = nothing
         newMPsim.sim = Simulation()
         newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
-        newMPsim.phasePriorities = Dict( :recruitment => 1, :retirement => 2, :attrition => 3 )
+        newMPsim.phasePriorities = Dict( :recruitment => 1, :transition => 2,
+            :retirement => 3, :attrition => 4 )
         newMPsim.simLength = 1.0
         newMPsim.simReports = Dict{Float64, SimulationReport}()
         return newMPsim

@@ -397,7 +397,7 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     for ii in eachindex( mpSim.initAttrList )
         attr = mpSim.initAttrList[ ii ]
-        initVals[ :, ii ] = [ attr.name, "'" * generateAttrValue( attr ) * "'",
+        initVals[ :, ii ] = [ attr.name, generateAttrValue( attr ),
             attr.isFixed ]
     end  # for attr in mpSim.initAttrList
 
@@ -406,7 +406,7 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
         $(join( initVals[ 1, : ], ", " ))) values
         ('$id', 'active', $(now( mpSim )), $ageAtRecruitment,
-        $(join( initVals[ 2, : ], ", " )))"
+        '$(join( initVals[ 2, : ], "', '" ))')"
     SQLite.execute!( mpSim.simDB, command )
 
     # Add entry of person to the history database.
@@ -417,10 +417,20 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # Additional variable attributes.
     for ii in find( .!initVals[ 3, : ] )
         command *= ", ('$id', '$(initVals[ 1, ii ])', $(now( mpSim )),
-            $(initVals[ 2, ii ]))"
+            '$(initVals[ 2, ii ])')"
     end  # for ii in find( !initVals[ 3, : ] )
 
     SQLite.execute!( mpSim.simDB, command )
+
+    # Identify and initiate all applicable transition processes.
+    initPersStates = collect( Iterators.filter(
+        state -> isPersonnelOfState( initVals, state ),
+        keys( mpSim.initStateList ) ) )
+        # XXX Iterators.filter is needed to avoid deprecation warnings.
+
+    for state in initPersStates, trans in mpSim.initStateList[ state ]
+        @process transitionProcess( mpSim.sim, trans, id, mpSim )
+    end  # for state in initPersStates, ...
 
     # If a proper retirement scheme has been defined, start this person's
     #   retirement process.

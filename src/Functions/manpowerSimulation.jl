@@ -96,6 +96,76 @@ function clearAttributes!( mpSim::ManpowerSimulation )
 
 end  # clearAttributes!( mpSim )
 
+
+# This function adds a possible personnel state.
+# This function does nothing if the simulation is already running.
+export addState!
+function addState!( mpSim::ManpowerSimulation, state::State,
+    isInitial::Bool = false )
+
+    if now( mpSim ) == 0
+        if isInitial
+            mpSim.initStateList[ state ] = Vector{Transition}()
+        else
+            mpSim.otherStateList[ state ] = Vector{Transition}()
+        end  # if isinitial
+    end  # if now( mpSim ) == 0
+
+    return
+
+end  # addState!( mpSim )
+
+
+# This function clears the list of possible personnel states.
+# This function does nothing if the simulation is already running.
+export clearStates!
+function clearStates!( mpSim::ManpowerSimulation )
+
+    if now( mpSim ) == 0
+        empty!( mpSim.initStateList )
+        empty!( mpSim.otherStateList )
+    end  # if now( mpSim ) == 0
+
+    return
+
+end  # clearStates!( mpSim, state, isInitial )
+
+
+# This function adds a personnel state transition.
+# This function does nothing if the simulation is already running.
+export addTransition!
+function addTransition!( mpSim::ManpowerSimulation, trans::Transition )
+
+    if now( mpSim ) == 0
+        if trans.startState.isInitial
+            push!( mpSim.initStateList[ trans.startState ], trans )
+        else
+            push!( mpSim.otherStateList[ trans.startState ], trans )
+        end  # if isStartInit
+    end  # if now( mpSim ) == 0
+
+    return
+
+end  # addTransition!( mpSim, state )
+
+
+# This function clears the the personnel state transitions.
+# This function does nothing if the simulation is already running.
+export clearTransitions!
+function clearTransitions!( mpSim::ManpowerSimulation )
+
+    if now( mpSim ) == 0
+        foreach( state -> empty!( mpSim.initStateList[ state ] ),
+            keys( mpSim.initStateList ) )
+        foreach( state -> empty!( mpSim.otherStateList[ state ] ),
+            keys( mpSim.otherStateList ) )
+    end  # if now( mpSim ) == 0
+
+    return
+
+end  # clearTransitions!( mpSim )
+
+
 # This function adds a recruitment scheme to the simulation.
 # This function does nothing if the simulation is already running. XXX (desirable??)
 export addRecruitmentScheme!
@@ -308,7 +378,8 @@ include( joinpath( dirname( Base.source_path() ), "dbManagement.jl" ) )
 
 # This function runs the manpower simulation if it has been properly
 #   initialised.
-function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
+# function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
+function SimJulia.run( mpSim::ManpowerSimulation )
 
     if !mpSim.isInitialised
         error( "Simulation not properly initialised. Cannot run." )
@@ -323,8 +394,9 @@ function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: R
         end  # for ii in eachindex( mpSim.recruitmentSchemes )
 
         mpSim.isVirgin = false
-    end  # if now( mpSim ) == 0.0
+    end  # if mpSim.isVirgin
 
+    toTime = 0.0
     oldSimTime = now( mpSim )
 
     # Start the database commits.
@@ -425,16 +497,50 @@ function Base.show( io::IO, mpSim::ManpowerSimulation )
     if isempty( mpSim.initAttrList )
         print( io, "\nNo initialised attributes" )
     else
-        print( io, "\initialised attributes" )
+        print( io, "\nInitialised attributes" )
         foreach( attr -> print( io, "\n$attr" ), mpSim.initAttrList )
     end  # if isempty( mpSim.initAttrList )
 
     if isempty( mpSim.otherAttrList )
         print( io, "\nNo other attributes" )
     else
-        print( io, "\Other attributes" )
+        print( io, "\nOther attributes" )
         foreach( attr -> print( io, "\n$attr" ), mpSim.otherAttrList )
     end  # if isempty( mpSim.otherAttrList )
+
+    if isempty( mpSim.initStateList )
+        print( io, "\nNo initial personnel states" )
+    else
+        print( io, "\nInitial personnel states & transitions" )
+
+        for state in keys( mpSim.initStateList )
+            print( io, "\n$state" )
+
+            if isempty( mpSim.initStateList[ state ] )
+                print( io, "\n    No transitions from this state" )
+            else
+                foreach( trans -> print( io, "\n$trans" ),
+                    mpSim.initStateList[ state ] )
+            end  # if isempty( mpSim.initStateList[ state ] )
+        end  # for state in  keys( mpSim.initStateList )
+    end  # if isempty( mpSim.initStateList )
+
+    if isempty( mpSim.otherStateList )
+        print( io, "\nNo other personnel states" )
+    else
+        print( io, "\nOther personnel states & transitions" )
+
+        for state in keys( mpSim.otherStateList )
+            print( io, "\n$state" )
+
+            if isempty( mpSim.otherStateList[ state ] )
+                print( io, "\n    No transitions from this state" )
+            else
+                foreach( trans -> print( io, "\n$trans" ),
+                    mpSim.otherStateList[ state ] )
+            end  # if isempty( mpSim.otherStateList[ state ] )
+        end  # for state in  keys( mpSim.otherStateList )
+    end  # if isempty( mpSim.otherStateList )
 
     if !isempty( mpSim.recruitmentSchemes )
         print( io, "\nRecruitment schemes" )

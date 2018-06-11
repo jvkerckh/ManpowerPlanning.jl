@@ -26,6 +26,8 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     w = Workbook( fileName )
     sheets = [ "General",
                "Atributes",
+               "States",
+               "Transitions",
                "Recruitment",
                "Attrition",
                "Retirement" ]
@@ -48,6 +50,14 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     s = getSheet( w, "Attributes" )
     readAttributes( mpSim, s )
 
+    # Read states.
+    s = getSheet( w, "States" )
+    readStates( mpSim, s )
+
+    # Read transitions.
+    s = getSheet( w, "Transitions" )
+    readTransitions( mpSim, s )
+
     # Read recruitment parameters.
     s = getSheet( w, "Recruitment" )
     readRecruitmentPars( mpSim, s )
@@ -59,6 +69,9 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     # Read retirement parameters.
     s = getSheet( w, "Retirement" )
     readRetirementPars( mpSim, s )
+
+    # Make sure the databases are okay.
+    resetSimulation( mpSim )
 
 end  # initialiseFromExcel( mpSim, fileName )
 
@@ -79,7 +92,7 @@ function readDBpars( mpSim::ManpowerSimulation, s::Taro.Sheet )
     mpSim.historyDBname = "History_" * s[ "B", 4 ]
 
     # Check if databases are present and issue a warning if so.
-    tmpTableList = SQLite.tables( mpSim.simDB )[ :name ].values
+    tmpTableList = SQLite.tables( mpSim.simDB )[ :name ]
 
     if ( mpSim.personnelDBname ∈ tmpTableList ) ||
             ( mpSim.historyDBname ∈ tmpTableList )
@@ -118,6 +131,57 @@ function readAttributes( mpSim::ManpowerSimulation, s::Taro.Sheet )
 end  # readAttributes( mpSim, s )
 
 
+function readStates( mpSim::ManpowerSimulation, s::Taro.Sheet )
+
+    nStates = s[ "B", 3 ]
+    clearStates!( mpSim )
+    sLine = 5
+    lastLine = numRows( s, "C" )
+    ii = 1
+
+    while ( sLine <= lastLine ) && ( ii <= nStates )
+        newState, isInitial, sLine = readState( s, sLine )
+        addState!( mpSim, newState, isInitial )
+        ii += 1
+    end  # while ( sLine <= lastLine ) && ...
+
+    return
+
+end  # readStates( mpSim, s )
+
+
+function readTransitions( mpSim::ManpowerSimulation, s::Taro.Sheet )
+
+    nTransitions = s[ "B", 3 ]
+    clearTransitions!( mpSim )
+    sLine = 5
+    lastLine = numRows( s, "C" )
+    ii = 1
+    stateList = collect( keys( merge( mpSim.initStateList,
+        mpSim.otherStateList ) ) )
+
+    while ( sLine <= lastLine ) && ( ii <= nTransitions )
+        newTrans, startName, endName, sLine = readTransition( s, sLine )
+        startInd = findfirst( state -> state.name == startName, stateList )
+        endInd = findfirst( state -> state.name == endName, stateList )
+
+        # If either of the states with the given name can't be found, throw an
+        #   error.
+        if startInd * endInd == 0
+            error( "Start state or end state unknown." )
+        end  # if startInd * endInd == 0
+
+        setState( newTrans, stateList[ startInd ] )
+        setState( newTrans, stateList[ endInd ], true )
+        addTransition!( mpSim, newTrans )
+        ii += 1
+    end  # while ( sLine <= lastLine ) && ...
+
+    return
+
+end  # readTransitions( mpSim, s )
+
+
 function readRecruitmentPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
     clearRecruitmentSchemes!( mpSim )
@@ -142,7 +206,6 @@ function generateRecruitmentScheme( s::Taro.Sheet, ii::T ) where T <: Integer
     if isAdaptive
         minRec = s[ dataColNr, 8 ] === nothing ? 0 : Int( s[ dataColNr, 8 ] )
         setRecruitmentLimits( recScheme, minRec, Int( s[ dataColNr, 9 ] ) )
-        println( recScheme )
     elseif isRandom
         distTypes = Dict( "Pointwise" => :disc, "Uniform" => :pUnif,
             "Piecewise Linear" => :pLin )
@@ -166,8 +229,6 @@ function generateRecruitmentScheme( s::Taro.Sheet, ii::T ) where T <: Integer
     else
         setRecruitmentFixed( recScheme, Int( s[ dataColNr, 9 ] ) )
     end  # if isAdaptive
-
-    println( recScheme )
 
     isFixedAge = s[ dataColNr, 12 ] == 1
 

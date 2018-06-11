@@ -45,6 +45,8 @@ function readParFileToDatabase( fileName::String, dbName::String,
 
     readGeneralParsFromFile( wb, configDB, configName )
     readAttributesFromFile( wb, configDB, configName )
+    readStatesFromFile( wb, configDB, configName )
+    readTransitionsFromFile( wb, configDB, configName )
     readRecruitmentFromFile( wb, configDB, configName )
     readAttritionFromFile( wb, configDB, configName )
     readRetirementFromFile( wb, configDB, configName )
@@ -102,6 +104,8 @@ function validateParFile( wb::Workbook )::Bool
 
     sheetNames = [ "General",
                    "Atributes",
+                   "States",
+                   "Transitions",
                    "Recruitment",
                    "Attrition",
                    "Retirement" ]
@@ -197,7 +201,7 @@ function readAttributesFromFile( wb::Workbook, configDB::SQLite.DB,
 
     return
 
-end
+end  # readAttributesFromFile( wb, configDB, configName )
 
 
 """
@@ -228,6 +232,144 @@ end  # saveAttrToDatabase( attr, configDB, configName )
 
 """
 ```
+readStatesFromFile( wb::Workbook,
+                    configDB::SQLite.DB,
+                    configName::String )
+```
+This function reads the personnel states from the Excel workbook `wb` and
+writes them to the SQLite database `configDB` in the table `configName`.
+
+This function returns `nothing`.
+"""
+function readStatesFromFile( wb::Workbook, configDB::SQLite.DB,
+    configName::String )::Void
+
+    sheet = getSheet( wb, "States" )
+    nStates = sheet[ "B", 3 ]
+    sLine = 5
+    lastLine = numRows( sheet, "C" )
+    ii = 1
+
+    # Read every single attribute.
+    while ( sLine <= lastLine ) && ( ii <= nStates )
+        newState, isInitial, sLine = readState( sheet, sLine )
+        saveStateToDatabase( newState, configDB, configName )
+        ii += 1
+    end  # while ( sLine <= lastLine ) && ...
+
+    return
+
+end  # readStatesFromFile( wb, configDB, configName )
+
+
+"""
+```
+saveStateToDatabase( state::State,
+                     configDB::SQLite.DB,
+                     configName::String )
+```
+This function saves the personnel state `state` to the SQLite database
+`configDB` in table `configName`.
+
+This function returns `nothing`.
+"""
+function saveStateToDatabase( state::State, configDB::SQLite.DB,
+    configName::String )::Void
+
+    valueList = ""
+    initialVal = false
+
+    for attr in keys( state.requirements )
+        if initialVal
+            valueList *= ";"
+        end  # if initialVal
+
+        initialVal = true
+        valueList *= "$attr:"
+        vals = state.requirements[ attr ]
+
+        if length( vals ) == 1
+            valueList *= vals[ 1 ]
+        else
+            valueList *= "[" * join( vals, "," ) * "]"
+        end  # if isa( vals, String )
+    end  # for attr in keys( state.requirements )
+
+    command = "INSERT INTO $configName
+        (parName, parType, boolPar1, strPar1) VALUES
+        ('$(state.name)', 'State', '$(state.isInitial)', '$valueList')"
+    SQLite.execute!( configDB, command )
+
+    return
+
+end  # saveStateToDatabase( state, isInitial, configDB, configName )
+
+
+"""
+```
+readTransitionsFromFile( wb::Workbook,
+                         configDB::SQLite.DB,
+                         configName::String )
+```
+This function reads the state transitions from the Excel workbook `wb` and
+writes them to the SQLite database `configDB` in the table `configName`.
+
+This function returns `nothing`.
+"""
+function readTransitionsFromFile( wb::Workbook, configDB::SQLite.DB,
+    configName::String )::Void
+
+    sheet = getSheet( wb, "Transitions" )
+    nStates = sheet[ "B", 3 ]
+    sLine = 5
+    lastLine = numRows( sheet, "C" )
+    ii = 1
+
+    # Read every single attribute.
+    while ( sLine <= lastLine ) && ( ii <= nStates )
+        newState, startName, endName, sLine = readTransition( sheet, sLine )
+        saveTransitionToDatabase( newState, startName, endName, configDB,
+            configName )
+        ii += 1
+    end  # while ( sLine <= lastLine ) && ...
+
+    return
+
+end  # readTransitionsFromFile( wb, configDB, configName )
+
+
+"""
+```
+saveTransitionToDatabase( trans::Transition,
+                          startName::String,
+                          endName::String,
+                          configDB::SQLite.DB,
+                          configName::String )
+```
+This function saves the state transition `trans`, including `startName` and
+`endName` as the names of the start and end states, to the SQLite database
+`configDB` in table `configName`.
+
+This function returns `nothing`.
+"""
+function saveTransitionToDatabase( trans::Transition, startName::String,
+    endName::String, configDB::SQLite.DB, configName::String )::Void
+
+    valueList = "$startName;$endName;"
+    valueList *= "$(trans.freq);$(trans.offset);$(trans.minTime)"
+    command = "INSERT INTO $configName
+        (parName, parType, strPar1) VALUES
+        ('$(trans.name)', 'Transition', '$valueList')"
+    SQLite.execute!( configDB, command )
+
+    return
+
+end  # saveTransitionToDatabase( trans, startName, endName, configDB,
+     #     configName )
+
+
+"""
+```
 readRecruitmentFromFile( wb::Workbook,
                          configDB::SQLite.DB,
                          configName::String )
@@ -244,9 +386,7 @@ function readRecruitmentFromFile( wb::Workbook, configDB::SQLite.DB,
     numSchemes = Int( sheet[ "B", 3 ] )
 
     for ii in 1:numSchemes
-        println( "Scheme $ii of $numSchemes" )
         recScheme = generateRecruitmentScheme( sheet, ii )
-        println( "Generated" )
         saveRecruitmentToDatabase( recScheme, configDB, configName )
     end  # for ii in 1:numSchemes
 
