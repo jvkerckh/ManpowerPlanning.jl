@@ -25,17 +25,17 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     # Check if the file has the required sheets.
     w = Workbook( fileName )
     sheets = [ "General",
-               "Atributes",
+               "Attributes",
                "States",
                "Transitions",
                "Recruitment",
                "Attrition",
                "Retirement" ]
 
-    if any( shName -> getSheet( w, shName ) === Ptr{Void}( 0 ), sheets )
+    if any( shName -> getSheet( w, shName ).ptr === Ptr{Void}( 0 ), sheets )
         warn( "Improperly formatted Excel parameter file. Not making any changes." )
         return
-    end  # if any( shName -> getSheet( w, shName ) === ...
+    end  # if any( shName -> getSheet( w, shName ).ptr === ...
 
     # Read general parameters.
     s = getSheet( w, "General" )

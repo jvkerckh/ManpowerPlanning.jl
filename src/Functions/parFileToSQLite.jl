@@ -109,7 +109,7 @@ function validateParFile( wb::Workbook )::Bool
                    "Recruitment",
                    "Attrition",
                    "Retirement" ]
-    return !any( shName -> getSheet( wb, shName ) === Ptr{Void}( 0 ),
+    return !any( shName -> getSheet( wb, shName ).ptr === Ptr{Void}( 0 ),
         sheetNames )
 
 end  # validateParFile( wb )

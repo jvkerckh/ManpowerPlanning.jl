@@ -404,14 +404,14 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # Add person to the personnel database.
     command = "INSERT INTO $(mpSim.personnelDBname)
         ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
-        $(join( initVals[ 1, : ], ", " ))) values
+        $(join( initVals[ 1, : ], ", " ))) VALUES
         ('$id', 'active', $(now( mpSim )), $ageAtRecruitment,
         '$(join( initVals[ 2, : ], "', '" ))')"
     SQLite.execute!( mpSim.simDB, command )
 
     # Add entry of person to the history database.
     command = "INSERT INTO $(mpSim.historyDBname)
-        ($(mpSim.idKey), attribute, timeIndex, strValue) values
+        ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES
         ('$id', 'status', $(now( mpSim )), 'active')"
 
     # Additional variable attributes.
@@ -422,15 +422,27 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     SQLite.execute!( mpSim.simDB, command )
 
+    # Add recruitment event and all applicable initial states to transition
+    #   database.
+    command = "INSERT INTO $(mpSim.transitionDBname)
+        ($(mpSim.idKey), timeIndex, transition, endState) VALUES
+        ('$id', $(now( mpSim )), '$(recScheme.name)', 'active')"
+
     # Identify and initiate all applicable transition processes.
     initPersStates = collect( Iterators.filter(
         state -> isPersonnelOfState( initVals, state ),
         keys( mpSim.initStateList ) ) )
         # XXX Iterators.filter is needed to avoid deprecation warnings.
 
-    for state in initPersStates, trans in mpSim.initStateList[ state ]
-        @process transitionProcess( mpSim.sim, trans, id, mpSim )
-    end  # for state in initPersStates, ...
+    for state in initPersStates
+        command *= ", ('$id', $(now( mpSim )), '$(recScheme.name)', '$(state.name)')"
+
+        for trans in mpSim.initStateList[ state ]
+            @process transitionProcess( mpSim.sim, trans, id, mpSim )
+        end  # for trans in mpSim.initStateList[ state ]
+    end  # for state in initPersStates
+
+    SQLite.execute!( mpSim.simDB, command )
 
     # If a proper retirement scheme has been defined, start this person's
     #   retirement process.

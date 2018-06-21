@@ -197,10 +197,14 @@ end  # readTransition( s, sLine )
         persCommand = "UPDATE $(mpSim.personnelDBname) SET " *
             join( persCommand, ", " ) * " WHERE $(mpSim.idKey) IS '$id'"
         histCommand = "INSERT INTO $(mpSim.historyDBname)
-            ( $(mpSim.idKey), attribute, timeIndex, strValue ) VALUES " *
+            ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES " *
             join( histCommand, ", " )
+        transCommand = "INSERT INTO $(mpSim.transitionDBname)
+            ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
+            ('$id', $(now( sim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')"
         SQLite.execute!( mpSim.simDB, persCommand )
         SQLite.execute!( mpSim.simDB, histCommand )
+        SQLite.execute!( mpSim.simDB, transCommand )
     end  # if length( ids ) == 1
 
     # Set up the new transitions from the end state.

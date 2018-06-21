@@ -46,6 +46,69 @@ function getActiveAtTime( mpSim::ManpowerSimulation, timePoint::T,
 
 end  # getActiveAtTime( mpSim, timePoint, fields )
 
+"""
+```
+getActiveAtTime( mpSim::ManpowerSimulation,
+                 stateName::String,
+                 timePoint::T,
+                 fields::Vector{String} = Vector{String}() )
+    where T <: Real
+```
+This function retrieves a view of all the personnel in the simulation `mpSim`
+who had the state with name `stateName` at time `timePoint`, and displays the ID
+key and all the columns listed in `fields`.
+
+If the given time is < 0 or larger than the current simulation time or the
+length of the simulation (whichever is smaller), this function returns
+`nothing`. Otherwise, it returns a `DataFrames.DataFrame` object.
+"""
+function getActiveAtTime( mpSim::ManpowerSimulation, stateName::String,
+    timePoint::T, fields::Vector{String} = Vector{String}() ) where T <: Real
+
+    if ( timePoint < 0 ) || ( timePoint > min( now( mpSim ), mpSim.simLength ) )
+        return
+    end  # if ( timePoint < 0 ) || ...
+
+    tmpFields = unique( vcat( mpSim.idKey, fields ) )
+    queryCmd = "SELECT $(join( tmpFields, ", " ))
+        FROM $(mpSim.personnelDBname)
+        WHERE timeEntered < 0"
+    dummyResult = SQLite.query( mpSim.simDB, queryCmd )
+
+    # Get the IDs of all active personnel members at that time.
+    activeIDs = getActiveAtTime( mpSim, timePoint )[ 1 ]
+
+    # Don't continue if there are no active personnel at that time.
+    if isempty( activeIDs )
+        return dummyResult
+    end  # if isempty( activeIDs )
+
+    # In that list, find all IDs of personnel that are in the required state at
+    #   the given time.
+    queryCmd = "SELECT $(mpSim.idKey), count( $(mpSim.idKey) ) appearances
+	    FROM $(mpSim.transitionDBname)
+	    WHERE ( $(mpSim.idKey) IN ('$(join( activeIDs, "', '" ))') ) AND
+            ( timeIndex <= $timePoint ) AND
+            ( ( endState IS '$stateName' ) OR ( startState IS '$stateName' ) )
+	    GROUP BY $(mpSim.idKey)"
+    activeIDs = SQLite.query( mpSim.simDB, queryCmd )
+    activeIDs = activeIDs[ Symbol( mpSim.idKey ) ][
+        activeIDs[ :appearances ] .== 1 ]
+
+    # Don't continue if there are no active personnel with the given state at
+    #   that time.
+    if isempty( activeIDs )
+        return dummyResult
+    end  # if isempty( activeIDs )
+
+    # Get the requested fields of the active IDs.
+    queryCmd = "SELECT $(join( tmpFields, ", " ))
+        FROM $(mpSim.personnelDBname)
+        WHERE $(mpSim.idKey) IN ('$(join( activeIDs, "', '" ))')"
+    return SQLite.query( mpSim.simDB, queryCmd )
+
+end  # getActiveAtTime( mpSim, stateName, timePoint, fields )
+
 
 """
 ```
@@ -85,8 +148,8 @@ getInFlux( mpSim::ManpowerSimulation,
     where T2 <: Real
 ```
 This function retrieves a view of all the personnel members in the simulation
-`mpSim` who entered the organisation between `tBegin` (inclusive) and `tEnd`
-(exclusive). People who entered and left the organisation in this interval are
+`mpSim` who entered the organisation between `tBegin` (exclusive) and `tEnd`
+(inclusive). People who entered and left the organisation in this interval are
 not counted.
 
 If the end time is <= 0, or the start time is larger than the current simulation
@@ -105,6 +168,70 @@ function getInFlux( mpSim::ManpowerSimulation, tBegin::T1, tEnd::T2 ) where T1 <
         WHERE ( $tBegin < timeEntered ) AND ( timeEntered <= $tEnd ) AND
             ( ( timeExited > $tEnd ) OR ( timeExited IS NULL ) )"
     SQLite.query( mpSim.simDB, queryCmd )
+
+end  # getInFlux( mpSim, tBegin, tEnd, fields )
+
+"""
+```
+getInFlux( mpSim::ManpowerSimulation,
+           stateName::String,
+           tBegin::T1,
+           tEnd::T2 )
+    where T1 <: Real
+    where T2 <: Real
+```
+This function retrieves a view of all the personnel members in the simulation
+`mpSim` who entered the state with name `stateName` between `tBegin` (exclusive)
+and `tEnd` (inclusive). People who entered and left the state (or the
+organisation) in this interval are not counted. The view also includes the
+source (start state) and the reason (transition) of the flux for each personnel
+member.
+
+If the end time is <= 0, or the start time is larger than the current simulation
+time or the length of the simulation (whichever is smaller), or if the end time
+is smaller than the start time, this function returns `nothing`.
+"""
+function getInFlux( mpSim::ManpowerSimulation, stateName::String, tBegin::T1,
+    tEnd::T2 ) where T1 <: Real where T2 <: Real
+
+    if ( tEnd <= 0 ) || ( tBegin > min( now( mpSim ), mpSim.simLength ) ) ||
+        ( tEnd <= tBegin )
+        return
+    end  # if ( tEnd <= 0 ) || ...
+
+    queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.personnelDBname)
+        WHERE timeEntered < 0"
+    dummyResult = SQLite.query( mpSim.simDB, queryCmd )
+
+    # Retrieve the list of people achieving the state in the time interval.
+    queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( endState IS '$stateName' )"
+    fluxInIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+
+    # If no personnel members entered the state, no need to continue.
+    if isempty( fluxInIDs )
+        return dummyResult
+    end  # if isempty( fluxInIDs )
+
+    # Retrieve the list of those personnel members leaving the state or the
+    #   organisation in the time interval.
+    queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) IN ('$(join( fluxInIDs, "', '" ))') ) AND
+            ( ( startState IS '$stateName' ) OR ( endState IS NULL ) )"
+    fluxOutIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+    filter!( id -> id ∉ fluxOutIDs, fluxInIDs )
+
+    queryCmd = "SELECT $(mpSim.idKey), startState, transition
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) IN ('$(join( fluxInIDs, "', '" ))') ) AND
+            ( endState IS '$stateName' )"
+    return SQLite.query( mpSim.simDB, queryCmd )
 
 end  # getInFlux( mpSim, tBegin, tEnd, fields )
 
@@ -145,6 +272,81 @@ function getOutFlux( mpSim::ManpowerSimulation, tBegin::T1, tEnd::T2,
 
 end  # getOutFlux( mpSim, tBegin, tEnd, fields )
 
+"""
+```
+getOutFlux( mpSim::ManpowerSimulation,
+            stateName::String,
+            tBegin::T1,
+            tEnd::T2 )
+    where T1 <: Real
+    where T2 <: Real
+```
+This function retrieves a view of all the personnel members in the simulation
+`mpSim` who left the state with name `stateName` between `tBegin` (exclusive)
+and `tEnd` (inclusive). People who entered and left the state (or the
+organisation) in this interval are not counted. The view also includes the
+target (end state) and the reason (transition) of the flux for each personnel
+member.
+
+If the end time is <= 0, or the start time is larger than the current simulation
+time or the length of the simulation (whichever is smaller), or if the end time
+is smaller than the start time, this function returns `nothing`.
+"""
+function getOutFlux( mpSim::ManpowerSimulation, stateName::String, tBegin::T1,
+    tEnd::T2 ) where T1 <: Real where T2 <: Real
+
+    if ( tEnd <= 0 ) || ( tBegin > min( now( mpSim ), mpSim.simLength ) ) ||
+        ( tEnd <= tBegin )
+        return
+    end  # if ( tEnd <= 0 ) || ...
+
+    queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.personnelDBname)
+        WHERE timeEntered < 0"
+    dummyResult = SQLite.query( mpSim.simDB, queryCmd )
+
+    # Retrieve the list of people leaving the state in the time interval.
+    queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( startState IS '$stateName' )"
+    fluxOutIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+
+    # Retrieve the list of those personnel members entering the state or the
+    #   organisation in the time interval.
+    if !isempty( fluxOutIDs )
+        queryCmd = "SELECT $(mpSim.idKey)
+            FROM $(mpSim.transitionDBname)
+            WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+                ( $(mpSim.idKey) IN ('$(join( fluxOutIDs, "', '" ))') ) AND
+                ( ( endState IS '$stateName' ) OR ( startState IS NULL ) )"
+        fluxInIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+        filter!( id -> id ∉ fluxInIDs, fluxOutIDs )
+    end  # if !isempty( fluxOutIDs )
+
+    # Get all personnel members who were in the state at the start of the time
+    #   interval.
+    inStateIDs = getActiveAtTime( mpSim, stateName, tBegin )[ 1 ]
+    queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.personnelDBname)
+        WHERE ( $(mpSim.idKey) IN ('$(join( inStateIDs, "', '" ))') ) AND
+            ( $tBegin < timeExited ) AND ( timeExited <= $tEnd )"
+    fluxOutOfSystemIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+    fluxOutIDs = merge( fluxOutIDs, fluxOutOfSystemIDs )
+
+    if isempty( fluxOutIDs )
+        return dummyResult
+    end  # if isempty( fluxInIDs )
+
+    queryCmd = "SELECT $(mpSim.idKey), endState, transition
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) IN ('$(join( fluxOutIDs, "', '" ))') ) AND
+            ( startState IN ('$stateName', 'active') )"
+    return SQLite.query( mpSim.simDB, queryCmd )
+
+end  # getOutFlux( mpSim, tBegin, tEnd, fields )
+
 
 """
 ```
@@ -173,11 +375,12 @@ function getLastChanges( mpSim::ManpowerSimulation, timePoint::T,
     idKey = mpSim.idKey
 
     tmpFields = unique( fields )
-    queryCmd = "SELECT $persName.$idKey, attribute, timeIndex, numValue,
+    queryCmd = "SELECT $histName.$idKey, attribute, timeIndex, numValue,
         strValue FROM $histName
         INNER JOIN $persName ON $persName.$idKey == $histName.$idKey
-        WHERE ( timeIndex <= $timePoint ) AND ( timeEntered <= $timePoint ) AND
-            ( ( timeExited > $timePoint ) OR ( timeExited IS NULL ) )
+        WHERE ( timeIndex <= $timePoint ) AND
+            ( ( timeExited > $timePoint ) OR ( timeExited IS NULL ) ) AND
+            ( attribute IN ('$(join( fields, "', '"))') )
         GROUP BY $histName.$idKey, attribute
         ORDER BY $histName.$idKey, attribute"
     return SQLite.query( mpSim.simDB, queryCmd )
@@ -218,9 +421,16 @@ function getDatabaseAtTime( mpSim::ManpowerSimulation, timePoint::T,
     end  # if activeDB === nothing
 
     nPers = size( activeDB )[ 1 ]
+
+    # If there aren't any active personnel members at that time, that's the
+    #   database.
+    if nPers == 0
+        return activeDB
+    end  # if nPers == 0
+
     changeList = getLastChanges( mpSim, timePoint, fields )
     nAttrs = floor( Int, size( changeList )[ 1 ] / nPers )
-    attrsToChange = changeList[ 1:nAttrs, :attribute ].values
+    attrsToChange = changeList[ 1:nAttrs, :attribute ]
 
     # XXX Thorough test needed to see if this works as advertised. If it does
     #   though... fantastic bit of coding.
@@ -228,11 +438,11 @@ function getDatabaseAtTime( mpSim::ManpowerSimulation, timePoint::T,
         # The attribute to update.
         changedAttr = Symbol( attrsToChange[ ii ] )
         # Is it a numerical attribute?
-        isNum = changeList[ ii, :numValue ].hasvalue
+        isNum = isa( changeList[ ii, :numValue ], Real )
         # Perform the update.
         activeDB[ changedAttr ] =
             changeList[ ii + (0:(nPers - 1)) * nAttrs,
-            isNum ? :numValue : :strValue ].values
+            isNum ? :numValue : :strValue ]
         # This works because the view from the personnel database is sorted by
         #   personnel ID, and the view from the historic database is sorted by
         #   personnel ID, then by attribute.

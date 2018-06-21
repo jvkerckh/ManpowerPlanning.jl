@@ -1,4 +1,4 @@
-# Update necessary packages.
+# Update necessary packages and initialise plots.
 if !isdefined( :isUpToDate ) || !isUpToDate
     isUpToDate = false
     ENV[ "PLOTS_USE_ATOM_PLOTPANE" ] = "false"  # To open plots in external window
@@ -15,34 +15,34 @@ if !isdefined( :isUpToDate ) || !isUpToDate
     plotly()
 end
 
+# Initalise ManpowerPlanning module.
+if !isdefined( :ManpowerSimulation )
+    # include( joinpath( dirname( Base.source_path() ), "..", "src",
+    #     "ManpowerPlanning.jl" ) )
+    using ManpowerPlanning
+    isUpToDate = true
+    println( "ManpowerPlanning module initialised." )
+end
 
-# The name of the parameter file.
+# The name of the parameter file. [Change for different configuration]
 configurationFileName = "../simParFile.xlsx"
 
-# Processing parameters.
-rerunSimulation = true
-graphTimeResolutionInMonths = 12
+# Initialise the simulation.
+configurationFileName = joinpath( dirname( Base.source_path() ),
+    configurationFileName )
+mpSim = ManpowerSimulation( configurationFileName )
+println( "Simulation initialised." )
 
+# Run the simulation.
+tStart = now()
+run( mpSim )
+tEnd = now()
+timeElapsed = (tEnd - tStart).value / 1000
+println( "Simulation time: $timeElapsed seconds." )
 
-include( "processing.jl" )  # Do not change this line!
-
-
-generateExcelReport( mpSim, graphTimeResolutionInMonths, 12 )
-plot( mpSim, graphTimeResolutionInMonths, ageRes = graphTimeResolutionInMonths,
-    timeFactor = 12,
-    "flux in", "flux out", "net flux", "resigned", "retired" )
-plot( mpSim, graphTimeResolutionInMonths, ageRes = graphTimeResolutionInMonths,
-    timeFactor = 12,
-    "personnel", "flux in", "flux out", "net flux" )
-plot( mpSim, graphTimeResolutionInMonths, ageRes = graphTimeResolutionInMonths,
-    timeFactor = 12,
-    "age dist", "age stats" )
-# Allowed arguments, separated by commas, are:
-# "personnel"
-# "flux in"
-# "flux out"
-# "net flux"
-# "resigned"
-# "retired"
-# "age dist"
-# "age stats"
+# Create the requested plots.
+tStart = now()
+showPlotsFromFile( mpSim, configurationFileName )
+tEnd = now()
+timeElapsed = (tEnd - tStart).value / 1000
+println( "Plot generation time: $timeElapsed seconds." )

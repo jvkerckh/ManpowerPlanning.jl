@@ -113,7 +113,7 @@ for whatever reason, the function returns `nothing`.
 # - safeInitialiseReport
 # - isReportGenerated
 # From simulationReport.jl:
-# - generateFluxOutReports
+# - generateFluxOutReport
 function getFluxOutReport( mpSim::ManpowerSimulation, timeRes::T ) where T <: Real
 
     # Try to initialise a report if needed. If it didn't work, don't continue.
@@ -123,7 +123,7 @@ function getFluxOutReport( mpSim::ManpowerSimulation, timeRes::T ) where T <: Re
 
     # Create the report if it doesn't exist yet.
     if !isReportGenerated( mpSim, timeRes, :fluxOut )
-        generateFluxOutReports( mpSim, timeRes )
+        generateFluxOutReport( mpSim, timeRes )
     end  # if !isReportGenerated( mpSim, timeRes, :fluxOut )
 
     simReport = mpSim.simReports[ timeRes ]
@@ -156,7 +156,7 @@ function returns `nothing`.
 # - safeInitialiseReport
 # - isReportGenerated
 # From simulationReport.jl:
-# - generateFluxOutReports
+# - generateFluxOutReport
 function getFluxOutBreakdown( mpSim::ManpowerSimulation, timeRes::T ) where T <: Real
 
     # Try to initialise a report if needed. If it didn't work, don't continue.
@@ -166,7 +166,7 @@ function getFluxOutBreakdown( mpSim::ManpowerSimulation, timeRes::T ) where T <:
 
     # Create the report if it doesn't exist yet.
     if !isReportGenerated( mpSim, timeRes, :fluxOut )
-        generateFluxOutReports( mpSim, timeRes )
+        generateFluxOutReport( mpSim, timeRes )
     end  # if !isReportGenerated( mpSim, timeRes, :fluxOut )
 
     simReport = mpSim.simReports[ timeRes ]

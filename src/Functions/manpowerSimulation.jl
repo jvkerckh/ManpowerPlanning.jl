@@ -4,9 +4,13 @@
 #   ResumableFunctions, and Distributions.
 
 # The functions of the ManpowerSimulation type require all types.
-requiredTypes = [ "prerequisite",
-    "prerequisiteGroup", "retirement", "attrition",
-    "simulationReport", "manpowerSimulation" ]
+requiredTypes = [ "recruitment",
+    "state",
+    "transition",
+    "retirement",
+    "attrition",
+    "simulationReport",
+    "manpowerSimulation" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
@@ -251,7 +255,10 @@ function resetSimulation( mpSim::ManpowerSimulation )
     mpSim.simTimeElapsed = Dates.Millisecond( 0 )
 
     # First, drop the tables with the same name if they exist.
+    # XXX The personnel table must be dropped last due to the FOREIGN KEY
+    #   constraints in the other tables.
     SQLite.drop!( mpSim.simDB, mpSim.historyDBname, ifexists = true )
+    SQLite.drop!( mpSim.simDB, mpSim.transitionDBname, ifexists = true )
     SQLite.drop!( mpSim.simDB, mpSim.personnelDBname, ifexists = true )
 
     # Then, create the personnel and history databases.
@@ -261,11 +268,14 @@ function resetSimulation( mpSim::ManpowerSimulation )
         timeEntered float,
         timeExited float,
         ageAtRecruitment float,
-        expectedRetirementTime float,
-        $(join( map( attr -> attr.name * " varcar(64)",
-            vcat( mpSim.initAttrList, mpSim.otherAttrList ) ), ", " )),
-        status varchar(16)
-    )"
+        expectedRetirementTime float"
+
+    if !( isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList ) )
+        command *= ',' * join( map( attr -> attr.name * " varcar(64)",
+            vcat( mpSim.initAttrList, mpSim.otherAttrList ) ), ", " )
+    end  # if !( isempty( mpSim.initAttrList ) &&
+
+    command *= ", status varchar(16) )"
     SQLite.execute!( mpSim.simDB, command )
 
     command = "CREATE TABLE $(mpSim.historyDBname)(
@@ -274,6 +284,16 @@ function resetSimulation( mpSim::ManpowerSimulation )
         timeIndex float,
         numValue float,
         strValue varchar(255),
+        FOREIGN KEY ($(mpSim.idKey)) REFERENCES $(mpSim.personnelDBname)($(mpSim.idKey))
+    )"
+    SQLite.execute!( mpSim.simDB, command )
+
+    command = "CREATE TABLE $(mpSim.transitionDBname)(
+        $(mpSim.idKey) varchar(16),
+        timeIndex float,
+        transition varchar(255),
+        startState varchar(255),
+        endState varchar(255),
         FOREIGN KEY ($(mpSim.idKey)) REFERENCES $(mpSim.personnelDBname)($(mpSim.idKey))
     )"
     SQLite.execute!( mpSim.simDB, command )

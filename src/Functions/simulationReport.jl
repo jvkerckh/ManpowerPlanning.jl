@@ -18,7 +18,7 @@ export setTimeGrid,
        generateReports,
        generateCountReport,
        generateFluxInReport,
-       generateFluxOutReports,
+       generateFluxOutReport,
        generateAgeReports,
        generateExcelReport
 
@@ -158,13 +158,13 @@ to the sizes of the grids, the function will issue warnings to that effect.
 # From same file
 # - generateCountReport
 # - generateFluxInReport
-# - generateFluxOutReports
+# - generateFluxOutReport
 # - generateAgeReports
 function generateReports( mpSim::ManpowerSimulation, simRep::SimulationReport )
 
     generateCountReport( mpSim, simRep )
     generateFluxInReport( mpSim, simRep )
-    generateFluxOutReports( mpSim, simRep )
+    generateFluxOutReport( mpSim, simRep )
     generateAgeReports( mpSim, simRep )
 
 end  # generateReports( mpSim, simRep )
@@ -187,13 +187,13 @@ function will issue warnings to that effect.
 # From same file
 # - generateCountReport
 # - generateFluxInReport
-# - generateFluxOutReports
+# - generateFluxOutReport
 # - generateAgeReports
 function generateReports( mpSim::ManpowerSimulation, timeRes::T1, ageRes::T2 ) where T1 <: Real where T2 <: Real
 
     generateCountReport( mpSim, timeRes )
     generateFluxInReport( mpSim, timeRes )
-    generateFluxOutReports( mpSim, timeRes )
+    generateFluxOutReport( mpSim, timeRes )
     generateAgeReports( mpSim, timeRes, ageRes )
 
 end  # generateReports( mpSim, timeRes, ageRes )
@@ -287,6 +287,98 @@ function generateCountReport( mpSim::ManpowerSimulation, timeRes::T ) where T <:
 
 end  # generateCountReport( mpSim, timeRes )
 
+"""
+```
+generateCountReport( mpSim::ManpowerSimulation,
+                     stateName::String,
+                     timeRes::T,
+                     breakdownBy::String = "" )
+    where T <: Real
+```
+This function generates a report of the number of active persons in the manpower
+simulation `mpSim` with the state with name `stateName` for a time grid with
+time resolution `timeRes`. If the `breakdownBy` argument is provided, the
+function also breaks the personnel counts down by the values of that attribute
+if it exists. If the current simulation time is zero, or the time resolution is
+negative, no report is generated.
+
+This function returns a `Tuple{Vector{Float64}, Vector{Int}}` if no breakdown is
+requested, where the first element is the time grid, and the second element are
+the personnel counts. If a breakdown is requested, it returns a
+`Tuple{Vector{Float64}, Vector{Int}, Vector{String}, Array{Int,2}}`, where the
+two first elements are as above, the third is the list of different values the
+breakdown attribute can take, and the last element is the matrix of counts,
+where every column is the number of people having the attribute at a specific
+value. If the report couldn't be generated, the function will issue warnings to
+that effect and return `nothing`.
+"""
+# Functions used
+# --------------
+# From simProcessing.jl
+# - getActiveAtTime
+function generateCountReport( mpSim::ManpowerSimulation, stateName::String,
+    timeRes::T, breakdownBy::String = "" ) where T <: Real
+
+    # Issue warning if time resolution is negative.
+    if timeRes <= 0
+        warn( "Negative time resolution for grid. Resolution must be > 0.0" )
+        return
+    end
+
+    # Issue warning when trying to generate report of a simultation that hasn't
+    #   started.
+    if now( mpSim ) == 0
+        warn( "Simulation hasn't started yet. Cannot generate report." )
+        return
+    end  # if now( mpSim ) == 0
+
+    tmpBreakdownBy = breakdownBy
+
+    # Test if the breakdown attribute exist.
+    if ( breakdownBy != "" ) && !any( attr -> attr.name == breakdownBy,
+        vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
+        tmpBreakdownBy = ""
+        warn( "Attribute '$breakdownBy' doesn't exist. Can only generate overall count report." )
+    end  # if ( breakdownBy != "" ) && ...
+
+    # Generate the time grid.
+    timeGrid = generateTimeGrid( mpSim, timeRes )
+
+    if tmpBreakdownBy == ""
+        counts = map( tPoint -> length( getActiveAtTime(
+            mpSim, stateName, tPoint )[ 1 ] ), timeGrid )
+        return ( timeGrid, counts )
+    end  # if tmpBreakdownBy == ""
+
+    nTimes = length( timeGrid )
+    countBreakdown = Dict{String, Vector{Int}}()
+    totals = similar( timeGrid, Int )
+
+    # Perform the counts.
+    for ii in 1:nTimes
+        dbState = getDatabaseAtTime( mpSim, timeGrid[ ii ],
+            [ tmpBreakdownBy ] )[ Symbol( tmpBreakdownBy ) ]
+        counts = countmap( dbState )
+
+        for attrVal in keys( counts )
+            if attrVal ∉ keys( countBreakdown )
+                countBreakdown[ attrVal ] = zeros( Int, nTimes )
+            end  # if attrVal ∉ keys( countBreakdown )
+
+            countBreakdown[ attrVal ][ ii ] = counts[ attrVal ]
+        end  # for attrVal in keys( counts )
+    end  # for ii in eachindex( timeGrid )
+
+    attrVals = collect( keys( countBreakdown ) )
+    counts = zeros( Int, nTimes, length( attrVals ) )
+    foreach( ii -> counts[ :, ii ] = countBreakdown[ attrVals[ ii ] ],
+        eachindex( attrVals ) )
+    totals = map( ii -> sum( counts[ ii, : ] ), 1:nTimes )
+
+    return ( timeGrid, totals, attrVals, counts )
+
+end  # generateCountReport( mpSim, stateName, timeRes, breakdownBy )
+
 
 """
 ```
@@ -379,11 +471,92 @@ function generateFluxInReport( mpSim::ManpowerSimulation, timeRes::T ) where T <
 
 end  # generateFluxInReport( mpSim, timeRes )
 
+"""
+```
+generateFluxInReport( mpSim::ManpowerSimulation,
+                      stateName::String,
+                      timeRes::T,
+                      isBreakdownBySource::Bool = true )
+    where T <: Real
+```
+This function generates a report of the number of persons in the manpower
+simulation `mpSim` who reached the state with name `stateName` in each time
+interval on a time grid with resolution `timeRes`. The flag
+`isBreakdownBySource` determines if the breakdown of the in flux happens by
+source state, or by transition type. If the current simulation time is zero, or
+the time resolution is negative, no report is generated.
+
+This function returns a
+`Tuple{Vector{Float64}, Vector{Int}, Vector{String}, Array{Int,2}}`. The first
+element of the `Tuple` is the time grid, the second element is the total in flux
+for each time interval, the third is the list of in flux types, and the last is
+the number of people in each time interval by in flux type. If the report
+couldn't be generated, the function will issue warnings to that effect and
+return `nothing`.
+"""
+# Functions used
+# --------------
+# From simProcessing.jl
+# - getInFlux
+function generateFluxInReport( mpSim::ManpowerSimulation, stateName::String,
+    timeRes::T, isBreakdownBySource::Bool = true ) where T <: Real
+
+    # Issue warning if time resolution is negative.
+    if timeRes <= 0
+        warn( "Negative time resolution for grid. Resolution must be > 0.0" )
+        return
+    end
+
+    # Issue warning when trying to generate report of a simultation that hasn't
+    #   started.
+    if now( mpSim ) == 0
+        warn( "Simulation hasn't started yet. Cannot generate report." )
+        return
+    end  # if now( mpSim ) == 0
+
+    # Generate the time grid.
+    timeGrid = generateTimeGrid( mpSim, timeRes )
+    nTimes = length( timeGrid ) - 1
+    fluxInCounts = Dict{String, Vector{Int}}()
+    colToRead = isBreakdownBySource ? :startState : :transition
+
+    for ii in 1:nTimes
+        inFluxList = getInFlux( mpSim, stateName, timeGrid[ ii ],
+            timeGrid[ ii + 1 ] )
+
+        # If there is no in flux information, don't do any operations.
+        if length( inFluxList ) == 3
+            counts = countmap( inFluxList[ colToRead ] )
+
+            for tmpEntry in keys( counts )
+                entry = isa( tmpEntry, String ) ? tmpEntry : "External"
+
+                # Ensure the results can be processed.
+                if !haskey( fluxInCounts, entry )
+                    fluxInCounts[ entry ] = zeros( Int, nTimes )
+                end  # if !haskey( colToRead, entry )
+
+                fluxInCounts[ entry ][ ii ] = counts[ tmpEntry ]
+            end  # for entry in keys( counts )
+        end
+    end  # for ii in eachindex( timeGrid[ 1:(end - 1) ] )
+
+    # Copy entries to matrix and make totals.
+    entries = collect( keys( fluxInCounts ) )
+    counts = Array{ Int }( nTimes, length( entries ) )
+    foreach( ii -> counts[ :, ii ] = fluxInCounts[ entries[ ii ] ],
+        eachindex( entries ) )
+    totals = map( ii -> sum( counts[ ii, : ] ), 1:nTimes )
+
+    return ( timeGrid[ 2:end ], totals, entries, counts )
+
+end  # generateFluxInReport( mpSim, stateName, timeRes, isBreakdownBySource )
+
 
 """
 ```
-generateFluxOutReports( mpSim::ManpowerSimulation,
-                        simRep::SimulationReport )
+generateFluxOutReport( mpSim::ManpowerSimulation,
+                       simRep::SimulationReport )
 ```
 This function generates a report of the number of persons in the manpower
 simulation `mpSim` who became inactive in each time interval and stores this in
@@ -405,7 +578,7 @@ warnings to that effect.
 # - setTimeGrid
 # From simProcessing.jl
 # - getOutFlux
-function generateFluxOutReports( mpSim::ManpowerSimulation,
+function generateFluxOutReport( mpSim::ManpowerSimulation,
     simRep::SimulationReport )
 
     # Issue warning when trying to generate report of a simultation that hasn't
@@ -455,12 +628,12 @@ function generateFluxOutReports( mpSim::ManpowerSimulation,
 
     return
 
-end  # generateFluxOutReports( mpSim, simRep )
+end  # generateFluxOutReport( mpSim, simRep )
 
 """
 ```
-generateFluxOutReports( mpSim::ManpowerSimulation,
-                        timeRes::T )
+generateFluxOutReport( mpSim::ManpowerSimulation,
+                       timeRes::T )
     where T <: Real
 ```
 This function generates a report of the number of persons in the manpower
@@ -475,8 +648,8 @@ function will issue warnings to that effect.
 # --------------
 # From same file:
 # - initialiseReport
-# - generateFluxOutReports
-function generateFluxOutReports( mpSim::ManpowerSimulation, timeRes::T ) where T <: Real
+# - generateFluxOutReport
+function generateFluxOutReport( mpSim::ManpowerSimulation, timeRes::T ) where T <: Real
 
     # Initialise a report if there is no key.
     if !haskey( mpSim.simReports, timeRes )
@@ -489,9 +662,88 @@ function generateFluxOutReports( mpSim::ManpowerSimulation, timeRes::T ) where T
         return
     end  # if !haskey( mpSim.simReports, timeRes )
 
-    generateFluxOutReports( mpSim, mpSim.simReports[ timeRes ] )
+    generateFluxOutReport( mpSim, mpSim.simReports[ timeRes ] )
 
-end  # generateFluxOutReports( mpSim, timeRes )
+end  # generateFluxOutReport( mpSim, timeRes )
+
+"""
+```
+generateFluxOutReport( mpSim::ManpowerSimulation,
+                       stateName::String,
+                       timeRes::T,
+                       isBreakdownByTarget::Bool = true )
+    where T <: Real
+```
+This function generates a report of the number of persons in the manpower
+simulation `mpSim` who left the state with name `stateName` in each time
+interval on a time grid with resolution `timeRes`. The flag
+`isBreakdownByTarget` determines if the breakdown of the in flux happens by
+target state, or by transition type. If the current simulation time is zero, or
+the time resolution is negative, no report is generated.
+
+This function returns a `Tuple{Vector{Float64}, Vector{String}, Array{Int,2}}`.
+The first element of the `Tuple` is the time grid, the second is the list of in
+flux types with the total as first type, and the third is the number of people
+in each time interval by in flux type. If the report couldn't be generated, the
+function will issue warnings to that effect and return `nothing`.
+"""
+# Functions used
+# --------------
+# From simProcessing.jl
+# - getOutFlux
+function generateFluxOutReport( mpSim::ManpowerSimulation, stateName::String,
+    timeRes::T, isBreakdownByTarget::Bool = true ) where T <: Real
+
+    # Issue warning if time resolution is negative.
+    if timeRes <= 0
+        warn( "Negative time resolution for grid. Resolution must be > 0.0" )
+        return
+    end
+
+    # Issue warning when trying to generate report of a simultation that hasn't
+    #   started.
+    if now( mpSim ) == 0
+        warn( "Simulation hasn't started yet. Cannot generate report." )
+        return
+    end  # if now( mpSim ) == 0
+
+    # Generate the time grid.
+    timeGrid = generateTimeGrid( mpSim, timeRes )
+    nTimes = length( timeGrid ) - 1
+    fluxOutCounts = Dict{String, Vector{Int}}()
+    colToRead = isBreakdownByTarget ? :endState : :transition
+
+    for ii in 1:nTimes
+        outFluxList = getOutFlux( mpSim, stateName, timeGrid[ ii ],
+            timeGrid[ ii + 1 ] )
+
+        # If there is no in flux information, don't do any operations.
+        if length( outFluxList ) == 3
+            counts = countmap( outFluxList[ colToRead ] )
+
+            for tmpEntry in keys( counts )
+                entry = isa( tmpEntry, String ) ? tmpEntry : "External"
+
+                # Ensure the results can be processed.
+                if !haskey( fluxOutCounts, entry )
+                    fluxOutCounts[ entry ] = zeros( Int, nTimes )
+                end  # if !haskey( colToRead, entry )
+
+                fluxOutCounts[ entry ][ ii ] = counts[ tmpEntry ]
+            end  # for entry in keys( counts )
+        end
+    end  # for ii in eachindex( timeGrid[ 1:(end - 1) ] )
+
+    # Copy entries to matrix and make totals.
+    entries = collect( keys( fluxOutCounts ) )
+    counts = Array{ Int }( nTimes, length( entries ) )
+    foreach( ii -> counts[ :, ii ] = fluxOutCounts[ entries[ ii ] ],
+        eachindex( entries ) )
+    totals = map( ii -> sum( counts[ ii, : ] ), 1:nTimes )
+
+    return ( timeGrid[ 2:end ], totals, entries, counts )
+
+end  # generateFluxOutReport( mpSim, stateName, timeRes, isBreakdownByTarget )
 
 
 """
@@ -570,7 +822,7 @@ function generateAgeReports( mpSim::ManpowerSimulation,
         simRep.ageDist = Array{Int}( 0, 0 )
     end  # if !isempty( simRep.ageGrid )
 
-    simRep.ageStats = zeros( Int, length( simRep.timeGrid ), 5 )
+    simRep.ageStats = zeros( Float64, length( simRep.timeGrid ), 5 )
 
     for ii in eachindex( simRep.timeGrid )
         ages = getActiveAgesAtTime( mpSim, simRep.timeGrid[ ii ] )
@@ -582,8 +834,12 @@ function generateAgeReports( mpSim::ManpowerSimulation,
                 invCumFreq[ 2:end ]
         end  # if !isempty( simRep.ageDist )
 
-        simRep.ageStats[ ii, : ] = [ mean( ages ), std( ages ), median( ages ),
-            minimum( ages ), maximum( ages ) ]
+        if isempty( ages )
+            simRep.ageStats[ ii, : ] = NaN
+        else
+            simRep.ageStats[ ii, : ] = [ mean( ages ), std( ages ),
+                median( ages ), minimum( ages ), maximum( ages ) ]
+        end
     end  # for ii in eachindex( simRep.timeGrid )
 
     return
@@ -751,79 +1007,6 @@ function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
 end  # generateExcelReport( mpSim, timeRes, ageRes )
 
 
-"""
-```
-plot( mpSim::ManpowerSimulation,
-      timeRes::T1,
-      toShow::String...;
-      ageRes::T2 = 1,
-      timeFactor::T3 = 1 )
-    where T1 <: Real
-    where T2 <: Real
-    where T3 <: Real
-```
-This function plots various information of the manpower simulation `mpSim` on a
-time grid with resolution `timeRes`. The series that are plotted are defined in
-`toShow`. If a plot of the age distribution is requested, the used age grid has
-a resolution of `ageRes`. The simulation time and ages are reduced by a factor
-`timeFactor`. This is typically done if the simulation time unit is months, and
-the user wishes time to be expressed in years.
-
-This function returns `nothing`. If any plots are impossible to produce, the
-function will show a warning to that effect.
-"""
-function Plots.plot( mpSim::ManpowerSimulation, timeRes::T1, toShow::String...;
-    ageRes::T2 = 1, timeFactor::T3 = 1 ) where T1 <: Real where T2 <: Real where T3 <: Real
-
-    # Don't generate any plots report if there's no flux out breakdown report
-    #   available. This means that either the time resolution ⩽ 0 or that the
-    #   simulation hasn't started yet.
-    nFluxOutBreakdown = getFluxOutBreakdown( mpSim, timeRes )
-
-    if nFluxOutBreakdown === nothing
-        warn( "Since no reports can be created, no plots can be made." )
-        return
-    end  # if nRec === nothing
-
-    # Don't generate plots if the time factor is ⩽ 0.
-    if timeFactor <= 0
-        warn( "Can't generate plots, simtime factor must be > 0." )
-        return
-    end  # if timeFactor <= 0
-
-    # List which plots to generate.
-    validPlots = [ "personnel", "flux in", "flux out", "net flux", "age dist",
-        "age stats" ]
-    tmpShow = unique( toShow )
-
-    # Add the flux out reasons to the valid plot types if needed.
-    if any( plotVar -> plotVar ∉ validPlots, tmpShow )
-        validPlots = vcat( validPlots,
-            collect( keys( nFluxOutBreakdown[ 2 ] ) ) )
-    end  # if any( plotVar -> plotVar ∉ validPlots, tmpShow )
-
-    filter!( plotVar -> plotVar ∈ validPlots, tmpShow )
-
-    # If requested, make the age distribution plot first.
-    if "age dist" ∈ tmpShow
-        plotAgeDist( mpSim, timeRes, ageRes, timeFactor )
-    end  # if "age dist" ∈ tmpShow
-
-    # Then make the age statistics plot if requested.
-    if "age stats" ∈ tmpShow
-        plotAgeStats( mpSim, timeRes, timeFactor )
-    end  # if "age stats" ∈ tmpShow
-
-    # Plot the rest
-    filter!( plotVar -> plotVar ∉ [ "age dist", "age stats" ], tmpShow )
-
-    if !isempty( tmpShow )
-        plotSimResults( mpSim, timeRes, timeFactor, tmpShow )
-    end  # if !isempty( tmpShow )
-
-end  # plot( mpSim, timeRes, toShow; ageRes, timeFactor )
-
-
 # ==============================================================================
 # Non-exported methods.
 # ==============================================================================
@@ -935,165 +1118,8 @@ function generateAgeGrid( mpSim::ManpowerSimulation, ageRes::T ) where T <: Real
 end  # generateAgeGrid( mpSim, ageRes )
 
 
-"""
-```
-plotAgeDist( mpSim::ManpowerSimulation,
-             timeRes::T1,
-             ageRes::T2,
-             timeFactor::T3 )
-    where T1 <: Real
-    where T2 <: Real
-    where T3 <: Real
-```
-This function plots the age distribution of the active personnel in the manpower
-simulation `mpSim` on a time grid with resolution `timeRes` and an age grid with
-resolution `ageRes`. The simulation time and ages are reduced by a factor
-`timeFactor`. This is typically done if the simulation time unit is months, and
-the user wishes time to be expressed in years.
-
-This function returns `nothing`. If the age distribution report can't be
-retrieved for whatever reason, the function issues warnings to that effect.
-"""
-function plotAgeDist( mpSim::ManpowerSimulation, timeRes::T1, ageRes::T2,
-    timeFactor::T3 ) where T1 <: Real where T2 <: Real where T3 <: Real
-
-    ageDist = getAgeDistributionReport( mpSim, timeRes, ageRes )
-
-    # Don't do anything if there's no age distribution report.
-    if ageDist === nothing
-        warn( "Since no age distribution report can be created, no plot can be made." )
-        return
-    end  # if ageDist === nothing
-
-    gui( surface( ageDist[ 2 ] / timeFactor, ageDist[ 1 ] / timeFactor,
-        ageDist[ 3 ], size = ( 960, 540 ), xlabel = "Age",
-        ylabel = "Simulation time", zlabel = "Personnel" ) )
-
-end  # plotAgeDist( mpSim, timeRes, ageRes, timeComp )
-
-
-"""
-```
-plotAgeStats( mpSim::ManpowerSimulation,
-              timeRes::T1,
-              timeFactor::T2 )
-    where T1 <: Real
-    where T2 <: Real
-```
-This function plots basic statistics of the age distribution of active personnel
-members in the manpower simulation `mpSim` on a time grid with resolution
-`timeRes`. The simulation time and ages are reduced by a factor `timeFactor`.
-This is typically done if the simulation time unit is months, and the user
-wishes time to be expressed in years. The following statistics are plotted: mean
-age (blue), median age (red), minimum/maximum ages (black).
-
-This function returns `nothing`.
-"""
-function plotAgeStats( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2 ) where T1 <: Real where T2 <: Real
-
-    ageStats = getAgeStatsReport( mpSim, timeRes )
-    timeSteps = ageStats[ 1 ] / timeFactor
-    ageStats = ageStats[ 2 ] / timeFactor
-    minAge = minimum( ageStats[ :, 4 ] )
-    maxAge = maximum( ageStats[ :, 5 ] )
-
-    plt = plot( timeSteps, ageStats[ :, 1 ], size = ( 960, 540 ),
-        xlabel = "Simulation time", ylabel = "Age", label = "Mean age", lw = 2,
-        color = :blue,
-        ylim = [ minAge, maxAge ] + 0.01 * ( maxAge - minAge ) * [ -1, 1 ] )
-    plt = plot!( timeSteps, ageStats[ :, 3 ], label = "Median age", lw = 2,
-        color = :red )
-    plt = plot!( timeSteps, ageStats[ :, 4 ], label = "", color = :black )
-    plt = plot!( timeSteps, ageStats[ :, 5 ], label = "", color = :black )
-    gui( plt )
-
-end  # plotAgeStats( mpSim, timeRes, timeComp )
-
-
-"""
-```
-plotSimResults( mpSim::ManpowerSimulation,
-                timeRes::T1,
-                timeFactor::T2,
-                toShow::Vector{String} )
-    where T1 <: Real
-    where T2 <: Real
-```
-This function generates a plot of the results of the manpower simulation `mpSim`
-on a time grid with resolution `timeRes`. The simulation time is reduced by a
-factor `timeFactor`. This is typically done if the simulation time unit is
-months, and the user wishes time to be expressed in years. The function plots
-the series in `toShow`.
-
-The function returns `nothing`.
-"""
-function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
-    toShow::Vector{String} ) where T1 <: Real where T2 <: Real
-
-    yMin = 0
-    yMax = mpSim.personnelTarget
-
-    # Retrieve all the information.
-    nPers = getCountReport( mpSim, timeRes )
-    timeSteps = nPers[ 1 ] / timeFactor
-    nPers = nPers[ 2 ]
-    nFluxIn = getFluxInReport( mpSim, timeRes )[ 2 ]
-    nFluxOut = getFluxOutReport( mpSim, timeRes )[ 2 ]
-    netFlux = nFluxIn - nFluxOut
-    nFluxOutBreakdown = getFluxOutBreakdown( mpSim, timeRes )[ 2 ]
-
-    # Adjust the minimum if a graph of the net flux is requested.
-    if "net flux" ∈ toShow
-        yMin = min( 0, minimum( netFlux ) )
-    end  # if "net flux" ∈ toShow
-
-    # Adjust the maximum if a graph of the personnel count is not requested.
-    if "personnel" ∉ toShow
-        yMax = max( maximum( nFluxIn ), maximum( nFluxOut ) )
-    else
-        yMax = maximum( nPers )
-    end  # if "personnel" ∉ toShow
-
-    # These need to be initialised, otherwise there will be issues with knowing
-    #   the values of these variables.
-    yCoords = nothing
-    plt = nothing
-
-    for ii in eachindex( toShow )
-        # Retrieve the X-coorrdinates of the graph points.
-        tmpTimes = timeSteps
-
-        if toShow[ ii ] != "personnel"
-            tmpTimes = timeSteps[ 2:end ]
-        end  # if toShow[ ii ] != "personnel"
-
-        # Retrieve the Y-coordinates of the graph points.
-        if toShow[ ii ] == "personnel"
-            yCoords = nPers
-        elseif toShow[ ii ] == "flux in"
-            yCoords = nFluxIn
-        elseif toShow[ ii ] == "flux out"
-            yCoords = nFluxOut
-        elseif toShow[ ii ] == "net flux"
-            yCoords = netFlux
-        else
-            yCoords = nFluxOutBreakdown[ toShow[ ii ] ]
-        end  # if toShow[ ii ] == "personnel"
-
-        # Plot the requested series.
-        if ii == 1
-            plt = plot( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
-                size = ( 960, 540 ), xlim = [ 0, timeSteps[ end ] ],
-                ylim = [ yMin, yMax ] + 0.01 * ( yMax - yMin ) * [ -1, 1 ] )
-        else
-            plt = plot!( tmpTimes, yCoords, label = toShow[ ii ], lw = 2 )
-        end  # if ii == 1
-    end  # for ii in eachindex( toShow )
-
-    gui( plt )
-
-end  # plotSimResults( mpSim, timeRes, timeComp, toShow... )
-
 # Include the retrieval functions.
-include( joinpath( dirname( Base.source_path() ),
-    "simulationReportRetrieval.jl" ) )
+include( joinpath( dirname( Base.source_path() ), "simulationReportRetrieval.jl" ) )
+
+# Include the plotting functions.
+include( joinpath( dirname( Base.source_path() ), "simulationPlots.jl" ) )

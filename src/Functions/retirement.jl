@@ -185,18 +185,23 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
 
     mpSim.personnelSize -= 1
 
-#    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
     # Change the person's status in the personnel database.
     command = "UPDATE $(mpSim.personnelDBname)
         SET status = '$reason', timeExited = $(now( mpSim ))
         WHERE $(mpSim.idKey) = '$id'"
     SQLite.execute!( mpSim.simDB, command )
-    # Add the person's retirement event to the history database.
+
+    # Add the person's status change to the history database.
     command = "INSERT INTO $(mpSim.historyDBname)
-        ( $(mpSim.idKey), attribute, timeIndex, strValue ) values
-        ( '$id', 'status', $(now( mpSim )), '$reason' )"
+        ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES
+        ('$id', 'status', $(now( mpSim )), '$reason')"
     SQLite.execute!( mpSim.simDB, command )
-#    SQLite.execute!( mpSim.simDB, "COMMIT" )
+
+    # Add the person's retirement event to the transition database.
+    command = "INSERT INTO $(mpSim.transitionDBname)
+        ($(mpSim.idKey), timeIndex, transition, startState) VALUES
+        ('$id', $(now( mpSim )), '$reason', 'active')"
+    SQLite.execute!( mpSim.simDB, command )
 
 end  # retirePerson( mpSim, id, reason )
 

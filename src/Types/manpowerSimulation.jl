@@ -31,9 +31,10 @@ type ManpowerSimulation
     #   simulation.
     simDB::SQLite.DB
 
-    # These are the names of the personnel and history databases.
+    # These are the names of the personnel, history, and transition databases.
     personnelDBname::String
     historyDBname::String
+    transitionDBname::String
 
     # This flag marks if the simulation has been properly initialised with the
     #   init function.
@@ -116,8 +117,9 @@ type ManpowerSimulation
         # This line ensures that foreign key logic works.
         SQLite.execute!( newMPsim.simDB, "PRAGMA foreign_keys = ON" )
 
-        newMPsim.personnelDBname = "Personnel_" * simName
-        newMPsim.historyDBname = "History_" * simName
+        newMPsim.personnelDBname = "Personnel_$simName"
+        newMPsim.historyDBname = "History_$simName"
+        newMPsim.transitionDBname = "Transitions_$simName"
 
         # Check if databases are present and issue a warning if so.
         tmpTableList = SQLite.tables( newMPsim.simDB )[ :name ]
