@@ -268,7 +268,8 @@ function resetSimulation( mpSim::ManpowerSimulation )
         timeEntered float,
         timeExited float,
         ageAtRecruitment float,
-        expectedRetirementTime float"
+        expectedRetirementTime float,
+        states TEXT"
 
     if !( isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList ) )
         command *= ',' * join( map( attr -> attr.name * " varcar(64)",

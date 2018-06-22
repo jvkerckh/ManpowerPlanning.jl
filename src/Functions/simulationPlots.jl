@@ -1,7 +1,8 @@
 # This file holds all the functions related to plotting simulation results.
 
 export showPlotsFromFile,
-       plotSimulationResults
+       plotSimulationResults,
+       plotTransitionMap
 
 
 """
@@ -131,6 +132,42 @@ function Plots.plot( mpSim::ManpowerSimulation, timeRes::T1, toShow::String...;
 end  # plot( mpSim, timeRes, toShow; ageRes, timeFactor )
 
 
+"""
+```
+plotSimulationResults( mpSim::ManpowerSimulation,
+                       timeRes::T1,
+                       toShow::String...;
+                       state::String = "active",
+                       countBreakdownBy::String = "",
+                       isByType::Bool = false,
+                       showBreakdowns::Tuple{Bool, Bool, Bool} = ( false, false, false ),
+                       timeFactor::T2 = 1 )::Void
+    where T1 <: Real where T2 <: Real
+```
+This function generates a (number of) plot(s) for the manpower simulation
+`mpSim`. The time grid of the plots has resolution `timeRes`, and the plots show
+the information in `toShow`. Only the values `"personnel"`, `"flux in"`,
+`"flux out"`, and `"net flux"` are processed, any other values are ignored.
+* The parameter `state` plots only the personnel members in the given state,
+  where state `"active"`, or empty, means the entire population.
+* The parameter `countBreakdownBy` indicates the attribute by which the
+  (sub)population counts are broken down. If this is empty, or a non-existent
+  attribute, no breakdown occurs.
+* The flag `isByType` indicates whether the in/out fluxes are broken down by
+  transition, or by target/source state.
+* The flags in the parameter `showBreakdowns` indicate which types of breakdown
+  plots are shown. The first flag is for regular line plots, the second for
+  stacked area plots, the third for stacked percentage area plots.
+* The parameter `timeFactor` indicates the factor by which the time axis is
+  compressed. This is useful if for example the simulation time unit is months,
+  but the visualization should be with the time axis in years (use factor 12 in
+  this case).
+
+This function returns `nothing`. The function will generate the general line
+plot of the requested information, and then all requested breakdown plots.
+Remark that the percentage plots show a total of 0 at the times the investigated
+(sub)population is empty [similar to Excel].
+"""
 function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
     toShow::String...; state::String = "active", countBreakdownBy::String = "",
     isByType::Bool = false,
@@ -194,6 +231,116 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
 end  # plotSimulationResults( mpSim, timeRes, toShow...; state,
      #   countBreakdownBy, isBreakdown, isByType, breakdownPlotStyle,
      #   timeFactor )
+
+
+"""
+```
+plotTransitionMap( mpSim::ManpowerSimulation,
+                   states::String...;
+                   format::Symbol = :local,
+                   fileName::String = "" )
+```
+This function returns `nothing`.
+"""
+function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
+    format::Symbol = :local, fileName::String = "" )::Void
+
+    # Filter out non-existing nodes.
+    stateList = merge( mpSim.initStateList, mpSim.otherStateList )
+    tmpStates = collect( Iterators.filter(
+        stateName -> any( state -> state.name == stateName, keys( stateList ) ),
+        states ) )
+    graphStates = tmpStates
+    graphTrans = Vector{String}()
+
+    # Initialise directed graph.
+    nStates = length( graphStates )
+    graph = MetaDiGraph( DiGraph( nStates ) )
+    isInitCreated = false
+
+    # Add node labels and transitions for initial states.
+    for ii in eachindex( tmpStates )
+        set_prop!( graph, ii, :state, tmpStates[ ii ] )
+
+        if any( state -> state.name == tmpStates[ ii ],
+            keys( mpSim.initStateList ) )
+            if !isInitCreated
+                add_vertex!( graph )
+                push!( graphStates, "Potential recruits" )
+                nStates += 1
+                set_prop!( graph, nStates, :state, "Potential recruits" )
+                isInitCreated = true
+            end  # if !isInitCreated
+
+            add_edge!( graph, nStates, ii )
+            set_prop!( graph, nStates, ii, :trans, "Recruitment" )
+        end  # if any( state -> state.name == tmpStates[ ii ], ...
+    end  # for ii in eachindex( tmpStates )
+
+    # Add all other transitions.
+    for state in keys( stateList )
+        # Is the state in the original list?
+        if state.name ∈ tmpStates
+            # Find its index.
+            startStateIndex = findfirst( tmpState -> tmpState == state.name,
+                tmpStates )
+
+            # Add all transitions starting from there.
+            for trans in stateList[ state ]
+                endStateIndex = findfirst(
+                    tmpState -> tmpState == trans.endState.name, graphStates )
+
+                # If end state hasn't been put in the list, add it.
+                if endStateIndex == 0
+                    add_vertex!( graph )
+                    push!( graphStates, trans.endState.name )
+                    nStates += 1
+                    set_prop!( graph, nStates, :state, trans.endState.name )
+                    endStateIndex = nStates
+                end  # if endStateIndex == 0
+
+                add_edge!( graph, startStateIndex, endStateIndex )
+                set_prop!( graph, startStateIndex, endStateIndex, :trans,
+                    trans.name )
+            end  # for trans in stateList[ state ]
+        else
+            startStateIndex = findfirst( tmpState -> tmpState == state.name,
+                graphStates )
+            isStateCreated = startStateIndex > 0
+
+            for trans in stateList[ state ]
+                endStateIndex = findfirst(
+                    tmpState -> tmpState == trans.endState.name, tmpStates )
+                # Add the transition if the end state is in the list of original
+                #   states.
+                if endStateIndex > 0
+                    # Create the state if it isn't in the list.
+                    if !isStateCreated
+                        add_vertex!( graph )
+                        push!( graphStates, trans.startState.name )
+                        nStates += 1
+                        set_prop!( graph, nStates, :state,
+                            trans.startState.name )
+                        startStateIndex = nStates
+                        isstateCreated = true
+                    end  # if !isStateCreated
+
+                    add_edge!( graph, startStateIndex, endStateIndex )
+                    set_prop!( graph, startStateIndex, endStateIndex, :trans,
+                        trans.name )
+                end  # if trans.endState.name ∈ tmpStates
+            end  # for trans in stateList[ state ]
+        end  # if state.name ∈ graphStates
+    end  # for state in keys( stateList )
+
+    display( gplot( graph,
+        nodelabel = map( node -> get_prop( graph, node, :state ),
+        vertices( graph ) ),
+        edgelabel = map( edge -> get_prop( graph, edge, :trans ),
+        edges( graph ) ) ) )
+    return
+
+end  # plotTransitionMap( mpSim, states, format, fileName )
 
 
 # ==============================================================================
@@ -280,7 +427,7 @@ function plotAgeStats( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2 ) 
     minAge = minimum( ageStats[ :, 4 ] )
     maxAge = maximum( ageStats[ :, 5 ] )
 
-    plt = plot( timeSteps, ageStats[ :, 1 ], size = ( 960, 540 ),
+    plt = Plots.plot( timeSteps, ageStats[ :, 1 ], size = ( 960, 540 ),
         xlabel = "Simulation time", ylabel = "Age", label = "Mean age", lw = 2,
         color = :blue,
         ylim = [ minAge, maxAge ] + 0.01 * ( maxAge - minAge ) * [ -1, 1 ] )
@@ -365,7 +512,7 @@ function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
 
         # Plot the requested series.
         if ii == 1
-            plt = plot( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
+            plt = Plots.plot( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
                 size = ( 960, 540 ), xlim = [ 0, timeSteps[ end ] ],
                 ylim = [ yMin, yMax ] + 0.01 * ( yMax - yMin ) * [ -1, 1 ] )
         else
@@ -397,7 +544,7 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
         yMax = maximum( counts[ 2:end, 2:4 ] )
     end  # if "personnel" ∉ toShow
 
-    plt = plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
+    plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ yMin, yMax ] + 0.025 * ( yMax - yMin ) * [ -1, 1 ],
         xlabel = "Sim time in y", size = ( 800, 600 ),
         title = "Evolution of personnel" *
@@ -446,7 +593,7 @@ function plotBreakdownNormal( state::String, timeGrid::Vector{Float64},
     title *= " of "
     title *= state == "active" ? "total population" : "state '$state'"
 
-    plt = plot( timeGrid, totals, lw = 3, label = "Total " *
+    plt = Plots.plot( timeGrid, totals, lw = 3, label = "Total " *
         ( countType === :pers ? "count" :
         ( countType === :in ? "in" : "out" ) * " flux" ),
         xlim = [ 0, maximum( timeGrid ) * 1.01 ],
@@ -506,7 +653,7 @@ function plotBreakdownStacked( state::String, timeGrid::Vector{Float64},
         =#
     end  # if isPercent
 
-    plt = plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
+    plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ 0.0, yMax ] + 0.025 * yMax * [ -1, 1 ],
         xlabel = "Sim time in y", size = ( 800, 600 ),
         title = ( countType === :pers ? "Personnel " :

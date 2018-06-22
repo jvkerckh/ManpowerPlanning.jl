@@ -11,6 +11,10 @@ module ManpowerPlanning
     using SimJulia
     using ResumableFunctions
     using Plots
+    using LightGraphs
+    using MetaGraphs
+    using GraphPlot
+    using Gadfly
     using Distributions
     using Polynomials
     using FileIO

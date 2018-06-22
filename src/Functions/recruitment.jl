@@ -383,12 +383,9 @@ end  # generatePoolSize( mpSim, recScheme )
 
 # This function generates a single personnel member using the information in
 #   the recruitment scheme.
-# XXX Right now this is a very trivial function, but this will change once
-#   attributes are added.
 function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     # Create the person in the database.
-    # XXX Additional attributes need to be implemented
     id = "Sim" * string( mpSim.resultSize + 1 )
     ageAtRecruitment = recScheme.ageDist()
 
@@ -401,12 +398,19 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
             attr.isFixed ]
     end  # for attr in mpSim.initAttrList
 
+    # Identify all initial states the person belongs to.
+    initPersStates = collect( Iterators.filter(
+        state -> isPersonnelOfState( initVals, state ),
+        keys( mpSim.initStateList ) ) )
+        # XXX Iterators.filter is needed to avoid deprecation warnings.
+    stateNames = map( state -> state.name, initPersStates )
+
     # Add person to the personnel database.
     command = "INSERT INTO $(mpSim.personnelDBname)
-        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
+        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment, states,
         $(join( initVals[ 1, : ], ", " ))) VALUES
         ('$id', 'active', $(now( mpSim )), $ageAtRecruitment,
-        '$(join( initVals[ 2, : ], "', '" ))')"
+        '$(join( stateNames, "," ))', '$(join( initVals[ 2, : ], "', '" ))')"
     SQLite.execute!( mpSim.simDB, command )
 
     # Add entry of person to the history database.
@@ -428,12 +432,7 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         ($(mpSim.idKey), timeIndex, transition, endState) VALUES
         ('$id', $(now( mpSim )), '$(recScheme.name)', 'active')"
 
-    # Identify and initiate all applicable transition processes.
-    initPersStates = collect( Iterators.filter(
-        state -> isPersonnelOfState( initVals, state ),
-        keys( mpSim.initStateList ) ) )
-        # XXX Iterators.filter is needed to avoid deprecation warnings.
-
+    # Initiate all applicable transition processes.
     for state in initPersStates
         command *= ", ('$id', $(now( mpSim )), '$(recScheme.name)', '$(state.name)')"
 
