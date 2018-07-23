@@ -207,7 +207,7 @@ end  # processStateOptions( opts )
 
 """
 ```
-isPersonnelOfState( persAttrs::Array{Any,2},
+isPersonnelOfState( persAttrs::Dict{String, Any},
                     state::State )
 ```
 This function tests if the personnel members with initialised attributes
@@ -215,22 +215,16 @@ This function tests if the personnel members with initialised attributes
 
 This function returns a `Bool` with the result of the test.
 """
-function isPersonnelOfState( persAttrs::Array{Any,2}, state::State )::Bool
+function isPersonnelOfState( persAttrs::Dict{String, Any}, state::State )::Bool
 
     for attr in keys( state.requirements )
-        attrInd = findfirst( persAttrs[ 1, : ] .== attr )
-
         # If the attribute isn't initialised for the personnel member, the
-        #   personnel doesn't satisfy it, and isn't in the state.
-        if attrInd == 0
+        #   personnel doesn't satisfy it, and isn't in the state. Otherwise,
+        #   the attribute's value must match with the requirements of the state.
+        if !haskey( persAttrs, attr ) ||
+            persAttrs[ attr ] ∉ state.requirements[ attr ]
             return false
-        end  # if attrInd == 0
-
-        toMatch = state.requirements[ attr ]
-
-        if persAttrs[ 2, attrInd ] ∉ toMatch
-            return false
-        end  # if persAttrs[ 2, attrInd ] ∉ toMatch
+        end  # if !haskey( persAttrs ) || ...
     end  # for attr in keys( state.requirements )
 
     return true

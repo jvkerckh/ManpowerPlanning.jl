@@ -29,6 +29,7 @@ module ManpowerPlanning
 #        "history",
         "personnelAttribute",
         "state",
+        "condition",
         "transition",
 #        "personnel",
 #        "personnelDatabase",

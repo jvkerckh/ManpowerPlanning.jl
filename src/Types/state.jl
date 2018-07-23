@@ -24,22 +24,26 @@ The type contains the following fields:
   this particular state.
 * `isInitial::Bool`: this flag states whether the state is an initial state or
   not.
+* `inStateSince::Dict{String, Float64}`: a record of all the persons in the
+  state, including the time they last entered the state.
 """
 type State
 
     name::String
     requirements::Dict{String, Vector{String}}
     isInitial::Bool
+    inStateSince::Dict{String, Float64}
 
 
     # Basic constructor.
     function State( name::String, isInitial::Bool = false )
 
-        newAttr = new()
-        newAttr.name = name
-        newAttr.requirements = Dict{String, Vector{String}}()
-        newAttr.isInitial = isInitial
-        return newAttr
+        newState = new()
+        newState.name = name
+        newState.requirements = Dict{String, Vector{String}}()
+        newState.isInitial = isInitial
+        newState.inStateSince = Dict{String, Float64}()
+        return newState
 
     end  # State( name )
 

@@ -204,6 +204,73 @@ function getInFlux( mpSim::ManpowerSimulation, stateName::String, tBegin::T1,
         WHERE timeEntered < 0"
     dummyResult = SQLite.query( mpSim.simDB, queryCmd )
 
+    # Retrieve IDs of people leaving the organisation in time interval.
+    queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
+        WHERE ( $tBegin < timeExited ) AND ( timeExited <= $tEnd )"
+    fluxOutIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+
+    # Retrieve IDs and amount of transitions starting or ending in the state.
+    queryCmd = "SELECT $(mpSim.idKey), count($(mpSim.idKey)) numEntries
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) NOT IN ('$(join( fluxOutIDs, "', '" ))') ) AND
+            ( ( startState IS '$stateName' ) OR ( endState IS '$stateName' ) )
+        GROUP BY $(mpSim.idKey)"
+    queryRes = SQLite.query( mpSim.simDB, queryCmd )
+    nEntries, nCold = size( queryRes )
+    numEntries = Dict{String, Vector{Int}}()
+
+    for ii in 1:nEntries
+        numEntries[ queryRes[ 1 ][ ii ] ] = [ queryRes[ 2 ][ ii ], 0 ]
+    end  # for ii in 1:nEntries
+
+    # Retrieve IDs and amount of transitions ending in the state.
+    queryCmd = "SELECT $(mpSim.idKey), count($(mpSim.idKey)) numEntries
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) NOT IN ('$(join( fluxOutIDs, "', '" ))') ) AND
+            ( endState IS '$stateName' )
+        GROUP BY $(mpSim.idKey)"
+    queryRes = SQLite.query( mpSim.simDB, queryCmd )
+    nEntries, nCold = size( queryRes )
+
+    for ii in 1:nEntries
+        numEntries[ queryRes[ 1 ][ ii ] ][ 2 ] = queryRes[ 2 ][ ii ]
+    end  # for ii in 1:nEntries
+
+    # If most transitions are into the state, personnel member is in the state
+    #   at the end of the time interval.
+    fluxInIDs = collect( keys( numEntries ) )
+    filter!( id -> ( numEntries[ id ][ 2 ] * 2 > numEntries[ id ][ 1 ] ),
+        fluxInIDs )
+
+    if isempty( fluxInIDs )
+        return dummyResult
+    end  # if isempty( fluxInIDs )
+
+    # Get start state and transition name for previously identified people.
+    queryCmd = "SELECT $(mpSim.idKey), startState, transition
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( endState IS '$stateName' ) AND
+            ( $(mpSim.idKey) IN ('$(join( fluxInIDs, "', '" ))') )
+        GROUP BY $(mpSim.idKey)"
+    result = SQLite.query( mpSim.simDB, queryCmd )
+
+    # If person has multiple transitions in/out of the state, set start state
+    #   and transition to unknown.
+    for ii in 1:length( fluxInIDs )
+        id = result[ Symbol( mpSim.idKey ) ][ ii ]
+
+        if numEntries[ id ][ 1 ] > 1
+            result[ :startState ][ ii ] = "unknown"
+            result[ :transition ][ ii ] = "unknown"
+        end  # if numEntries[ id ][ 1 ] > 1
+    end  # for ii in 1:length( fluxInIDs )
+
+    return result
+
+#=
     # Retrieve the list of people achieving the state in the time interval.
     queryCmd = "SELECT $(mpSim.idKey)
         FROM $(mpSim.transitionDBname)
@@ -231,8 +298,9 @@ function getInFlux( mpSim::ManpowerSimulation, stateName::String, tBegin::T1,
         WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
             ( $(mpSim.idKey) IN ('$(join( fluxInIDs, "', '" ))') ) AND
             ( endState IS '$stateName' )"
-    return SQLite.query( mpSim.simDB, queryCmd )
 
+    return SQLite.query( mpSim.simDB, queryCmd )
+=#
 end  # getInFlux( mpSim, tBegin, tEnd, fields )
 
 
@@ -305,12 +373,80 @@ function getOutFlux( mpSim::ManpowerSimulation, stateName::String, tBegin::T1,
         WHERE timeEntered < 0"
     dummyResult = SQLite.query( mpSim.simDB, queryCmd )
 
-    # Retrieve the list of people leaving the state in the time interval.
+    # Get people who were in the state at the start of the time interval.
+    inStateIDs = getActiveAtTime( mpSim, stateName, tBegin )[ 1 ]
+
+    if isempty( inStateIDs )
+        return dummyResult
+    end  # if isempty( inStateIDs )
+
+    # Get people who left the organisation in time interval.
     queryCmd = "SELECT $(mpSim.idKey)
+        FROM $(mpSim.personnelDBname)
+        WHERE ( $(mpSim.idKey) IN ('$(join( inStateIDs, "', '" ))') ) AND
+            ( $tBegin < timeExited ) AND ( timeExited <= $tEnd )"
+    fluxOutOfSystemIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+
+    # Retrieve IDs and amount of transitions starting or ending in the state.
+    queryCmd = "SELECT $(mpSim.idKey), count($(mpSim.idKey)) numEntries
         FROM $(mpSim.transitionDBname)
         WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
-            ( startState IS '$stateName' )"
-    fluxOutIDs = SQLite.query( mpSim.simDB, queryCmd )[ 1 ]
+            ( $(mpSim.idKey) IN ('$(join( inStateIDs, "', '" ))') ) AND
+            ( ( startState IS '$stateName' ) OR ( endState IS '$stateName' ) )
+        GROUP BY $(mpSim.idKey)"
+    queryRes = SQLite.query( mpSim.simDB, queryCmd )
+    nEntries, nCold = size( queryRes )
+    numEntries = Dict{String, Vector{Int}}()
+
+    for ii in 1:nEntries
+        numEntries[ queryRes[ 1 ][ ii ] ] = [ queryRes[ 2 ][ ii ], 0 ]
+    end  # for ii in 1:nEntries
+
+    # Retrieve IDs and amount of transitions starting in the state.
+    queryCmd = "SELECT $(mpSim.idKey), count($(mpSim.idKey)) numEntries
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) IN ('$(join( inStateIDs, "', '" ))') ) AND
+            ( startState IS '$stateName' )
+        GROUP BY $(mpSim.idKey)"
+    queryRes = SQLite.query( mpSim.simDB, queryCmd )
+    nEntries, nCold = size( queryRes )
+
+    for ii in 1:nEntries
+        numEntries[ queryRes[ 1 ][ ii ] ][ 2 ] = queryRes[ 2 ][ ii ]
+    end  # for ii in 1:nEntries
+
+    fluxOutIDs = collect( keys( numEntries ) )
+    filter!( id -> numEntries[ id ][ 2 ] * 2 > numEntries[ id ][ 1 ],
+        fluxOutIDs )
+    fluxOutIDs = merge( fluxOutIDs, fluxOutOfSystemIDs )
+
+    if isempty( fluxOutIDs )
+        return dummyResult
+    end  # if isempty( fluxInIDs )
+
+    queryCmd = "SELECT $(mpSim.idKey), endState, transition
+        FROM $(mpSim.transitionDBname)
+        WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
+            ( $(mpSim.idKey) IN ('$(join( fluxOutIDs, "', '" ))') ) AND
+            ( startState IN ('$stateName', 'active') )
+        GROUP BY $(mpSim.idKey)"
+    result = SQLite.query( mpSim.simDB, queryCmd )
+
+    # If the person has multiple transition into/out of the state during time
+    #   interval and hasn't left the system, set end state and transition to
+    #   unknown.
+    for ii in eachindex( fluxOutIDs )
+        id = result[ Symbol( mpSim.idKey ) ][ ii ]
+
+        if ( id ∉ fluxOutOfSystemIDs ) && ( numEntries[ id ][ 1 ] > 1 )
+            result[ :endState ][ ii ] = "unknown"
+            result[ :transition ][ ii ] = "unknown"
+        end  # if id ∈ fluxOutOfSystemIDs
+    end  # for ii in eachindex( fluxOutIDs )
+
+    return result
+
 
     # Retrieve the list of those personnel members entering the state or the
     #   organisation in the time interval.
@@ -343,6 +479,30 @@ function getOutFlux( mpSim::ManpowerSimulation, stateName::String, tBegin::T1,
         WHERE ( $tBegin < timeIndex ) AND ( timeIndex <= $tEnd ) AND
             ( $(mpSim.idKey) IN ('$(join( fluxOutIDs, "', '" ))') ) AND
             ( startState IN ('$stateName', 'active') )"
+    result2 = SQLite.query( mpSim.simDB, queryCmd )
+
+    resMiss = filter( id -> id ∉ result[ 1 ], result2[ 1 ] )
+    res2Miss = filter( id -> id ∉ result2[ 1 ], result[ 1 ] )
+
+    print( "Time: $tBegin" )
+    if isempty( resMiss ) && isempty( res2Miss )
+        println( "\t\tNothing missing -- ", size( result ), " vs ", size( result2 ) )
+
+        if length( result2[ 1 ] ) > length( unique( result2[ 1 ] ) )
+            println( "Old way has duplicates." )
+        end
+    else
+        if !isempty( resMiss )
+            print( "\t\tMissing from new: ", resMiss )
+        end
+
+        if !isempty( res2Miss )
+            print( "\t\tMissing from old: ", res2Miss )
+        end
+
+        println()
+    end
+
     return SQLite.query( mpSim.simDB, queryCmd )
 
 end  # getOutFlux( mpSim, tBegin, tEnd, fields )

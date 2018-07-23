@@ -183,7 +183,7 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
         return
     end  # if isempty( tmpShow )
 
-    tmpBreakdownBy = countBreakdownBy
+    tmpBreakdownBy = replace( countBreakdownBy, " ", "_" )
 
     if !any( showBreakdowns )
         tmpBreakdownBy = ""
@@ -210,7 +210,7 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
 
     # Make a plot of the breakdown of the fluxes.
     for plotStyle in plotTypes[ isUsed ]
-        if ( "personnel" ∈ tmpShow ) && ( tmpBreakdownBy != "" )
+        if ( "personnel" ∈ tmpShow ) && ( length( personnelCounts ) == 4 )
             plotBreakdown( state, timeGrid, personnelCounts[ 2 ],
                 personnelCounts[ 4 ], personnelCounts[ 3 ], :pers, plotStyle )
         end  # if ( "personnel" ∈ tmpShow ) && ...

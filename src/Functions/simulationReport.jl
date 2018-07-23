@@ -332,10 +332,10 @@ function generateCountReport( mpSim::ManpowerSimulation, stateName::String,
         return
     end  # if now( mpSim ) == 0
 
-    tmpBreakdownBy = breakdownBy
+    tmpBreakdownBy = replace( breakdownBy, " ", "_" )
 
     # Test if the breakdown attribute exist.
-    if ( breakdownBy != "" ) && !any( attr -> attr.name == breakdownBy,
+    if ( breakdownBy != "" ) && !any( attr -> attr.name == tmpBreakdownBy,
         vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
         tmpBreakdownBy = ""
         warn( "Attribute '$breakdownBy' doesn't exist. Can only generate overall count report." )

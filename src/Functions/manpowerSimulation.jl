@@ -237,7 +237,7 @@ export setPhasePriority
 function setPhasePriority( mpSim::ManpowerSimulation, phase::Symbol,
     priority::T ) where T <: Integer
 
-    if ( phase ∉ [ :recruitment, :retirement, :attrition ] ) &&
+    if ( phase ∉ [ :recruitment, :retirement, :attrition, :transition ] ) &&
         ( phase ∉ mpSim.workingDbase.attrs )
         warn( "Unknown simulation phase, not setting priority." )
         return
@@ -268,8 +268,7 @@ function resetSimulation( mpSim::ManpowerSimulation )
         timeEntered float,
         timeExited float,
         ageAtRecruitment float,
-        expectedRetirementTime float,
-        states TEXT"
+        expectedRetirementTime float"
 
     if !( isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList ) )
         command *= ',' * join( map( attr -> attr.name * " varcar(64)",
@@ -301,6 +300,9 @@ function resetSimulation( mpSim::ManpowerSimulation )
 
     mpSim.personnelSize = 0
     mpSim.resultSize = 0
+
+    foreach( state -> state.inStateSince = Dict{String, Float64}(),
+        keys( merge( mpSim.initStateList, mpSim.otherStateList ) ) )
 
     # And wipe all existing simulation reports.
     empty!( mpSim.simReports )
@@ -424,6 +426,8 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
     @process dbCommitProcess( mpSim.sim,
         toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
+    initiateTransitionProcesses( mpSim )
+    # initiateTransitionResets( mpSim )
     startTime = now()
 
     if toTime > 0.0

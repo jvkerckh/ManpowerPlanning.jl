@@ -231,6 +231,9 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
     attrRate = -1
     lambda = 0
     timeOfRateChange = 0
+    queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
+        WHERE ( $(mpSim.idKey) IS '$id' ) AND
+            ( status NOT IN ('fired', 'retired') )"
 
     while checkForAttrition
         # Update attrition rate and time of next rate change if necessary.
@@ -277,7 +280,14 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
                 ( timeOfAttr <= timeOfRetirement )
                 @yield timeout( sim, attrTime,
                     priority = mpSim.phasePriorities[ :attrition ] )
-                retirePerson( mpSim, id, "resigned" )
+
+                # Make sure the person hasn't been fired.
+                result = SQLite.query( mpSim.simDB, queryCmd )
+
+                if size( result ) == ( 1, 1 )
+                    retirePerson( mpSim, id, "resigned" )
+                end  # if size( result ) == ( 1, 1 )
+
                 checkForAttrition = false
 
                 # The interrupt is only sensible if the retirement process (still)
@@ -300,6 +310,13 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
                 timeOfRateChange - now( sim ) )
             @yield timeout( sim, tmpWaitTime,
                 priority = mpSim.phasePriorities[ :attrition ] )
+
+                # Make sure the person hasn't been fired.
+                result = SQLite.query( mpSim.simDB, queryCmd )
+
+                if size( result ) == ( 1, 1 )
+                    checkForAttrition = false
+                end  # if size( result ) == ( 1, 1 )
 
             # Prepare to update attrition rate if necessary.
             if now( sim ) == timeOfRateChange

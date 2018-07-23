@@ -254,8 +254,8 @@ function readStatesFromDatabase( configDB::SQLite.DB,
     for ii in 1:nStates
         # Check if the isInitial attribute can be read properly.
         isInitial = states[ :boolPar1 ][ ii ]
-        isInitial = isa( isInitial, String ) ?
-            tryparse( Bool, states[ :boolPar1 ][ ii ] ) : Nullable{Bool}()
+        isInitial = isa( isInitial, String ) ? tryparse( Bool, isInitial ) :
+            Nullable{Bool}()
 
         if !isInitial.hasvalue
             error( "Can't determine if the state is an initial state or not." )
@@ -317,7 +317,7 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearTransitions!( mpSim )
-    queryCmd = "SELECT parName, strPar1 FROM $configName
+    queryCmd = "SELECT parName, boolPar1, strPar1 FROM $configName
         WHERE parType IS 'Transition'"
     transitions = SQLite.query( configDB, queryCmd )
     nTrans = length( transitions[ :parName ] )
@@ -334,7 +334,7 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
 
         transPars = split( transPars, ";" )
 
-        if length( transPars ) != 5
+        if length( transPars ) != 10
             error( "Can't read the parameters of the transitions." )
         end  # if length( transPars ) != 5
 
@@ -369,6 +369,116 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
         end  # if !minTime.hasValue || ...
 
         setMinTime( newTrans, minTime.value )
+
+        # Process extra conditions.
+        extraConds = transPars[ 6 ]
+
+        if !startswith( extraConds, "[" ) || !endswith( extraConds, "]" )
+            error( "Can't process extra conditions of transition." )
+        elseif extraConds != "[]"
+            extraConds = split( extraConds[ 2:(end-1) ], "," )
+            extraConds = map( cond -> String( strip( cond ) ), extraConds )
+
+            for ii in eachindex( extraConds )
+                cond = split( extraConds[ ii ], "|" )
+
+                if length( cond ) != 3
+                    error( "Can't process extra conditions of transition." )
+                end  # if length( cond ) != 3
+
+                cond = map( entry -> String( strip( entry ) ), cond )
+                cond[ 3 ] = replace( cond[ 3 ], "/", "," )
+                val = tryparse( Float64, cond[ 3 ] )
+
+                if val.hasvalue
+                    val = val.value
+                else
+                    val = cond[ 3 ]
+                end  # if val.hasvalue
+
+                newCond, isOkay = processCondition( cond[ 1 ], cond[ 2 ],
+                    val )
+
+                if isOkay
+                    push!( newTrans.extraConditions, newCond )
+                end  # if isOkay
+            end  # for ii in eachindex( extraConds )
+        end  # if !startswith( extraConds, "[" ) || ...
+
+        # Process extra attribute changes.
+        extraChanges = transPars[ 7 ]
+
+        if !startswith( extraChanges, "[" ) || !endswith( extraChanges, "]" )
+            error( "Can't process extra changes of transition." )
+        elseif extraChanges != "[]"
+            extraChanges = split( extraChanges[ 2:(end-1) ], "," )
+            extraChanges = map( change -> String( strip( change ) ),
+                extraChanges )
+
+            for ii in eachindex( extraChanges )
+                change = split( extraChanges[ ii ], ":" )
+
+                if length( change ) != 2
+                    error( "Can't process extra changes of transition." )
+                end  # if length( change ) != 2
+
+                change = map( entry -> String( strip( entry ) ), change )
+                push!( newTrans.extraChanges, PersonnelAttribute( change[ 1 ],
+                    Dict( change[ 2 ] => 1.0 ), false ) )
+            end  # for ii in eachindex( extraChanges )
+        end  # if !startswith( extraChanges, "[" ) ||
+
+        # Process max number of attempts.
+        maxAttempts = tryparse( Int, transPars[ 8 ] )
+
+        if !maxAttempts.hasvalue || ( maxAttempts.value < -1 )
+            error( "Can't process max attempts parameter of transition." )
+        end  # if !maxAttempts.hasvalue || ...
+
+        setMaxAttempts( newTrans, maxAttempts.value )
+
+        # Process max flux.
+        maxFlux = tryparse( Int, transPars[ 9 ] )
+
+        if !maxFlux.hasvalue || ( maxFlux.value < -1 )
+            error( "Can't process max attempts parameter of transition." )
+        end  # if !maxFlux.hasvalue || ...
+
+        setMaxFlux( newTrans, maxFlux.value )
+
+        # Process the transition probabilities.
+        probs = transPars[ 10 ]
+
+        if !startswith( probs, "[" ) || !endswith( probs, "]" )
+            error( "Can't process transition probabilities." )
+        end  # if !startswith( probs, "[" ) || ...
+
+        probs = split( probs[ 2:(end-1) ] , "," )
+        numProbs = length( probs )
+        tmpProbs = Vector{Float64}( numProbs )
+
+        for ii in 1:numProbs
+            prob = tryparse( Float64, probs[ ii ] )
+
+            if !prob.hasvalue
+                error( "Can't process transition probabilities." )
+            end  # if !prob.hasvalue
+
+            tmpProbs[ ii ] = prob.value
+        end  # for ii in 1:numProbs
+
+        setTransProbabilities( newTrans, tmpProbs )
+
+        # Read isFiredOnFail flag.
+        isFiredOnFail = transitions[ :boolPar1 ][ ii ]
+        isFiredOnFail = isa( isFiredOnFail, String ) ?
+            tryparse( Bool, isFiredOnFail ) : Nullable{Bool}()
+
+        if !isFiredOnFail.hasvalue
+            error( "Can't process isFiredOnFail parameter." )
+        end  # if !isFiredOnFail.hasvalue
+
+        setFireAfterFail( newTrans, isFiredOnFail.value )
         addTransition!( mpSim, newTrans )
     end  # for ii in 1:nTrans
 

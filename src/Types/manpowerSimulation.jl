@@ -145,8 +145,8 @@ type ManpowerSimulation
         newMPsim.retirementScheme = nothing
         newMPsim.sim = Simulation()
         newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
-        newMPsim.phasePriorities = Dict( :recruitment => 1, :transition => 2,
-            :retirement => 3, :attrition => 4 )
+        newMPsim.phasePriorities = Dict( :recruitment => 10, :transition => 20,
+            :retirement => 30, :attrition => 40 )
         newMPsim.simLength = 1.0
         newMPsim.simReports = Dict{Float64, SimulationReport}()
         return newMPsim

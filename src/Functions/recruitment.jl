@@ -389,28 +389,31 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     id = "Sim" * string( mpSim.resultSize + 1 )
     ageAtRecruitment = recScheme.ageDist()
 
-    # Generate initial values
-    initVals = Array{Any}( 3, length( mpSim.initAttrList ) )
+    # Generate initial values.
+    initVals = Dict{String, Any}()
+    initValsFixed = Dict{String, Bool}()
 
     for ii in eachindex( mpSim.initAttrList )
         attr = mpSim.initAttrList[ ii ]
-        initVals[ :, ii ] = [ attr.name, generateAttrValue( attr ),
-            attr.isFixed ]
+        initVals[ attr.name ] = generateAttrValue( attr )
+        initValsFixed[ attr.name ] = attr.isFixed
     end  # for attr in mpSim.initAttrList
 
-    # Identify all initial states the person belongs to.
+    # Identify all initial states the person belongs to and add entry info to
+    #   each of those states.
     initPersStates = collect( Iterators.filter(
         state -> isPersonnelOfState( initVals, state ),
         keys( mpSim.initStateList ) ) )
         # XXX Iterators.filter is needed to avoid deprecation warnings.
+    foreach( state -> state.inStateSince[ id ] = now( mpSim ), initPersStates )
     stateNames = map( state -> state.name, initPersStates )
 
     # Add person to the personnel database.
     command = "INSERT INTO $(mpSim.personnelDBname)
-        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment, states,
-        $(join( initVals[ 1, : ], ", " ))) VALUES
+        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
+        $(join( map( attr -> attr.name, mpSim.initAttrList ), ", " ))) VALUES
         ('$id', 'active', $(now( mpSim )), $ageAtRecruitment,
-        '$(join( stateNames, "," ))', '$(join( initVals[ 2, : ], "', '" ))')"
+            '$(join( map( attr -> initVals[ attr.name ], mpSim.initAttrList ), "', '" ))')"
     SQLite.execute!( mpSim.simDB, command )
 
     # Add entry of person to the history database.
@@ -419,10 +422,11 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         ('$id', 'status', $(now( mpSim )), 'active')"
 
     # Additional variable attributes.
-    for ii in find( .!initVals[ 3, : ] )
-        command *= ", ('$id', '$(initVals[ 1, ii ])', $(now( mpSim )),
-            '$(initVals[ 2, ii ])')"
-    end  # for ii in find( !initVals[ 3, : ] )
+    for attr in mpSim.initAttrList
+        if !initValsFixed[ attr.name ]
+            command *= ", ('$id', '$(attr.name)', $(now( mpSim )), '$(initVals[ attr.name ])')"
+        end  # !initValsFixed[ attr ]
+    end
 
     SQLite.execute!( mpSim.simDB, command )
 
@@ -436,9 +440,9 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     for state in initPersStates
         command *= ", ('$id', $(now( mpSim )), '$(recScheme.name)', '$(state.name)')"
 
-        for trans in mpSim.initStateList[ state ]
-            @process transitionProcess( mpSim.sim, trans, id, mpSim )
-        end  # for trans in mpSim.initStateList[ state ]
+        # for trans in mpSim.initStateList[ state ]
+        #     @process transitionProcess( mpSim.sim, trans, id, mpSim )
+        # end  # for trans in mpSim.initStateList[ state ]
     end  # for state in initPersStates
 
     SQLite.execute!( mpSim.simDB, command )
@@ -504,8 +508,8 @@ end  # recruitmentCycle( mpSim, recScheme )
 
     recScheme = mpSim.recruitmentSchemes[ schemeNr ]
     timeToWait = recScheme.recruitOffset
-    priority = mpSim.phasePriorities[ recScheme.isAdaptive ? :recruitment :
-        :retirement ]
+    priority = mpSim.phasePriorities[ :recruitment ]
+    priority += Int8( recScheme.isAdaptive ? 0 : 1 )
 
     while now( sim ) + timeToWait <= mpSim.simLength
         @yield timeout( sim, timeToWait, priority = priority )

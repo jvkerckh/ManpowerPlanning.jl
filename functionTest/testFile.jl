@@ -17,15 +17,17 @@ end
 
 # Initalise ManpowerPlanning module.
 if !isdefined( :ManpowerSimulation )
-    # include( joinpath( dirname( Base.source_path() ), "..", "src",
-    #     "ManpowerPlanning.jl" ) )
+    include( joinpath( dirname( Base.source_path() ), "..", "src",
+        "ManpowerPlanning.jl" ) )
     using ManpowerPlanning
     isUpToDate = true
     println( "ManpowerPlanning module initialised." )
 end
 
 # The name of the parameter file. [Change for different configuration]
-configurationFileName = "../simParFile.xlsx"
+if !isdefined( :configurationFileName ) || isa( configurationFileName, Void )
+    configurationFileName = "../simParFile.xlsx"
+end  # if !isdefined( :configurationFileName ) ||
 
 # Initialise the simulation.
 configurationFileName = joinpath( dirname( Base.source_path() ),
@@ -46,3 +48,5 @@ showPlotsFromFile( mpSim, configurationFileName )
 tEnd = now()
 timeElapsed = (tEnd - tStart).value / 1000
 println( "Plot generation time: $timeElapsed seconds." )
+
+configurationFileName = nothing

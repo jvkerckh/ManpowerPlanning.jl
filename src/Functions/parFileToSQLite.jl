@@ -103,7 +103,7 @@ This function returns a `Bool`.
 function validateParFile( wb::Workbook )::Bool
 
     sheetNames = [ "General",
-                   "Atributes",
+                   "Attributes",
                    "States",
                    "Transitions",
                    "Recruitment",
@@ -356,10 +356,39 @@ function saveTransitionToDatabase( trans::Transition, startName::String,
     endName::String, configDB::SQLite.DB, configName::String )::Void
 
     valueList = "$startName;$endName;"
-    valueList *= "$(trans.freq);$(trans.offset);$(trans.minTime)"
+    valueList *= "$(trans.freq);$(trans.offset);$(trans.minTime);["
+    extraConds = Vector{String}()
+
+    for cond in trans.extraConditions
+        extraCond = "$(cond.attr)|"
+
+        if cond.rel ∈ [ ==, != ]
+            extraCond *= "IS" * ( cond.rel == Base.:!= ? " NOT" : "" ) * "|"
+        elseif cond.rel ∈ [ ∈, ∉ ]
+            extraCond *= ( cond.rel == Base.:∈ ? "" : "NOT " ) * "IN|"
+        else
+            extraCond *= "$(cond.rel)|"
+        end
+
+        extraCond *= isa( cond.val, Vector{String} ) ? join( cond.val, "/" ) :
+            "$(cond.val)"
+        push!( extraConds, extraCond )
+    end  # for cond in trans.extraConditions
+
+    valueList *= "$(join( extraConds, "," ))];["
+    extraChanges = Vector{String}()
+
+    for attr in trans.extraChanges
+        val = collect( keys( attr.values ) )[ 1 ]
+        push!( extraChanges, "$(attr.name):$val" )
+    end  # for attr in trans.extraChanges
+
+    valueList *= join( extraChanges, "," )
+    valueList *= "];$(trans.maxAttempts);$(trans.maxFlux);"
+    valueList *= "[$(join( trans.probabilityList, "," ))]"
     command = "INSERT INTO $configName
-        (parName, parType, strPar1) VALUES
-        ('$(trans.name)', 'Transition', '$valueList')"
+        (parName, parType, boolPar1, strPar1) VALUES
+        ('$(trans.name)', 'Transition', '$(trans.isFiredOnFail)', '$valueList')"
     SQLite.execute!( configDB, command )
 
     return

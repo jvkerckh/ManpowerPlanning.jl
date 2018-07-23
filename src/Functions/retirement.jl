@@ -16,7 +16,7 @@ end  # for reqType in requiredTypes
 
 
 if !isdefined( :retirementReasons )
-    const retirementReasons = [ "retired", "resigned" ]
+    const retirementReasons = [ "retired", "resigned", "fired" ]
 end # if !isdefined( :retirementReasons )
 
 
@@ -184,6 +184,8 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
     end  # if !in( reason, retirementReasons )
 
     mpSim.personnelSize -= 1
+    foreach( state -> delete!( state.inStateSince, id ),
+        keys( merge( mpSim.initStateList, mpSim.otherStateList ) ) )
 
     # Change the person's status in the personnel database.
     command = "UPDATE $(mpSim.personnelDBname)
@@ -204,6 +206,42 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
     SQLite.execute!( mpSim.simDB, command )
 
 end  # retirePerson( mpSim, id, reason )
+
+
+function retirePersons( mpSim::ManpowerSimulation, ids::Vector{String},
+    reason::String )
+
+    if !in( reason, retirementReasons )
+        error( "$reason -- unknown retirement reason." )
+    end  # if !in( reason, retirementReasons )
+
+    mpSim.personnelSize -= length( ids )
+
+    for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
+        foreach( id -> delete!( state.inStateSince, id ), ids )
+    end  # for state in keys( merge( ...
+
+    # Change the person's status in the personnel database.
+    command = "UPDATE $(mpSim.personnelDBname)
+        SET status = '$reason', timeExited = $(now( mpSim ))
+        WHERE $(mpSim.idKey) IN ('$(join( ids, "', '" ))')"
+    SQLite.execute!( mpSim.simDB, command )
+
+    # Add the person's status change to the history database.
+    command = "('" .* ids .* "', 'status', $(now( mpSim )), '$reason')"
+    command = "INSERT INTO $(mpSim.historyDBname)
+        ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES
+        $(join( command, ", "))"
+    SQLite.execute!( mpSim.simDB, command )
+
+    # Add the person's retirement event to the transition database.
+    command = "('" .* ids .* "', $(now( mpSim )), '$reason', 'active')"
+    command = "INSERT INTO $(mpSim.transitionDBname)
+        ($(mpSim.idKey), timeIndex, transition, startState) VALUES
+        $(join( command, ", "))"
+    SQLite.execute!( mpSim.simDB, command )
+
+end  # function retirePersons( mpSim, ids, reason )
 
 
 # This function computes the person's expected retirement time and returns it.
@@ -269,18 +307,19 @@ end  # computeExpectedRetirementTime( mpSim )
     end  # if timeOfRetirement > mpSim.simLength
 
     try
-        # XXX Testing code
-        # timeToRetire = timeOfRetirement - now( sim )
-        # @yield timeout( sim, timeToRetire / 2,
-        #     priority = mpSim.phasePriorities[ :retirement ] )
-        # command = "INSERT INTO $(mpSim.historyDBname)
-        #     ( $(mpSim.idKey), attribute, timeIndex, strValue ) values
-        #     ( '$id', 'status', $(now( mpSim )), 'halfway' )"
-        # SQLite.execute!( mpSim.simDB, command )
-        # End testing code
         @yield timeout( sim, timeOfRetirement - now( sim ),
             priority = mpSim.phasePriorities[ :retirement ] )
-        retirePerson( mpSim, id, "retired" )
+
+        # Check if the person is still in the system.
+        queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
+            WHERE ( $(mpSim.idKey) IS '$id' ) AND
+                status NOT IN ('resigned', 'fired')"
+        result = SQLite.query( mpSim.simDB, queryCmd )
+
+        # Retire the person only if necessary.
+        if size( result ) == ( 1, 1 )
+            retirePerson( mpSim, id, "retired" )
+        end  # if size( result ) == ( 1, 1 )
     catch err
         if !isa( err, SimJulia.InterruptException )
             error( "Something went badly wrong: $(typeof( err )) -- $err" )

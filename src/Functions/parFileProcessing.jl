@@ -164,11 +164,30 @@ function readTransitions( mpSim::ManpowerSimulation, s::Taro.Sheet )
         newTrans, startName, endName, sLine = readTransition( s, sLine )
         startInd = findfirst( state -> state.name == startName, stateList )
         endInd = findfirst( state -> state.name == endName, stateList )
+        isExtraCondsOkay = true
+
+        # Test if all the extra conditions deal with attributes (or age)
+        for cond in newTrans.extraConditions
+            if isExtraCondsOkay
+                isExtraCondsOkay = ( cond.attr == "age" ) ||
+                    any( attr -> attr.name == cond.attr,
+                    vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
+            end  # if isExtraCondsOkay
+        end  # for cond in newTrans.extraConditions
+
+        for attr in newTrans.extraChanges
+            if isExtraCondsOkay
+                isExtraCondsOkay = any( tmpAttr -> tmpAttr.name == attr.name,
+                    vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
+            end  # if isExtraCondsOkay
+        end  # for attr in newTrans.extraChanges
 
         # If either of the states with the given name can't be found, throw an
         #   error.
         if startInd * endInd == 0
             error( "Start state or end state unknown." )
+        elseif !isExtraCondsOkay
+            error( "Extra transition conditions/changes on unknown attribute." )
         end  # if startInd * endInd == 0
 
         setState( newTrans, stateList[ startInd ] )
