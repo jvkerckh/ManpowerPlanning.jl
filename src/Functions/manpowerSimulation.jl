@@ -449,54 +449,59 @@ function SimJulia.run( mpSim::ManpowerSimulation )
 end  # run( mpSim, toTime )
 
 
-# This function extracts the result database from the simulation.
-export getSimResult
-function getSimResult( mpSim::ManpowerSimulation )
-    return mpSim.simResult
-end  # getSimResult( mpSim )
+# This function runs the simulation from file.
+export runSimFromFile
+function runSimFromFile( fName::String )
 
+    if !ispath( fName )
+        warn( "File does not exist." )
+        return
+    elseif !endswith( fName, ".xlsx" )
+        warn( "File is not a .xlsx file" )
+        return
+    end  # if !ispath( fName )
 
-# This function saves a manpower simulation to file so it can be loaded into
-#   Julia at another time in the exact state it was saved.
-export saveSimulation
-function saveSimulation( mpSim::ManpowerSimulation,
-    fileName::String = "tmpManpower.jld2" )
-    tmpFileName = fileName
+    # Initialise simulation.
+    mpSim = ManpowerSimulation( fName )
+    println( "Simulation initialised." )
 
-    if !endswith( fileName, ".jld2" )
-        tmpFileName *= ".jld2"
-    end  # if !endswith( fileName, ".jld2" )
+    wb = Taro.Workbook( fName )
+    s = getSheet( wb, "State Map" )
 
-    save( tmpFileName, "mpSim", mpSim )
+    # Make network plot if requested.
+    if ( s.ptr !== Ptr{Void}( 0 ) ) && ( s[ "B", 3 ] == 1 )
+        println( "Creating network plot." )
+        tStart = now()
+        plotTransitionMap( mpSim, s )
+        tEnd = now()
+        timeElapsed = (tEnd - tStart).value / 1000
+        println( "Network plot time: $timeElapsed seconds." )
+    end  # if ( s.ptr !=== Ptr{Void}( 0 ) ) && ...
 
-end  # saveSimulation( mpSim, fileName )
+    # Run only if flag is okay.  XXX to implement
+    s = getSheet( wb, "General" )
 
+    if s[ "B", 10 ] != 1
+        println( "No simulation run requested." )
+        return
+    end  # if s[ "B", 10 ] != 1
 
-# This function loads a manpower simulation stored in the file.
-export loadSimulation
-function loadSimulation( fileName::String = "tmpManpower.jld2" )
-    if !endswith( fileName, ".jld2" )
-        error( "File is not a Julia data archive." )
-    end  # if !endswith( fileName, ".jld2" )
+    println( "Running simulation." )
+    tStart = now()
+    run( mpSim )
+    tEnd = now()
+    timeElapsed = (tEnd - tStart).value / 1000
+    println( "Simulation time: $timeElapsed seconds." )
 
-    if !isfile( fileName )
-        error( "File does not exist." )
-    end  # if !isfile( fileName )
+    # Generate plots.
+    println( "Generating plots. This can take a while..." )
+    tStart = now()
+    showPlotsFromFile( mpSim, fName )
+    tEnd = now()
+    timeElapsed = (tEnd - tStart).value / 1000
+    println( "Plot generation time: $timeElapsed seconds." )
 
-    fileContents = open( fileName )
-
-    if !haskey( fileContents, "mpSim" )
-        error( "File does not contain a manpower simulation." )
-    end  # if !haskey( fileContents, "mpSim" )
-
-    mpSim = fileContents[ "mpSim" ]
-
-    if !isa( mpSim, ManpowerSimulation )
-        error( "File does not contain a manpower simulation." )
-    end  # if !isa( mpSim, ManpowerSimulation )
-
-    return mpSim
-end  # loadSimulation( fileName )
+end  # runSimFromFile( fName )
 
 
 # These are the functions that process simulation results.

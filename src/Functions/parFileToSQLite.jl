@@ -296,8 +296,8 @@ function saveStateToDatabase( state::State, configDB::SQLite.DB,
     end  # for attr in keys( state.requirements )
 
     command = "INSERT INTO $configName
-        (parName, parType, boolPar1, strPar1) VALUES
-        ('$(state.name)', 'State', '$(state.isInitial)', '$valueList')"
+        (parName, parType, intPar1, boolPar1, strPar1) VALUES
+        ('$(state.name)', 'State', $(state.stateTarget), '$(state.isInitial)', '$valueList')"
     SQLite.execute!( configDB, command )
 
     return

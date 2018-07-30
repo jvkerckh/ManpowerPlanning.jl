@@ -26,27 +26,10 @@ end
 
 # The name of the parameter file. [Change for different configuration]
 if !isdefined( :configurationFileName ) || isa( configurationFileName, Void )
-    configurationFileName = "../simParFile.xlsx"
+    configurationFileName = "simParFile.xlsx"
 end  # if !isdefined( :configurationFileName ) ||
 
 # Initialise the simulation.
-configurationFileName = joinpath( dirname( Base.source_path() ),
+configurationFileName = joinpath( dirname( Base.source_path() ), "..",
     configurationFileName )
-mpSim = ManpowerSimulation( configurationFileName )
-println( "Simulation initialised." )
-
-# Run the simulation.
-tStart = now()
-run( mpSim )
-tEnd = now()
-timeElapsed = (tEnd - tStart).value / 1000
-println( "Simulation time: $timeElapsed seconds." )
-
-# Create the requested plots.
-tStart = now()
-showPlotsFromFile( mpSim, configurationFileName )
-tEnd = now()
-timeElapsed = (tEnd - tStart).value / 1000
-println( "Plot generation time: $timeElapsed seconds." )
-
-configurationFileName = nothing
+runSimFromFile( configurationFileName )

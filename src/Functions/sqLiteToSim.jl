@@ -261,6 +261,13 @@ function readStatesFromDatabase( configDB::SQLite.DB,
             error( "Can't determine if the state is an initial state or not." )
         end  # if !isInitial.hasvalue
 
+        # Check if the stateTarget attrtibute can be read properly.
+        stateTarget = states[ :intPar1 ][ ii ]
+
+        if !isa( stateTarget, Int )
+            error( "Can't read target number of personnel member")
+        end  # if !isa( stateTarget, Int )
+
         # Check if the values can be read properly.
         reqList = states[ :strPar1 ][ ii ]
 
@@ -270,6 +277,7 @@ function readStatesFromDatabase( configDB::SQLite.DB,
         end  # if !isa( valList, String )
 
         newState = State( states[ :parName ][ ii ], isInitial.value )
+        setStateTarget( newState, stateTarget )
         reqList = reqList == "" ? Vector{String}() : split( reqList, ";" )
 
         for req in reqList

@@ -2,7 +2,8 @@
 
 export showPlotsFromFile,
        plotSimulationResults,
-       plotTransitionMap
+       plotTransitionMap,
+       plotTransitionMapFromFile
 
 
 """
@@ -341,6 +342,37 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
     return
 
 end  # plotTransitionMap( mpSim, states, format, fileName )
+
+
+"""
+```
+plotTransitionMap( mpSim::ManpowerSimulation,
+                   s::Taro.Sheet )
+```
+This function plots a transition map of the manpower simulation `mpSim` with the
+nodes requested in the Excel sheet `s`.
+
+This function returns `nothing`.
+"""
+function plotTransitionMap( mpSim::ManpowerSimulation, s::Taro.Sheet )
+
+    numNodes = s[ "B", 5 ]
+    nodeList = Vector{String}()
+    ii = 1
+
+    while ( ii <= numNodes ) && ( s[ "B", 5 + ii ] !== nothing )
+        push!( nodeList, s[ "B", 5 + ii ] )
+        ii += 1
+    end  # while ( ii <= numNodes ) && ...
+
+    if !isempty( nodeList )
+        plotTransitionMap( mpSim, nodeList... )
+    end  # if !isempty( nodeList )
+
+    return
+
+end  # plotTransitionMap( mpSim, s )
+
 
 
 # ==============================================================================

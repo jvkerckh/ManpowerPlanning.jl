@@ -19,7 +19,6 @@ module ManpowerPlanning
     using Polynomials
     using FileIO
     using SQLite
-    using Query
     using DataFrames
     using StatsBase
     using ExcelWrapper

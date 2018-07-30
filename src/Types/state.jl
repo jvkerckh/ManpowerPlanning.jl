@@ -24,6 +24,7 @@ The type contains the following fields:
   this particular state.
 * `isInitial::Bool`: this flag states whether the state is an initial state or
   not.
+* `stateTarget::Int`: the target number of personnel members in this state.
 * `inStateSince::Dict{String, Float64}`: a record of all the persons in the
   state, including the time they last entered the state.
 """
@@ -32,6 +33,7 @@ type State
     name::String
     requirements::Dict{String, Vector{String}}
     isInitial::Bool
+    stateTarget::Int
     inStateSince::Dict{String, Float64}
 
 
@@ -42,9 +44,10 @@ type State
         newState.name = name
         newState.requirements = Dict{String, Vector{String}}()
         newState.isInitial = isInitial
+        newState.stateTarget = 0
         newState.inStateSince = Dict{String, Float64}()
         return newState
 
-    end  # State( name )
+    end  # State( name, isInitial )
 
 end  # type State

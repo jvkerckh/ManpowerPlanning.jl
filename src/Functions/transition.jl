@@ -301,14 +301,11 @@ function readTransition( s::Taro.Sheet, sLine::T ) where T <: Integer
     endState = s[ "B", sLine + 2 ]
     dummyState = State( "Dummy" )
     newTrans = Transition( s[ "B", sLine ], dummyState, dummyState )
-    setSchedule( newTrans, s[ "B", sLine + 3 ], s[ "B", sLine + 4 ] )
-    setMinTime( newTrans, s[ "B", sLine + 5 ] *
-        ( s[ "C", sLine + 5 ] == "years" ? 12.0 : 1.0 ) )
-    numConds = Int( s[ "B", sLine + 6 ] )
+    numConds = Int( s[ "B", sLine + 3 ] )
 
     for ii in 1:numConds
-        newCond, isCondOkay = processCondition( s[ "B", sLine + 6 + ii ],
-            s[ "C", sLine + 6 + ii ], s[ "D", sLine + 6 + ii ] )
+        newCond, isCondOkay = processCondition( s[ "B", sLine + 3 + ii ],
+            s[ "C", sLine + 3 + ii ], s[ "D", sLine + 3 + ii ] )
 
         if isCondOkay
             push!( newTrans.extraConditions, newCond )
@@ -316,15 +313,18 @@ function readTransition( s::Taro.Sheet, sLine::T ) where T <: Integer
     end  # for ii in 1:numConds
 
     sLine += numConds
-    numExtra = Int( s[ "B", sLine + 7 ] )
+    numExtra = Int( s[ "B", sLine + 4 ] )
 
     for ii in 1:numExtra
-        newAttr = PersonnelAttribute( s[ "B", sLine + 7 + ii ],
-            Dict( s[ "C", sLine + 7 + ii ] => 1.0 ), false )
+        newAttr = PersonnelAttribute( s[ "B", sLine + 4 + ii ],
+            Dict( s[ "C", sLine + 4 + ii ] => 1.0 ), false )
         push!( newTrans.extraChanges, newAttr )
     end  # for ii in 1:numExtra
 
     sLine += numExtra
+    setSchedule( newTrans, s[ "B", sLine + 5 ], s[ "B", sLine + 6 ] )
+    setMinTime( newTrans, s[ "B", sLine + 7 ] *
+        ( s[ "C", sLine + 7 ] == "years" ? 12.0 : 1.0 ) )
     setMaxAttempts( newTrans, Int( s[ "B", sLine + 8 ] ) )
     setFireAfterFail( newTrans, s[ "B", sLine + 9 ] == 1 )
     setMaxFlux( newTrans, Int( s[ "B", sLine + 10 ] ) )
@@ -398,30 +398,19 @@ end  # initiateTransitionProcesses( mpSim )
 
     while timeOfCheck <= mpSim.simLength
         @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority ) )
-
-        if trans.name == "Experienced Promotion"
-            println( "Testing '$(trans.name)' at $(now( sim ))" )
-        end
-
         timeOfCheck += trans.freq
 
         # Identify all persons who're in the start state long enough.
         eligibleIDs = filter( id -> trans.minTime <=
             now( sim ) - trans.startState.inStateSince[ id ],
             collect( keys( trans.startState.inStateSince ) ) )
-
-        if ( trans.name == "Experienced Promotion" ) && !isempty( eligibleIDs )
-            println( "Eligible IDs: $eligibleIDs" )
-        end
-
         updateAttemptsAndIDs!( nAttempts, maxAttempts, eligibleIDs )
         checkedIDs = checkExtraConditions( trans, eligibleIDs, mpSim )
-
-        if ( trans.name == "Experienced Promotion" ) && !isempty( checkedIDs )
-            println( "Checked IDs: $checkedIDs" )
-        end
-
         transIDs = determineTransitionIDs( trans, checkedIDs, nAttempts )
+
+        # Halt execution until the transition candidates for all transitions at
+        #   the current time are determined.
+        @yield( timeout( sim, 0, priority = priority - Int8( 1 ) ) )
         executeTransitions( trans, transIDs, mpSim )
         updateStates( trans, transIDs, nAttempts, mpSim )
         firePersonnel( trans, eligibleIDs, transIDs, nAttempts, maxAttempts,
@@ -507,15 +496,34 @@ function determineTransitionIDs( trans::Transition, eligibleIDs::Vector{String},
             #   size of the probability list and the number of attempts by
             #   the ii-th eligible person.
 
-        # Take only trans.maxFlux random IDs if the number of eligible IDs
-        #   exceeds this.
-        if ( trans.maxFlux != -1 ) && ( length( transIDs ) > trans.maxFlux )
+        # Check how many spots are available in the end state.
+        available = -1
+
+        if trans.endState.stateTarget >= 0
+            available = max( trans.endState.stateTarget -
+                length( trans.endState.inStateSince ), 0 )
+        end  # if trans.endState.stateTarget >= 0
+
+        # Determine the number of personnel members to undergo the transition.
+        #   This is the minimum of the number of the max flux and the number of
+        #   vacancies in the end state.
+        toChoose = trans.maxFlux
+
+        if trans.maxFlux == -1
+            toChoose = available
+        elseif available != -1
+            toChoose = min( available, toChoose )
+        end  # if trans.maxFlux == -1
+
+        # Take only toChoose random IDs if the number of eligible IDs exceeds
+        #   this.
+        if ( toChoose != -1 ) && ( length( transIDs ) > toChoose )
             transIDs = transIDs[ sortperm( rand( length( transIDs ) ) )[
-                1:(trans.maxFlux) ] ]
-                # Get the first trans.maxFlux entries of the permutation
+                1:toChoose ] ]
+                # Get the first toChoose entries of the permutation
                 #   vector that puts the vector of random numbers in sorted
                 #   order.
-        end  # if ( trans.maxFlux != -1 ) && ...
+        end  # if ( toChoose != -1 ) && ...
     end  # if !isempty( eligibleIDs )
 
     return transIDs

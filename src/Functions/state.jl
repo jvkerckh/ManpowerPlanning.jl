@@ -14,7 +14,9 @@ end  # for reqType in requiredTypes
 export setName,
        addRequirement!,
        removeRequirement!,
-       clearRequirements!
+       clearRequirements!,
+       setInitial,
+       setTarget
 
 
 """
@@ -129,6 +131,24 @@ function setInitial( state::State, isInitial::Bool )::Void
 end  # setInitial( state, isInitial )
 
 
+"""
+```
+setStateTarget( state::State,
+                target::Int )
+```
+This function sets the target number of personnel members in state `state` to
+`target`. If the number is less than zero, it means there's no target.
+
+This function returns `nothing`.
+"""
+function setStateTarget( state::State, target::Int )::Void
+
+    state.stateTarget = target < 0 ? -1 : target
+    return
+
+end  # setStateTarget( state, target )
+
+
 function Base.show( io::IO, state::State )
 
     print( io, "  State: $(state.name)" )
@@ -136,18 +156,22 @@ function Base.show( io::IO, state::State )
     if isempty( state.requirements )
         print( io, "\n    State '$(state.name)' has no requirements" )
         return
+    else
+        print( io, "\n    Requirements" )
+
+        for attr in keys( state.requirements )
+            print( io, "\n      $attr " )
+            vals = state.requirements[ attr ]
+            multival = length( vals ) != 1
+            print( io, multival ? "∈ { " : "= " )
+            print( io, join( map( val -> "'$val'", vals ), ", " ) )
+            print( io, multival ? " }" : "" )
+        end  # for attr in keys( state.requirements )
     end  # if isempty( state.requirements )
 
-    print( io, "\n    Requirements" )
-
-    for attr in keys( state.requirements )
-        print( io, "\n      $attr " )
-        vals = state.requirements[ attr ]
-        multival = length( vals ) != 1
-        print( io, multival ? "∈ { " : "= " )
-        print( io, join( map( val -> "'$val'", vals ), ", " ) )
-        print( io, multival ? " }" : "" )
-    end  # for attr in keys( state.requirements )
+    if state.stateTarget >= 0
+        print( io, "\n    Target of $(state.stateTarget) personnel members in state." )
+    end  # if state.stateTarget >= 0
 
 end  # show( io, state )
 
@@ -174,15 +198,16 @@ function readState( s::Taro.Sheet, sLine::T ) where T <: Integer
 
     isInitial = s[ "B", sLine + 1 ] == 1
     newState = State( s[ "B", sLine ], isInitial )
-    nReqs = Int( s[ "B", sLine + 2 ] )
+    setStateTarget( newState, Int( s[ "B", sLine + 2 ] ) )
+    nReqs = Int( s[ "B", sLine + 3 ] )
 
     for ii in 1:nReqs
-        attr = s[ "B", sLine + 2 + ii ]
-        values = processStateOptions( s[ "C", sLine + 2 + ii ] )
+        attr = s[ "B", sLine + 3 + ii ]
+        values = processStateOptions( s[ "C", sLine + 3 + ii ] )
         addRequirement!( newState, attr, values )
     end  # for ii in 1:nReqs
 
-    return newState, isInitial, sLine + 4 + nReqs
+    return newState, isInitial, sLine + 5 + nReqs
 
 end  # readState( s, sLine )
 

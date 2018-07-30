@@ -47,7 +47,7 @@ type ManpowerSimulation
     # The ID key of the database.
     idKey::String
 
-    # Maximum number of people in the simulation. If this is set to 0, there is
+    # Target number of people in the simulation. If this is set to 0, there is
     #   no cap.
     personnelTarget::Int
 
