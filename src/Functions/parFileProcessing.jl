@@ -4,6 +4,10 @@ to initialise a manpower simulation.
 =#
 
 
+distTypes = Dict( "Pointwise" => :disc, "Piecewise Uniform" => :pUnif,
+    "Piecewise Linear" => :pLin )
+
+
 export initialiseFromExcel
 """
 **Use**: `initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
@@ -216,33 +220,35 @@ end  # readRecruitmentPars( mpSim, s )
 
 function generateRecruitmentScheme( s::Taro.Sheet, ii::T ) where T <: Integer
 
-    dataColNr = ii * 4 - 2
-    recScheme = Recruitment( s[ dataColNr, 5 ], s[ dataColNr, 6 ],
-        s[ dataColNr, 7 ] )
+    dataColNr = ii * 5 - 3
+    name = s[ dataColNr, 5 ]
+    recScheme = Recruitment( name, s[ dataColNr, 6 ], s[ dataColNr, 7 ] )
     isAdaptive = s[ dataColNr, 10 ] == 1
     isRandom = s[ dataColNr, 11 ] == 1
+    nRow = 17
 
     if isAdaptive
         minRec = s[ dataColNr, 8 ] === nothing ? 0 : Int( s[ dataColNr, 8 ] )
         setRecruitmentLimits( recScheme, minRec, Int( s[ dataColNr, 9 ] ) )
     elseif isRandom
-        distTypes = Dict( "Pointwise" => :disc, "Uniform" => :pUnif,
-            "Piecewise Linear" => :pLin )
         distType = distTypes[ s[ dataColNr, 15 ] ]
+        numNodes = Int( s[ dataColNr, 16 ] )
+        minNodes = distType == "Pointwise" ? 1 : 2
         recDist = Dict{Int, Float64}()
-        jj = 17
 
-        while s[ dataColNr, jj ] !== nothing
-            node = s[ dataColNr, jj ]
-            weight = s[ dataColNr + 1, jj ]
+        for jj in 1:numNodes
+            node = s[ dataColNr, nRow + jj ]
+            weight = s[ dataColNr + 1, nRow + jj ]
 
-            if isa( node, Float64 ) && ( node == floor( node ) ) &&
-                isa( weight, Float64 )
-                recDist[ Int( node ) ] = weight
-            end  # if isa( node, Float64 ) &&
+            if isa( node, Float64 ) && !haskey( recDist, node ) &&
+                ( node >= 0 ) && isa( weight, Float64 ) && ( weight >= 0 )
+                recDist[ floor( Int, node ) ] = weight
+            end  # if isa( node, Float64 ) && ...
+        end  # for ii in 1:numNodes
 
-            jj += 1
-        end  # while s[ "B", jj ] !== nothing
+        if length( recDist ) < minNodes
+            error( "Recruitment type $name has an insufficient number of valid nodes defined for its population size distribution." )
+        end  # if numNodes < ( distType == "Pointwise" ? 1 : 2 )
 
         setRecruitmentDistribution( recScheme, recDist, distType )
     else
@@ -255,27 +261,33 @@ function generateRecruitmentScheme( s::Taro.Sheet, ii::T ) where T <: Integer
     if isFixedAge
         setRecruitmentAge( recScheme, s[ dataColNr, 13 ] * 12 )
     else
-        rowNrOfDist = numRows( s, dataColNr - 1, dataColNr - 1 )
-        distType = s[ dataColNr, rowNrOfDist ] == "Pointwise" ? :disc : :pUnif
-        rowNrOfDistEnd = numRows( s, dataColNr, dataColNr )
+        # Get to the start of the age distribution
+        nRow += 1
 
-        if rowNrOfDist + 2 > rowNrOfDistEnd
-            warn( "Improper recruitment age distribution. Ignoring recruitment scheme." )
-            return
-        end
+        while isa( s[ dataColNr - 1, nRow ], Void )
+            nRow += 1
+        end  # while isa( s[ dataColNr - 1, nRow ], Void )
 
+        distType = distTypes[ s[ dataColNr, nRow ] ]
+        numNodes = Int( s[ dataColNr, nRow + 1 ] )
+        minNodes = distType == "Pointwise" ? 1 : 2
+        nRow += 2
         ageDist = Dict{Float64, Float64}()
 
-        for jj in (rowNrOfDist + 2):rowNrOfDistEnd
-            age = s[ dataColNr, jj ] * 12
-            pMass = s[ dataColNr + 1, jj ]
+        for jj in 1:numNodes
+            age = s[ dataColNr, nRow + jj ] * 12
+            pMass = s[ dataColNr + 1, nRow + jj ]
 
             # Only add the entry if it makes sense.
-            if isa( age, Float64 ) && isa( pMass, Float64 ) &&
-                !haskey( ageDist, age )
+            if isa( age, Float64 ) && !haskey( ageDist, age ) && ( age >= 0 ) &&
+                isa( pMass, Float64 ) && ( pMass >= 0 )
                 ageDist[ age ] = pMass
             end  # if isa( age, Float64 ) && ...
         end  # for jj in (rowNrOfDist + 2):rowNrOfDistEnd
+
+        if length( ageDist ) < minNodes
+            error( "Recruitment type $name has an insufficient number of valid nodes defined for its recruitment age distribution." )
+        end  # if numNodes < ( distType == "Pointwise" ? 1 : 2 )
 
         setAgeDistribution( recScheme, ageDist, distType )
     end  # if isFixedAge

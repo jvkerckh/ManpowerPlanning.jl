@@ -455,7 +455,7 @@ function saveRecruitmentToDatabase( recScheme::Recruitment, configDB::SQLite.DB,
     # Recruitment age.
     valueList *= ";$(recScheme.ageDistType);["
     ageDist = recScheme.ageDistNodes
-    valueList *= join( map( node -> "$(node / 12):$(ageDist[ node ])",
+    valueList *= join( map( node -> "$(node):$(ageDist[ node ])",
         keys( ageDist ) ), "," )
     valueList *= "]"
 

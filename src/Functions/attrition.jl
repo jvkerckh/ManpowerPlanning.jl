@@ -222,7 +222,8 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
 @process macro.
 =#
 @resumable function attritionProcess( sim::Simulation, id::String,
-    timeOfRetirement::T, retProc::Process, mpSim::ManpowerSimulation ) where T <: Real
+    timeOfRetirement::T, #retProc::Process, mpSim::ManpowerSimulation ) where T <: Real
+    mpSim::ManpowerSimulation ) where T <: Real
 
     attrScheme = mpSim.attritionScheme
     timeOfEntry = now( sim )
@@ -293,9 +294,9 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
                 # The interrupt is only sensible if the retirement process (still)
                 #   exists. This can be detected by testing for finite exptected
                 #   retirement time.
-                if timeOfRetirement < +Inf
-                    interrupt( retProc )
-                end  # if timeOfRetirement < +Inf
+                # if timeOfRetirement < +Inf
+                #     interrupt( retProc )
+                # end  # if timeOfRetirement < +Inf
             end  # if ( timeOfAttr <= mpSim.simLength ) && ...
         end  # if attrRate == 0
 
@@ -308,15 +309,16 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
             ( nextAttrPeriodStart < timeOfRetirement )
             tmpWaitTime = min( attrScheme.attrPeriod,
                 timeOfRateChange - now( sim ) )
+
             @yield timeout( sim, tmpWaitTime,
                 priority = mpSim.phasePriorities[ :attrition ] )
 
-                # Make sure the person hasn't been fired.
-                result = SQLite.query( mpSim.simDB, queryCmd )
+            # Make sure the person hasn't been fired.
+            result = SQLite.query( mpSim.simDB, queryCmd )
 
-                if size( result ) == ( 1, 1 )
-                    checkForAttrition = false
-                end  # if size( result ) == ( 1, 1 )
+            if size( result ) != ( 1, 1 )
+                checkForAttrition = false
+            end  # if size( result ) != ( 1, 1 )
 
             # Prepare to update attrition rate if necessary.
             if now( sim ) == timeOfRateChange

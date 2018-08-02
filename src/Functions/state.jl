@@ -198,14 +198,15 @@ function readState( s::Taro.Sheet, sLine::T ) where T <: Integer
 
     isInitial = s[ "B", sLine + 1 ] == 1
     newState = State( s[ "B", sLine ], isInitial )
-    setStateTarget( newState, Int( s[ "B", sLine + 2 ] ) )
-    nReqs = Int( s[ "B", sLine + 3 ] )
+    nReqs = Int( s[ "B", sLine + 2 ] )
 
     for ii in 1:nReqs
-        attr = s[ "B", sLine + 3 + ii ]
-        values = processStateOptions( s[ "C", sLine + 3 + ii ] )
+        attr = s[ "B", sLine + 2 + ii ]
+        values = processStateOptions( s[ "C", sLine + 2 + ii ] )
         addRequirement!( newState, attr, values )
     end  # for ii in 1:nReqs
+
+    setStateTarget( newState, Int( s[ "B", sLine + 3 + nReqs ] ) )
 
     return newState, isInitial, sLine + 5 + nReqs
 

@@ -407,12 +407,14 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         # XXX Iterators.filter is needed to avoid deprecation warnings.
     foreach( state -> state.inStateSince[ id ] = now( mpSim ), initPersStates )
     stateNames = map( state -> state.name, initPersStates )
+    timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
+        ageAtRecruitment, now( mpSim ) )
 
     # Add person to the personnel database.
     command = "INSERT INTO $(mpSim.personnelDBname)
-        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
+        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment, expectedRetirementTime,
         $(join( map( attr -> attr.name, mpSim.initAttrList ), ", " ))) VALUES
-        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment,
+        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment, $timeOfRetirement,
             '$(join( map( attr -> initVals[ attr.name ], mpSim.initAttrList ), "', '" ))')"
     SQLite.execute!( mpSim.simDB, command )
 
@@ -449,21 +451,21 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     # If a proper retirement scheme has been defined, start this person's
     #   retirement process.
-    # Necessary to retain expected retirement time in database?
+    # Necessary to retain expected retirement time in database? Yes!
     timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
         ageAtRecruitment, now( mpSim ) )
-    retProc = nothing
-
-    if isa( mpSim.retirementScheme, Retirement )
-        retProc = @process retireProcess( mpSim.sim, id, timeOfRetirement,
-            mpSim )
-    end  # if isa( mpSim.retirementScheme, Retirement )
+    # retProc = nothing
+    #
+    # if isa( mpSim.retirementScheme, Retirement )
+    #     retProc = @process retireProcess( mpSim.sim, id, timeOfRetirement,
+    #         mpSim )
+    # end  # if isa( mpSim.retirementScheme, Retirement )
 
     # If a proper attrition scheme has been defined, set the attrition process.
     #   This must be defined AFTER the retirement scheme because it requires the
     #   expected time of retirement.
     if isa( mpSim.attritionScheme, Attrition )
-        @process attritionProcess( mpSim.sim, id, timeOfRetirement, retProc,
+        @process attritionProcess( mpSim.sim, id, timeOfRetirement, #retProc,
             mpSim )
     end  # if isa( mpSim.attritionScheme, Attrition )
 
@@ -506,16 +508,24 @@ end  # recruitmentCycle( mpSim, recScheme )
 @resumable function recruitProcess( sim::Simulation,
     schemeNr::Integer, mpSim::ManpowerSimulation )
 
+    processTime = Dates.Millisecond( 0 )
+    tStart = now()
+
     recScheme = mpSim.recruitmentSchemes[ schemeNr ]
     timeToWait = recScheme.recruitOffset
     priority = mpSim.phasePriorities[ :recruitment ]
     priority += Int8( recScheme.isAdaptive ? 0 : 1 )
 
     while now( sim ) + timeToWait <= mpSim.simLength
+        processTime += now() - tStart
         @yield timeout( sim, timeToWait, priority = priority )
+        tStart = now()
         timeToWait = recScheme.recruitFreq
         recruitmentCycle( mpSim, recScheme )
     end  # while now( sim ) + timeToWait <= mpSim.simLength
+
+    processTime += now() - tStart
+    println( "Recruitment process for '$(recScheme.name)' took $(processTime.value / 1000) seconds." )
 
 end
 

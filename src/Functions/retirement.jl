@@ -273,14 +273,14 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String,
     timeToRetire = min( timeToRetireAge, timeToCareerEnd )
     timeOfRetirement = now( mpSim ) + timeToRetire
 
-    # Adjustment to observe the retirement schedule.
-    if ( retScheme.retireFreq > 0.0 ) && ( timeToRetire < +Inf )
-        extraTime = timeOfRetirement % retScheme.retireFreq
-        extraTime = retScheme.retireOffset - extraTime
-        extraTime += extraTime < 0.0 ? retScheme.retireFreq : 0.0
-        timeToRetire += extraTime
-        timeOfRetirement += extraTime
-    end  # if ( retScheme.retireFreq > 0.0 ) && ...
+    # Adjustment to observe the retirement schedule.  XXX to remove.
+    # if ( retScheme.retireFreq > 0.0 ) && ( timeToRetire < +Inf )
+    #     extraTime = timeOfRetirement % retScheme.retireFreq
+    #     extraTime = retScheme.retireOffset - extraTime
+    #     extraTime += extraTime < 0.0 ? retScheme.retireFreq : 0.0
+    #     timeToRetire += extraTime
+    #     timeOfRetirement += extraTime
+    # end  # if ( retScheme.retireFreq > 0.0 ) && ...
 #=
     # Enter the time in the database if needed.
     if timeToRetire < +Inf
@@ -327,6 +327,51 @@ end  # computeExpectedRetirementTime( mpSim )
     end
 
 end  # retireProcess( sim, id, timeOfRetirement, mpSim )
+
+
+@resumable function retireProcess( sim::Simulation, mpSim::ManpowerSimulation )
+
+    # Immediately terminate process if there's no retirement scheme.
+    # XXX Will this be needed?
+    if isa( mpSim.retirementScheme, Void )
+        return
+    end  # if isa( mpSim.retirementScheme, Void )
+
+    processTime = Dates.Millisecond( 0 )
+    tStart = now()
+
+    retScheme = mpSim.retirementScheme
+    timeOfNextRetirement = now( sim ) - retScheme.retireOffset
+    timeOfNextRetirement = ceil( timeOfNextRetirement /
+        retScheme.retireFreq ) * retScheme.retireFreq
+    timeOfNextRetirement += retScheme.retireOffset
+    priority = mpSim.phasePriorities[ :retirement ]
+    queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
+        WHERE status NOT IN ('fired', 'resigned', 'retired')
+            AND expectedRetirementTime <= "
+
+    while timeOfNextRetirement <= mpSim.simLength
+        processTime += now() - tStart
+        @yield( timeout( sim, timeOfNextRetirement - now( sim ),
+            priority = priority ) )
+        tStart = now()
+
+        # Find list of people who should retire now.
+        idsToRetire = SQLite.query( mpSim.simDB,
+            queryCmd * string( now( sim ) ) )[ Symbol( mpSim.idKey ) ]
+        idsToRetire = Vector{String}( idsToRetire )
+
+        if !isempty( idsToRetire )
+            retirePersons( mpSim, idsToRetire, "retired" )
+        end  # if !isempty( idsToRetire )
+
+        timeOfNextRetirement += retScheme.retireFreq
+    end  # while timeOfNextRetirement <= mpSim.simLength
+
+    processTime += now() - tStart
+    println( "Retirement process took $(processTime.value / 1000) seconds." )
+
+end  # retireProcess( sim, mpSim )
 
 
 # This function retrieves the expected retirement time from the database, and

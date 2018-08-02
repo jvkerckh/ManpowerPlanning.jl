@@ -427,6 +427,7 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     @process dbCommitProcess( mpSim.sim,
         toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
     initiateTransitionProcesses( mpSim )
+    @process retireProcess( mpSim.sim, mpSim )
     # initiateTransitionResets( mpSim )
     startTime = now()
 

@@ -177,6 +177,18 @@ function readAttribute( s::Taro.Sheet, sLine::T ) where T <: Integer
 
     if nOpts > 0
         attrDict = Dict{String, Float64}()
+
+        for ii in 1:nOpts
+            val = isa( s[ "B", sLine + 4 + ii ], Void ) ? "undefined" :
+                s[ "B", sLine + 4 + ii ]
+            weight = s[ "C", sLine + 4 + ii ]
+
+            if isa( weight, Float64 ) && ( weight > 0 )
+                attrDict[ val ] = weight + ( haskey( attrDict, val ) ?
+                    attrDict[ val ] : 0 )
+            end  # if isa( weight, Float64 ) && ...
+        end  # for ii in 1:nOpts
+
         foreach( ii -> attrDict[ s[ "B", sLine + 4 + ii ] ] =
             s[ "C", sLine + 4 + ii ], 1:nOpts )
         setAttrValues!( newAttr, attrDict )

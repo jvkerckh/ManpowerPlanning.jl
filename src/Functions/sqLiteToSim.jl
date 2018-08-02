@@ -504,7 +504,7 @@ This function reads the recruitment schemes from the SQLite database
 `configDB`, looking in the table with name `configName`, and uses these
 parameters to configure the manpower simulation `mpSim`.
 
-This function returns `nothing`. If information is missing, the funuction will
+This function returns `nothing`. If information is missing, the function will
 issue warnings, or throw an error depending on the severity.
 """
 function readRecruitmentFromDatabase( configDB::SQLite.DB,

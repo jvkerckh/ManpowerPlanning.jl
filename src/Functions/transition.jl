@@ -388,6 +388,9 @@ end  # initiateTransitionProcesses( mpSim )
 @resumable function transitionNewProcess( sim::Simulation, trans::Transition,
     mpSim::ManpowerSimulation )
 
+    processTime = Dates.Millisecond( 0 )
+    tStart = now()
+
     # Initialize the schedule.
     timeOfCheck = now( sim ) - trans.offset
     timeOfCheck = ceil( timeOfCheck / trans.freq ) * trans.freq + trans.offset
@@ -397,7 +400,9 @@ end  # initiateTransitionProcesses( mpSim )
     nAttempts = Dict{String, Int}()
 
     while timeOfCheck <= mpSim.simLength
+        processTime += now() - tStart
         @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority ) )
+        tStart = now()
         timeOfCheck += trans.freq
 
         # Identify all persons who're in the start state long enough.
@@ -410,12 +415,17 @@ end  # initiateTransitionProcesses( mpSim )
 
         # Halt execution until the transition candidates for all transitions at
         #   the current time are determined.
+        processTime += now() - tStart
         @yield( timeout( sim, 0, priority = priority - Int8( 1 ) ) )
+        tStart = now()
         executeTransitions( trans, transIDs, mpSim )
         updateStates( trans, transIDs, nAttempts, mpSim )
         firePersonnel( trans, eligibleIDs, transIDs, nAttempts, maxAttempts,
             mpSim )
     end  # while timeOfCheck <= mpSim.simLength
+
+    processTime += now() - tStart
+    println( "Transition process for '$(trans.name)' took $(processTime.value / 1000) seconds." )
 
 end  # transitionNewProcess( sim, trans, mpSim )
 
