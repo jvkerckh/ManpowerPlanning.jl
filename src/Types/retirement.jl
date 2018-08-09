@@ -12,21 +12,32 @@ end  # for reqType in requiredTypes
 
 
 export Retirement
+"""
+This type defines a retirement scheme for mandatory retirement of personnel
+members based on age or tenure.
+
+The type contains the following fields:
+* `maxCareerLength::Float64`: the maximum length of a personnel member's career.
+  Set this to 0 to ignore this criterion.
+* `retireAge::Float64`: the mandatory retirement age. Set this to 0 to ignore
+  this criterion.
+* `retireFreq::Float64`: the length of the time interval between two retirement
+  checks.
+* `retireOffset::Float64`: the offset of the retirement schedule with respect to
+  the start of the simulation.
+* 'isEither::Bool': a flag indicating whether either of the criteria (age or
+  tenure) must be satisfied for retirement, or both.
+"""
 type Retirement
-    # The maximum length of a personnel member's career.
+
     maxCareerLength::Float64
-
-    # The mandatory retirement age.
     retireAge::Float64
-
-    # The time between two retirement cycles.
     retireFreq::Float64
-
-    # The offset of the retirement cycle.
     retireOffset::Float64
+    isEither::Bool
 
     function Retirement( ; freq::T1 = 0.0, offset::T2 = 0.0,
-        maxCareer::T3 = 0.0, retireAge::T4 = 0.0 ) where T1 <: Real where T2 <: Real where T3 <: Real where T4 <: Real
+        maxCareer::T3 = 0.0, retireAge::T4 = 0.0, isEither::Bool = true ) where T1 <: Real where T2 <: Real where T3 <: Real where T4 <: Real
 
         if freq < 0.0
             error( "Retirement cycle length must be ⩾ 0.0." )
@@ -46,7 +57,9 @@ type Retirement
         newRet.retireFreq = freq
         newRet.retireOffset = freq > 0.0 ?
             ( offset % freq + ( offset < 0.0 ? freq : 0.0 ) ) : 0.0
+        newRet.isEither = isEither
         return newRet
-        
+
     end  # Retirement( freq, offset, maxCareer, retireAge )
+    
 end  # type Retirement

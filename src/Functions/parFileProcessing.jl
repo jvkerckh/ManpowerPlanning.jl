@@ -300,12 +300,7 @@ end  # function generateRecruitmentScheme( s, ii )
 function readAttritionPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
     if s[ "B", 4 ] == 1
-        if s[ "B", 5 ] > 0
-            attrScheme = Attrition( s[ "B", 5 ], s[ "B", 3 ] )
-            setAttrition( mpSim, attrScheme )
-        else
-            setAttrition( mpSim )
-        end  # if s[ "B", 5 ] > 0
+        attrScheme = Attrition( s[ "B", 5 ], s[ "B", 3 ] )
     else
         lastRow = numRows( s, "C" )
         nAttrEntries = lastRow - 7  # 7 is the header row of the attrition curve
@@ -323,13 +318,9 @@ function readRetirementPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
     maxTenure = s[ "B", 5 ] * 12
     maxAge = s[ "B", 6 ] * 12
-
-    if ( maxTenure > 0 ) || ( maxAge > 0 )
-        retScheme = Retirement( freq = s[ "B", 3 ], offset = s[ "B", 4 ],
-            maxCareer = maxTenure, retireAge = maxAge )
-        setRetirement( mpSim, retScheme )
-    else
-        setRetirement( mpSim )
-    end  # if ( maxTenure > 0 ) || ...
+    isEither = s[ "B", 7 ] == "EITHER"
+    retScheme = Retirement( freq = s[ "B", 3 ], offset = s[ "B", 4 ],
+        maxCareer = maxTenure, retireAge = maxAge, isEither = isEither )
+    setRetirement( mpSim, retScheme )
 
 end  # readRetirementPars( mpSim, s )

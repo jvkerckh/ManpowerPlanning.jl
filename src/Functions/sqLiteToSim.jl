@@ -774,7 +774,7 @@ issue warnings, or throw an error depending on the severity.
 function readRetirementFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
-    queryCmd = "SELECT strPar1 FROM $configName
+    queryCmd = "SELECT boolPar1, strPar1 FROM $configName
         WHERE parType IS 'Retirement' AND parName IS 'Retirement'"
     retirement = Array( SQLite.query( configDB, queryCmd ) )
 
@@ -785,7 +785,7 @@ function readRetirementFromDatabase( configDB::SQLite.DB,
         return
     end  # if length( retirement ) == 0
 
-    retPars = retirement[ 1 ]
+    retPars = retirement[ 2 ]
 
     # Default to no retirement if the entry is missing...
     if !isa( retPars, String )
@@ -809,8 +809,16 @@ function readRetirementFromDatabase( configDB::SQLite.DB,
     if ( retPars[ 1 ] == 0 ) && ( retPars[ 2 ] == 0 )
         setRetirement( mpSim )
     else
+        isEither = tryparse( Bool, retirement[ 1 ] )
+
+        if !isEither.hasvalue
+            warn( "'Either condition for retirement' flag incorrectly formatteD. Setting it to true." )
+        end
+
+        isEither = isEither.hasvalue ? isEither.value : true
         retScheme = Retirement( freq = retPars[ 3 ], offset = retPars[ 4 ],
-            maxCareer = retPars[ 1 ], retireAge = retPars[ 2 ] )
+            maxCareer = retPars[ 1 ], retireAge = retPars[ 2 ],
+            isEither = isEither )
         setRetirement( mpSim, retScheme )
     end  # if ( retPars[ 1 ] == 0 ) && ...
 

@@ -72,7 +72,7 @@ type ManpowerSimulation
     recruitmentSchemes::Vector{Recruitment}
 
     # The attrition scheme.
-    attritionScheme::Union{Void, Attrition}
+    attritionScheme::Attrition
 
     # The retirement scheme.
     retirementScheme::Union{Void, Retirement}
@@ -82,6 +82,9 @@ type ManpowerSimulation
 
     # Processor time of the simulation.
     simTimeElapsed::Dates.Millisecond
+
+    # Time of attrition execution processes.
+    attrExecTimeElapsed::Dates.Millisecond
 
     # The priorities of the various simulation phases.
     phasePriorities::Dict{Symbol, Int8}
@@ -141,12 +144,16 @@ type ManpowerSimulation
         newMPsim.initStateList = Dict{State, Vector{Transition}}()
         newMPsim.otherStateList = Dict{State, Vector{Transition}}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
-        newMPsim.attritionScheme = nothing
+        newMPsim.attritionScheme = Attrition( "default" )
         newMPsim.retirementScheme = nothing
         newMPsim.sim = Simulation()
         newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
-        newMPsim.phasePriorities = Dict( :recruitment => 10, :transition => 20,
-            :retirement => 30, :attrition => 40 )
+        newMPsim.attrExecTimeElapsed = Dates.Millisecond( 0 )
+        newMPsim.phasePriorities = Dict( :attrCheck => 10,
+            :recruitment => 20,
+            :transition => 30,
+            :retirement => 40,
+            :attrition => 50 )
         newMPsim.simLength = 1.0
         newMPsim.simReports = Dict{Float64, SimulationReport}()
         return newMPsim

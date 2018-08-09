@@ -276,8 +276,9 @@ function readRetirementFromSim( mpSim::ManpowerSimulation,
     retScheme = mpSim.retirementScheme
 
     command = "INSERT INTO $configName
-        (parName, parType, strPar1) VALUES
-        ('Retirement', 'Retirement', '$(retScheme.maxCareerLength),$(retScheme.retireAge),$(retScheme.retireFreq),$(retScheme.retireOffset)')"
+        (parName, parType, boolPar1, strPar1) VALUES
+        ('Retirement', 'Retirement', '$(retScheme.isEither)',
+            '$(retScheme.maxCareerLength),$(retScheme.retireAge),$(retScheme.retireFreq),$(retScheme.retireOffset)')"
     SQLite.execute!( configDB, command )
 
     return

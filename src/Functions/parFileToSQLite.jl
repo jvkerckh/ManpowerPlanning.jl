@@ -569,9 +569,12 @@ function readRetirementFromFile( wb::Workbook, configDB::SQLite.DB,
         return
     end  # if ( maxTenure == 0 ) && ...
 
+    isEither = sheet[ "B", 7 ] == "EITHER"
+
     command = "INSERT INTO $configName
-        (parName, parType, strPar1) VALUES
-        ('Retirement', 'Retirement', '$maxTenure,$maxAge,$(sheet[ "B", 3 ]),$(sheet[ "B", 4 ])')"
+        (parName, parType, boolPar1, strPar1) VALUES
+        ('Retirement', 'Retirement', '$isEither',
+            '$maxTenure,$maxAge,$(sheet[ "B", 3 ]),$(sheet[ "B", 4 ])')"
     SQLite.execute!( configDB, command )
 
     return

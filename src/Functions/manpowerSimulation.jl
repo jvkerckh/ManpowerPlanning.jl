@@ -268,7 +268,9 @@ function resetSimulation( mpSim::ManpowerSimulation )
         timeEntered float,
         timeExited float,
         ageAtRecruitment float,
-        expectedRetirementTime float"
+        expectedRetirementTime float,
+        expectedAttritionTime float,
+        attritionScheme varchar(64)"
 
     if !( isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList ) )
         command *= ',' * join( map( attr -> attr.name * " varcar(64)",
@@ -421,6 +423,7 @@ function SimJulia.run( mpSim::ManpowerSimulation )
 
     toTime = 0.0
     oldSimTime = now( mpSim )
+    mpSim.attrExecTimeElapsed = Dates.Millisecond( 0 )
 
     # Start the database commits.
     SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
@@ -428,7 +431,7 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
     initiateTransitionProcesses( mpSim )
     @process retireProcess( mpSim.sim, mpSim )
-    # initiateTransitionResets( mpSim )
+    @process checkAttritionProcess( mpSim.sim, mpSim )
     startTime = now()
 
     if toTime > 0.0
@@ -438,6 +441,7 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     end  # if toTime > 0.0
 
     mpSim.simTimeElapsed += now() - startTime
+    println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
 
     # Final commit.
     SQLite.execute!( mpSim.simDB, "COMMIT" )

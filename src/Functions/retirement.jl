@@ -20,37 +20,7 @@ if !isdefined( :retirementReasons )
 end # if !isdefined( :retirementReasons )
 
 
-#=
-# This function retires the personnel member for the given reason (:retired,
-#   :resigned, :fired).
-export retire
-function retire( person::Personnel, reason::Symbol )
-    if in( reason, retirementReasons )
-        person[ :status ] = reason
-        return true
-    end  # if in( reason, retirementReasons )
-
-    return false
-end  # retire( person, reason )
-
-function retire( person::Personnel, reason::Symbol, sim::Simulation )
-    if retire( person, reason )
-        person[ :retireTime ] = now( sim )  # XXX to check if this is correct.
-        # XXX Also, make sure to include Ben's routines
-    end
-end
-
-
-# This function retires the person with the given id in the database.
-function retire( dbase::PersonnelDatabase, index::DbIndexType, reason::Symbol )
-    retire( dbase[ index ], reason )
-end  # retire( dbase, index, reason )
-
-function retire( dbase::PersonnelDatabase, index::DbIndexType, reason::Symbol,
-    sim::Simulation )
-    retire( dbase[ index ], reason, sim )
-end  # retire( dbase, index, reason, sim )
-=#
+export setRetirementCondFlag
 
 
 # This function sets the period length and the offset of the retirement
@@ -58,14 +28,13 @@ end  # retire( dbase, index, reason, sim )
 export setRetirementSchedule
 function setRetirementSchedule( retScheme::Retirement, freq::T1, offset::T2 ) where T1 <: Real where T2 <: Real
 
-    if freq < 0.0
-        warn( "Retirement cycle length must be ⩾ 0.0. Not making changes to the retirement scheme." )
+    if freq <= 0.0
+        warn( "Retirement cycle length must be > 0.0. Not making changes to the retirement scheme." )
         return
     end  # if freq < 0.0
 
     retScheme.retireFreq = freq
-    retScheme.retireOffset = freq > 0.0 ?
-        ( offset % freq + ( offset < 0.0 ? freq : 0.0 ) ) : 0.0
+    retScheme.retireOffset =  offset % freq + ( offset < 0.0 ? freq : 0.0 )
 
 end  # setRetirementSchedule( retScheme, freq, offset )
 
@@ -161,21 +130,48 @@ function setRetirementAge( mpSim::ManpowerSimulation, retireAge::T,
 end # setRetirementAge( mpSim, retireAge, updateRetirement )
 
 
-#=
-function retirePerson( mpSim::ManpowerSimulation, person::Personnel,
-    result::Personnel, reason::Symbol )
+"""
+```
+setRetirementCondFlag( retScheme::Retirement,
+                       isEither::Bool )
+```
+This function sets the flag controlling whether one or both of the conditions
+need to be satisfied for retirement scheme `retScheme` to `isEither`, where a
+value of `true` stands for one of the conditions.
 
-    if !in( reason, retirementReasons )
-        error( "$reason -- unknown retirement reason." )
-    end  # if !in( reason, retirementReasons )
+This function returns `nothing`.
+"""
+function setRetirementCondFlag( retScheme::Retirement, isEither::Bool )::Void
 
-    result[ :status, now( mpSim ) ] = reason
-    id = person[ mpSim.idKey ]
-    removePersonnel!( mpSim.workingDbase, id )
-    # println( "Person $id has retired at $(now( mpSim ))." )
+    retScheme.isEither = isEither
+    return
 
-end  # retirePerson( mpSim, person, result, reason )
-=#
+end  # setRetirementCondFlag( retScheme, iseither )
+
+
+"""
+```
+setRetirementCondFlag( mpSim::ManpowerSimulation,
+                       isEither::Bool )
+```
+This function sets the flag controlling whether one or both of the conditions
+need to be satisfied for the default retirement scheme in the manpower
+simulation `mpSim` to `isEither`, where a value of `true` stands for one of the
+conditions. If no default retirement scheme is defined, this function does
+nothing.
+
+This function returns `nothing`.
+"""
+function setRetirementCondFlag( mpSim::ManpowerSimulation, isEither::Bool )::Void
+
+    if !isa( mpSim.retirementScheme, Void )
+        setRetireCondFlag( mpSim.retirementScheme, isEither )
+    end  # if !isa( mpSim.retirementScheme, Void )
+
+    return
+
+end  # setRetirementCondFlag( retScheme, iseither )
+
 
 function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
 
@@ -246,21 +242,13 @@ end  # function retirePersons( mpSim, ids, reason )
 
 # This function computes the person's expected retirement time and returns it.
 export computeExpectedRetirementTime
-function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String,
-    ageAtRecruitment::T1, timeEntered::T2 ) where T1 <: Real where T2 <: Real
-
-    retScheme = mpSim.retirementScheme
+function computeExpectedRetirementTime( mpSim::ManpowerSimulation,
+    retScheme::Retirement, ageAtRecruitment::T1, timeEntered::T2 ) where T1 <: Real where T2 <: Real
 
     # No need to continue processing if there's no retirement scheme.
     if retScheme === nothing
-        return
+        return +Inf
     end  # if retScheme === nothing
-
-    # Get the person from the database.
-    # command = "SELECT timeEntered, ageAtRecruitment
-    #     FROM $(mpSim.personnelDBname)
-    #     WHERE $(mpSim.idKey) = '$id'"
-    # person = SQLite.query( mpSim.simDB, command )
 
     # Compute how long the person is in the system already. Usually 0.0.
     timeInSystem = now( mpSim ) - timeEntered
@@ -271,62 +259,16 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation, id::String,
     timeToCareerEnd = retScheme.maxCareerLength > 0.0 ?
         retScheme.maxCareerLength - timeInSystem : +Inf
     timeToRetire = min( timeToRetireAge, timeToCareerEnd )
+
+    if !retScheme.isEither && ( timeToRetireAge < +Inf ) &&
+        ( timeToCareerEnd < +Inf )
+        timeToRetire = max( timeToRetireAge, timeToCareerEnd )
+    end  # if !retScheme.isEither && ...
+
     timeOfRetirement = now( mpSim ) + timeToRetire
+    return timeOfRetirement == +Inf ? "NULL" : timeOfRetirement
 
-    # Adjustment to observe the retirement schedule.  XXX to remove.
-    # if ( retScheme.retireFreq > 0.0 ) && ( timeToRetire < +Inf )
-    #     extraTime = timeOfRetirement % retScheme.retireFreq
-    #     extraTime = retScheme.retireOffset - extraTime
-    #     extraTime += extraTime < 0.0 ? retScheme.retireFreq : 0.0
-    #     timeToRetire += extraTime
-    #     timeOfRetirement += extraTime
-    # end  # if ( retScheme.retireFreq > 0.0 ) && ...
-#=
-    # Enter the time in the database if needed.
-    if timeToRetire < +Inf
-        command = "UPDATE $(mpSim.personnelDBname)
-            SET expectedRetirementTime = $timeOfRetirement
-            WHERE $(mpSim.idKey) = '$id'"
-        SQLite.execute!( mpSim.simDB, command )
-    end
-=#
-    return timeOfRetirement
-
-end  # computeExpectedRetirementTime( mpSim )
-
-
-# This function is the retirement process.
-@resumable function retireProcess( sim::Simulation, id::String,
-    timeOfRetirement::T, mpSim::ManpowerSimulation ) where T <: Real
-
-    # Don't do anything if the retirement time occurs after the simulation's
-    #   end. This will ensure that the simulation will not take any steps beyond
-    #   those that are necessary.
-    if timeOfRetirement > mpSim.simLength
-        return
-    end  # if timeOfRetirement > mpSim.simLength
-
-    try
-        @yield timeout( sim, timeOfRetirement - now( sim ),
-            priority = mpSim.phasePriorities[ :retirement ] )
-
-        # Check if the person is still in the system.
-        queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
-            WHERE ( $(mpSim.idKey) IS '$id' ) AND
-                status NOT IN ('resigned', 'fired')"
-        result = SQLite.query( mpSim.simDB, queryCmd )
-
-        # Retire the person only if necessary.
-        if size( result ) == ( 1, 1 )
-            retirePerson( mpSim, id, "retired" )
-        end  # if size( result ) == ( 1, 1 )
-    catch err
-        if !isa( err, SimJulia.InterruptException )
-            error( "Something went badly wrong: $(typeof( err )) -- $err" )
-        end  # if !isa( err, InterruptException )
-    end
-
-end  # retireProcess( sim, id, timeOfRetirement, mpSim )
+end  # computeExpectedRetirementTime( mpSim, ageAtRecruitment, timeEntered )
 
 
 @resumable function retireProcess( sim::Simulation, mpSim::ManpowerSimulation )
@@ -374,45 +316,6 @@ end  # retireProcess( sim, id, timeOfRetirement, mpSim )
 end  # retireProcess( sim, mpSim )
 
 
-# This function retrieves the expected retirement time from the database, and
-#   starts the actual retirement process.
-function retireFunction( mpsim::ManpowerSimulation, id::String )
-
-    # Get expected time of retirement from the database.
-    command = "SELECT expectedRetirementTime
-        FROM $(mpSim.personnelDBname)
-        WHERE $(mpSim.idKey) = '$id'"
-    person = SQLite.query( mpSim.simDB, command )
-    timeOfRetirement = person[ 1, :expectedRetirementTime ]
-    timeOfRetirement = timeOfRetirement.hasvalue ? timeOfRetirement.value : +Inf
-
-    return @process retireProcess( mpSim.sim, id, timeOfRetirement, mpSim )
-
-end  # retireFunction( mpSim, id )
-
-#=
-@resumable function retireProcess( sim::Simulation, person::Personnel,
-    result::Personnel, mpSim::ManpowerSimulation )
-
-    # Don't do anything if the retirement time occurs after the simulation's
-    #   end. This will ensure that the simulation will not take any steps beyond
-    #   those that are necessary.
-    if timeOfRetirement > mpSim.simLength
-        return
-    end  # if timeOfRetirement > mpSim.simLength
-
-    try
-        @yield timeout( sim, timeToRetire,
-            priority = mpSim.phasePriorities[ :retirement ] )
-        retirePerson( mpSim, person, result, :retired )
-    catch err
-        if !isa( err, SimJulia.InterruptException )
-            error( "Something went badly wrong: $(typeof( err )) -- $err" )
-        end  # if !isa( err, InterruptException )
-    end
-end  # retireProcess( sim, person, result, mpSim )
-=#
-
 function Base.show( io::IO, retScheme::Retirement )
 
     if ( retScheme.maxCareerLength == 0.0 ) && ( retScheme.retireAge == 0.0 )
@@ -420,22 +323,22 @@ function Base.show( io::IO, retScheme::Retirement )
         return
     end   # if ( retScheme.maxCareerLength == 0.0 ) && ...
 
-    out = ""
-
-    if retScheme.retireFreq > 0.0
-        out *= "Retirement schedule period: $(retScheme.retireFreq)"
-        out *= " (+ $(retScheme.retireOffset))"
-    end  # if retScheme.retireFreq > 0.0
+    out = "      Retirement schedule period: $(retScheme.retireFreq)"
+    out *= " (+ $(retScheme.retireOffset))"
 
     if retScheme.maxCareerLength > 0.0
-        out *= out == "" ? "" : "\n"
-        out *= "Max career length: $(retScheme.maxCareerLength)"
+        out *= "\n      Max career length: $(retScheme.maxCareerLength)"
     end  # if retScheme.maxCareerLength > 0
 
     if retScheme.retireAge > 0.0
-        out *= out == "" ? "" : "\n"
-        out *= "Retirement age: $(retScheme.retireAge)"
+        out *= "\n      Retirement age: $(retScheme.retireAge)"
     end  # if retScheme.maxCareerLength > 0
+
+    if retScheme.maxCareerLength * retScheme.retireAge > 0.0
+        out *= "\n      " * ( retScheme.isEither ? "Either" : "Both" )
+        out *= " condition" * ( retScheme.isEither ? "" : "s" )
+        out *= " must be satisfied for retirement."
+    end  # if retScheme.maxCareerLength * retScheme.retireAge > 0.0
 
     print( io, out )
 

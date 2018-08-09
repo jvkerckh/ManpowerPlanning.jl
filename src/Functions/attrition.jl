@@ -35,9 +35,11 @@ function setAttritionRate( attrScheme::Attrition, rate::T ) where T <: Real
     attrScheme.attrRates = [ rate ]
 
     # If the attrition rate becomes 0.0, reset the period to 1.0.
-    if rate == 0.0
-        attrScheme.attrPeriod = 1.0
-    end  # if rate == 0.0
+    # if rate == 0.0
+    #     attrScheme.attrPeriod = 1.0
+    # end  # if rate == 0.0
+
+    computeDistPars( attrScheme )
 
 end  # setAttritionRate( attrScheme, rate )
 
@@ -55,17 +57,18 @@ This function returns `nothing`.
 """
 function setAttritionPeriod( attrScheme::Attrition, period::T ) where T <: Real
 
-    if attrScheme.attrRates == [ 0.0 ]
-        warn( "Attrition rate is a flat 0.0, changing the period has no effect so not making any changes." )
-        return
-    end  # if attrScheme.attrRates == [ 0.0 ]
-
     if period <= 0.0
         warn( "Attrition period must be > 0.0, not making any changes." )
         return
     end  # if period <= 0.0
 
+    if attrScheme.attrRates == [ 0.0 ]
+        warn( "Attrition rate is a flat 0.0, changing the period has no effect." )
+        # return
+    end  # if attrScheme.attrRates == [ 0.0 ]
+
     attrScheme.attrPeriod = period
+    computeDistPars( attrScheme )
 
 end  # setAttritionPeriod( attrScheme, period )
 
@@ -86,9 +89,9 @@ function setAttritionParameters( attrScheme::Attrition, rate::T1, period::T2 ) w
 
     setAttritionRate( attrScheme, rate )
 
-    if rate != 0.0
+    # if rate != 0.0
         setAttritionPeriod( attrScheme, period )
-    end  # if rate != 0.0
+    # end  # if rate != 0.0
 
 end  # setAttritionParameters( attrScheme, rate, period )
 
@@ -175,6 +178,7 @@ function setAttritionCurve( attrScheme::Attrition, curve::Array{Float64, 2} )
     # Update the attrition scheme.
     attrScheme.attrCurvePoints = tmpCurve[ isDiffFromPrevious, 1 ]
     attrScheme.attrRates = tmpCurve[ isDiffFromPrevious, 2 ]
+    computeDistPars( attrScheme )
 
 end  # setAttritionCurve( attrScheme, curve )
 
@@ -202,6 +206,79 @@ function setAttritionCurve( attrScheme::Attrition,
     setAttritionCurve( attrScheme, hcat( terms, rates ) )
 
 end  # setAttritionCurve( attrScheme, curve )
+
+
+"""
+```
+computeDistPars( attrScheme::Attrition )
+```
+This function pre-computes some reoccurring parameters of the distribution of
+the time to attrition of the attrition scheme `attrScheme`.
+
+This function returns `nothing`.
+"""
+function computeDistPars( attrScheme::Attrition )::Void
+
+    attrScheme.lambdas = - log.( 1 - attrScheme.attrRates ) /
+        attrScheme.attrPeriod
+    alpha = vcat( 1.0, exp.( - ( attrScheme.lambdas[ 1:(end - 1) ] -
+        attrScheme.lambdas[ 2:end ] ) .* attrScheme.attrCurvePoints[ 2:end ] ) )
+    attrScheme.betas = cumprod( alpha )
+    attrScheme.gammas = attrScheme.betas .*
+        exp.( - attrScheme.lambdas .* attrScheme.attrCurvePoints )
+    return
+
+end  # computeDistPars( attrScheme )
+
+
+"""
+```
+determineAttritionScheme( stateList::Vector{String},
+                          mpSim::ManpowerSimulation )
+```
+This function determines the appropriate attrition scheme to use for a personnel
+member belonging to the states in `statList`. The available attrition schemes
+are found in the manpower simulation `mpSim`.
+
+This function returns an object of type `Attrition` (an attrition scheme). If
+multiple schemes qualify, the first is returned; if none qualify, the default
+attrition scheme is returned.
+"""
+function determineAttritionScheme( stateList::Vector{String},
+    mpSim::ManpowerSimulation )::Attrition
+
+    # XXX Check states and determine appropriate schemes.
+
+    return mpSim.attritionScheme
+
+end  # determineAttritionScheme( stateList, mpSim )
+
+
+"""
+```
+generateTimeOfAttrition( attrScheme::Attrition,
+                         nowTime::Float64 )
+```
+This function generates a time to attrition for the attrition scheme
+`attrScheme`, starting from the current time.
+
+This function returns a `Float64`, the time to attrition, or a `String` equal to
+`"NULL"` if the time to attrition is infinite.
+"""
+function generateTimeOfAttrition( attrScheme::Attrition, nowTime::Float64 )
+
+    u = rand()
+    ii = findlast( 1 - attrScheme.gammas .<= u )
+
+    if ( ii == length( attrScheme.attrCurvePoints ) ) &&
+        ( attrScheme.lambdas[ end ] == 0 )
+        return "NULL"
+    end  # if ( ii == length( attrScheme.attrCurvePoints ) ) && ...
+
+    return nowTime -
+        log( ( 1 - u ) / attrScheme.betas[ ii ] ) / attrScheme.lambdas[ ii ]
+
+end  # generateTimeOfAttrition( attrScheme, nowTime )
 
 
 #=
@@ -329,7 +406,74 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
         end  # if checkForAttrition && ...
     end  # while checkForAttrition
 
-end  # attritionProcess( sim, id, timeOfRetirement, retProc, mpSim )
+end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
+
+
+@resumable function checkAttritionProcess( sim::Simulation, mpSim::ManpowerSimulation )
+
+    processTime = Dates.Millisecond( 0 )
+    tStart = now()
+    timeSkip = 1.0
+    timeOfNextCheck = 0.0
+    priority = mpSim.phasePriorities[ :attrCheck ]
+    queryCmd = "SELECT $(mpSim.idKey), expectedAttritionTime
+        FROM $(mpSim.personnelDBname)
+        WHERE status NOT IN ('retired', 'resigned', 'fired')
+            AND expectedAttritionTime <= "
+
+    while now( sim ) < mpSim.simLength
+        processTime += now() - tStart
+
+        @yield( timeout( sim, timeOfNextCheck - now( sim ),
+            priority = priority ) )
+
+        tStart = now()
+        timeOfNextCheck += timeSkip
+        timeOfNextCheck = timeOfNextCheck > mpSim.simLength ? mpSim.simLength :
+            timeOfNextCheck
+        queryResult = SQLite.query( mpSim.simDB,
+            queryCmd * string( timeOfNextCheck ) )
+        processTime += now() - tStart
+
+        for ii in 1:length( queryResult[ 1 ] )
+            @process executeAttritionProcess( sim, queryResult[ 1 ][ ii ],
+                queryResult[ 2 ][ ii ], mpSim )
+        end  # for ii in 1:length( queryResult[ 1 ] )
+
+        tStart = now()
+    end  # while now( sim ) < mpSim.simLength
+
+    processTime += now() - tStart
+    println( "Attrition check process took $(processTime.value / 1000) seconds." )
+
+end  # checkAttritionProcess( sim, mpSim )
+
+
+# This process executes the attrition if it occurs in the next period.
+@resumable function executeAttritionProcess( sim::Simulation, id::String,
+    timeOfAttrition::Float64, mpSim::ManpowerSimulation )
+
+    # Wait until the time attrition should take place.
+    @yield( timeout( sim, timeOfAttrition - now( sim ),
+        priority = mpSim.phasePriorities[ :attrition ] ) )
+
+    tStart = now()
+    # Get the personnel record.
+    queryCmd = "SELECT expectedAttritionTime, status
+        FROM $(mpSim.personnelDBname)
+        WHERE $(mpSim.idKey) IS '$id'"
+    persRecord = SQLite.query( mpSim.simDB, queryCmd )
+
+    # Only perform the attrition if the person is still active and the time of
+    #   attrition hasn't changed.
+    if ( persRecord[ :status ][ 1 ] ∉ [ "resigned", "retired", "fired" ] ) &&
+        ( persRecord[ :expectedAttritionTime ][ 1 ] == timeOfAttrition )
+        retirePerson( mpSim, id, "resigned" )
+    end  # if ( persRecord[ :status ][ 1 ] ∉ ...
+
+    mpSim.attrExecTimeElapsed += now() - tStart
+
+end  # executeAttritionProcess( sim, id, timeOfAttrition, mpSim )
 
 
 function Base.show( io::IO, attrScheme::Attrition )

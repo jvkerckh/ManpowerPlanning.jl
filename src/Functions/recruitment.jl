@@ -103,7 +103,7 @@ end  #  setRecruitmentDistribution( recScheme, recDist )
 export setRecruitmentFixed
 function setRecruitmentFixed( recScheme::Recruitment, amount::T ) where T <: Integer
 
-    if amount <= 0
+    if amount < 0
         warn( "Negative number of people to recruit entered. Not making changes to recruitment scheme." )
         return
     end  # if amount <= 0
@@ -407,15 +407,29 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         # XXX Iterators.filter is needed to avoid deprecation warnings.
     foreach( state -> state.inStateSince[ id ] = now( mpSim ), initPersStates )
     stateNames = map( state -> state.name, initPersStates )
-    timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
-        ageAtRecruitment, now( mpSim ) )
+    timeOfRetirement = computeExpectedRetirementTime( mpSim,
+        mpSim.retirementScheme, ageAtRecruitment, now( mpSim ) )
+    attrScheme = determineAttritionScheme( stateNames, mpSim )
+    timeOfAttr = generateTimeOfAttrition( attrScheme, now( mpSim ) )
 
     # Add person to the personnel database.
     command = "INSERT INTO $(mpSim.personnelDBname)
-        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment, expectedRetirementTime,
-        $(join( map( attr -> attr.name, mpSim.initAttrList ), ", " ))) VALUES
+        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
+            expectedRetirementTime, expectedAttritionTime, attritionScheme"
+
+    if !isempty( mpSim.initAttrList )
+        command *= join( map( attr -> ", " * attr.name, mpSim.initAttrList ) )
+    end  # if !isempty( mpSim.initAttrList )
+
+    command *= ") VALUES
         ('$id', 'active', $(now( mpSim )), $ageAtRecruitment, $timeOfRetirement,
-            '$(join( map( attr -> initVals[ attr.name ], mpSim.initAttrList ), "', '" ))')"
+            $timeOfAttr, '$(attrScheme.name)'"
+
+    if !isempty( mpSim.initAttrList )
+        command *= ", '$(join( map( attr -> initVals[ attr.name ], mpSim.initAttrList ), "', '" ))'"
+    end
+
+    command *= ")"
     SQLite.execute!( mpSim.simDB, command )
 
     # Add entry of person to the history database.
@@ -452,8 +466,8 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # If a proper retirement scheme has been defined, start this person's
     #   retirement process.
     # Necessary to retain expected retirement time in database? Yes!
-    timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
-        ageAtRecruitment, now( mpSim ) )
+    # timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
+    #     ageAtRecruitment, now( mpSim ) )
     # retProc = nothing
     #
     # if isa( mpSim.retirementScheme, Retirement )
@@ -464,10 +478,10 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
     # If a proper attrition scheme has been defined, set the attrition process.
     #   This must be defined AFTER the retirement scheme because it requires the
     #   expected time of retirement.
-    if isa( mpSim.attritionScheme, Attrition )
-        @process attritionProcess( mpSim.sim, id, timeOfRetirement, #retProc,
-            mpSim )
-    end  # if isa( mpSim.attritionScheme, Attrition )
+    # if isa( mpSim.attritionScheme, Attrition )
+    #     @process attritionProcess( mpSim.sim, id, timeOfRetirement, #retProc,
+    #         mpSim )
+    # end  # if isa( mpSim.attritionScheme, Attrition )
 
     # Adjust the size of the personnel database.
     mpSim.personnelSize += 1
