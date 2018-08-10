@@ -1,8 +1,8 @@
 # This file holds the definition of the functions pertaining to the Attrition
 #   type.
 
-# The functions of the Attrition type require no additional types.
-requiredTypes = [ "attrition" ]
+# The functions of the Attrition type requires the State type.
+requiredTypes = [ "state", "attrition" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
@@ -112,11 +112,11 @@ function setAttritionParameters( mpSim::ManpowerSimulation, rate::T1,
     period::T2 ) where T1 <: Real where T2 <: Real
 
     if rate == 0.0
-        mpSim.attritionScheme = nothing
-    elseif mpSim.attritionScheme === nothing
-        mpSim.attritionScheme = Attrition( rate, period )
+        mpSim.defaultAttritionScheme = nothing
+    elseif mpSim.defaultAttritionScheme === nothing
+        mpSim.defaultAttritionScheme = Attrition( rate, period )
     else
-        setAttritionParameters( mpSim.attritionScheme, rate, period )
+        setAttritionParameters( mpSim.defaultAttritionScheme, rate, period )
     end  # if rate == 0.0
 
 end  # setAttritionParameters( mpSim, rate, period )
@@ -202,10 +202,108 @@ function setAttritionCurve( attrScheme::Attrition,
     curve::Dict{Float64, Float64} )
 
     terms = keys( curve )
-    rates = map( term -> curve[ term ], nodes )
-    setAttritionCurve( attrScheme, hcat( terms, rates ) )
+    rates = map( term -> curve[ term ], terms )
+    setAttritionCurve( attrScheme, hcat( terms, collect( rates ) ) )
 
 end  # setAttritionCurve( attrScheme, curve )
+
+
+export addAttritionScheme!
+"""
+```
+addAttritionScheme!( attrScheme::Attrition,
+                     mpSim::ManpowerSimulation )
+```
+This function adds the attrition scheme `attrScheme` to the manpower simulation
+`mpSim`. If the attrition scheme has the name `default`, the function overwrites
+the default scheme of the manpower simulation (and warns about this), and if the
+attrition scheme has a name that is already used, the other scheme with this
+name gets overwritten.
+
+This function returns `nothing`.
+"""
+function addAttritionScheme!( attrScheme::Attrition,
+    mpSim::ManpowerSimulation )::Void
+
+    # If the scheme's name is "default", overwrite the default scheme.
+    if attrScheme.name == "default"
+        warn( "Overwriting default attrition scheme." )
+        mpSim.defaultAttritionScheme = attrScheme
+        return
+    end  # if attrScheme.name == "default"
+
+    # If an attrition scheme with that name exists, overwrite it.
+    if haskey( mpSim.attritionSchemes, attrScheme.name )
+        warn( "Overwriting attrition scheme '$(attrScheme.name)'.")
+    end  # if haskey( mpSim.attritionSchemes, attrScheme.name )
+
+    mpSim.attritionSchemes[ attrScheme.name ] = attrScheme
+    return
+
+end  # addAttritionScheme!( attrScheme, mpSim )
+
+
+export clearAttritionSchemes!
+"""
+```
+clearAttritionSchemes!( mpSim::ManpowerSimulation )
+```
+This function clears all attrition schemes, except the default, from the
+manpower simulation `mpSim`.
+
+This function returns `nothing`.
+"""
+function clearAttritionSchemes!( mpSim::ManpowerSimulation )::Void
+
+    empty!( mpSim.attritionSchemes )
+    return
+
+end  # clearAttritionSchemes!( mpSim )
+
+
+# ==============================================================================
+# Non-exported methods.
+# ==============================================================================
+
+"""
+```
+readAttrition( s::Taro.Sheet,
+               colNr::Int,
+               isDefault::Bool = false )
+```
+This function reads the Excel sheet `s`, starting in the column with number
+`colNr`, to read the parameters of the attritition scheme. If `isDefault` is set
+to `true`, this will be the default attrition scheme (name field will not be
+read).
+
+This function returns an object of type `Attrition`, the attrition scheme.
+"""
+function readAttrition( s::Taro.Sheet, colNr::Int,
+    isDefault::Bool = false )::Attrition
+
+    attrName = isDefault ? "default" : string( s[ colNr, 5 ] )
+
+    # Fixed attrition percentage.
+    if s[ colNr, 7 ] == 1
+        return Attrition( attrName, s[ colNr, 8 ], s[ colNr, 6 ] )
+    end  # if s[ colNr, 7 ] == 1
+
+    lastRow = numRows( s, colNr, colNr + 1 )
+    attrCurveHeaderRow = 10
+    nAttrEntries = lastRow - attrCurveHeaderRow  # 10 is the header row of the attrition curve
+    attrCurve = zeros( Float64, nAttrEntries, 2 )
+
+    try  # Works only if all entries are good.
+        foreach( ii -> attrCurve[ ii, : ] =
+            [ s[ colNr, ii + attrCurveHeaderRow ] * 12,
+                s[ colNr + 1, ii + attrCurveHeaderRow ] ], 1:nAttrEntries )
+    catch errMsg
+        error( "Improperly defined attrition curve for attrition scheme $attrName." )
+    end  # try
+
+    return Attrition( attrName, attrCurve, s[ colNr, 6 ] )
+
+end  # readAttrition( s, colNr, isDefault )
 
 
 """
@@ -244,12 +342,15 @@ This function returns an object of type `Attrition` (an attrition scheme). If
 multiple schemes qualify, the first is returned; if none qualify, the default
 attrition scheme is returned.
 """
-function determineAttritionScheme( stateList::Vector{String},
+function determineAttritionScheme( stateList::Vector{State},
     mpSim::ManpowerSimulation )::Attrition
 
     # XXX Check states and determine appropriate schemes.
+    attrList = map( state -> state.attrScheme, stateList )
+    filter!( attrScheme -> attrScheme !== mpSim.defaultAttritionScheme,
+        attrList )
 
-    return mpSim.attritionScheme
+    return isempty( attrList ) ? mpSim.defaultAttritionScheme : attrList[ 1 ]
 
 end  # determineAttritionScheme( stateList, mpSim )
 
@@ -281,6 +382,70 @@ function generateTimeOfAttrition( attrScheme::Attrition, nowTime::Float64 )
 end  # generateTimeOfAttrition( attrScheme, nowTime )
 
 
+"""
+```
+updateTimeToAttrition( stateList::Dict{String, Vector{State}},
+                       mpSim::ManpowerSimulation )
+```
+This function updates the time to attrition for all the personnel members with
+ids in the key list of `stateList` (the argument is a list of the states the
+personnel member is in), using the attrition schemes defined in the manpower
+simulation `mpSim`.
+
+This function returns `nothing`.
+"""
+function updateTimeToAttrition( stateList::Dict{String, Vector{State}},
+    mpSim::ManpowerSimulation )::Void
+
+    if isempty( stateList )
+        return
+    end  # if isempty( stateList )
+
+    queryCmd = "SELECT $(mpSim.idKey), attritionScheme
+        FROM $(mpSim.personnelDBname)
+        WHERE $(mpSim.idKey) IN ('$(join( collect( keys( stateList ) ), "', '" ))')"
+    attrList = SQLite.query( mpSim.simDB, queryCmd )
+    idList = Vector{String}()
+    newAttrTimeList = Vector{Float64}()
+
+    for ii in eachindex( attrList[ Symbol( mpSim.idKey ) ] )
+        id = attrList[ Symbol( mpSim.idKey ) ][ ii ]
+        attrScheme = determineAttritionScheme( stateList[ id ], mpSim )
+
+        # Generate a new time to attrition
+        if attrList[ :attritionScheme ][ ii ] != attrScheme.name
+            timeToAttr = generateTimeOfAttrition( attrScheme, now( mpSim ) )
+            push!( idList, id )
+            push!( newAttrTimeList, timeToAttr )
+
+            # Update database
+            updateCmd = "UPDATE $(mpSim.personnelDBname)
+                SET attritionScheme = '$(attrScheme.name)',
+                    expectedAttritionTime = $timeToAttr
+                WHERE $(mpSim.idKey) IS '$id'"
+            SQLite.execute!( mpSim.simDB, updateCmd )
+        end  # if attrSchemeList[ id ] != attrScheme.name
+    end  # for ii in length( attrList[ Symbol( mpSim.idKey ) ] )
+
+    if isempty( idList )
+        return
+    end  # if isempty( idList )
+
+    # Check if any of the new attrition times occur before the next attrition
+    #   process check.
+    newProcessCheckTime = ceil( now( mpSim ) / mpSim.attritionTimeSkip ) *
+        mpSim.attritionTimeSkip
+
+    for ii in eachindex( idList )
+        if newAttrTimeList[ ii ] <= newProcessCheckTime
+            executeAttritionProcess( mpSim.sim, idList[ ii ],
+                newAttrTimeList[ ii ], mpSim )
+        end  # if newAttrTimeList[ ii ] <= newProcessCheckTime
+    end
+    
+end  # updateTimeToAttrition( stateList, mpSim )
+
+
 #=
 @resumable
 attritionProcess( sim::SimJulia.Simulation,
@@ -302,7 +467,7 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
     timeOfRetirement::T, #retProc::Process, mpSim::ManpowerSimulation ) where T <: Real
     mpSim::ManpowerSimulation ) where T <: Real
 
-    attrScheme = mpSim.attritionScheme
+    attrScheme = mpSim.defaultAttritionScheme
     timeOfEntry = now( sim )
     checkForAttrition = true
     rateIndex = 1
@@ -413,7 +578,6 @@ end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
 
     processTime = Dates.Millisecond( 0 )
     tStart = now()
-    timeSkip = 1.0
     timeOfNextCheck = 0.0
     priority = mpSim.phasePriorities[ :attrCheck ]
     queryCmd = "SELECT $(mpSim.idKey), expectedAttritionTime
@@ -428,7 +592,7 @@ end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
             priority = priority ) )
 
         tStart = now()
-        timeOfNextCheck += timeSkip
+        timeOfNextCheck += mpSim.attritionTimeSkip
         timeOfNextCheck = timeOfNextCheck > mpSim.simLength ? mpSim.simLength :
             timeOfNextCheck
         queryResult = SQLite.query( mpSim.simDB,
@@ -478,21 +642,23 @@ end  # executeAttritionProcess( sim, id, timeOfAttrition, mpSim )
 
 function Base.show( io::IO, attrScheme::Attrition )
 
+    print( io, "  Attrition scheme '$(attrScheme.name)'" )
+
     if attrScheme.attrRates == [ 0.0 ]
-        print( io, "No attrition scheme." )
+        print( io, "\n    No attrition." )
         return
     end  # if attrScheme.attrRates == [ 0.0 ]
 
-    print( io, "Attrition period: $(attrScheme.attrPeriod)" )
+    print( io, "\n    Attrition period: $(attrScheme.attrPeriod)" )
 
     if length( attrScheme.attrRates ) == 1
-        print( io, "\nAttrition rate: $(attrScheme.attrRates[ 1 ] * 100)%" )
+        print( io, "\n    Attrition rate: $(attrScheme.attrRates[ 1 ] * 100)%" )
     else
-        print( io, "\nAttrition curve" )
+        print( io, "\n    Attrition curve" )
 
         for ii in eachindex( attrScheme.attrRates )
-            print( io, "\n    term: $(attrScheme.attrCurvePoints[ ii ]);" )
-            print( io, " rate: $(attrScheme.attrRates[ ii ] * 100)%" )
+            print( io, "\n      term: $(attrScheme.attrCurvePoints[ ii ]);" )
+            print( io, "   rate: $(attrScheme.attrRates[ ii ] * 100)%" )
         end  # for ii in eachindex( attrScheme.attrRates )
     end  # if length( attrScheme.attrRates ) == 1
 

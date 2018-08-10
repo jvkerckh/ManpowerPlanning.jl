@@ -252,8 +252,8 @@ function readStatesFromFile( wb::Workbook, configDB::SQLite.DB,
 
     # Read every single attribute.
     while ( sLine <= lastLine ) && ( ii <= nStates )
-        newState, isInitial, sLine = readState( sheet, sLine )
-        saveStateToDatabase( newState, configDB, configName )
+        newState, isInitial, attrName, sLine = readState( sheet, sLine )
+        saveStateToDatabase( newState, attrName, configDB, configName )
         ii += 1
     end  # while ( sLine <= lastLine ) && ...
 
@@ -265,44 +265,37 @@ end  # readStatesFromFile( wb, configDB, configName )
 """
 ```
 saveStateToDatabase( state::State,
+                     attrName::String,
                      configDB::SQLite.DB,
                      configName::String )
 ```
-This function saves the personnel state `state` to the SQLite database
-`configDB` in table `configName`.
+This function saves the personnel state `state` with associated attrition scheme
+with name `attrName` to the SQLite database `configDB` in table `configName`.
 
 This function returns `nothing`.
 """
-function saveStateToDatabase( state::State, configDB::SQLite.DB,
-    configName::String )::Void
+function saveStateToDatabase( state::State, attrName::String,
+    configDB::SQLite.DB, configName::String )::Void
 
-    valueList = ""
-    initialVal = false
+    valueList = Vector{String}()
 
     for attr in keys( state.requirements )
-        if initialVal
-            valueList *= ";"
-        end  # if initialVal
-
-        initialVal = true
-        valueList *= "$attr:"
+        stateReq = "$attr:"
         vals = state.requirements[ attr ]
-
-        if length( vals ) == 1
-            valueList *= vals[ 1 ]
-        else
-            valueList *= "[" * join( vals, "," ) * "]"
-        end  # if isa( vals, String )
+        stateReq *= length( vals ) == 1 ? vals[ 1 ] :
+            "[" * join( vals, "/" ) * "]"
+        push!( valueList, stateReq )
     end  # for attr in keys( state.requirements )
 
     command = "INSERT INTO $configName
         (parName, parType, intPar1, boolPar1, strPar1) VALUES
-        ('$(state.name)', 'State', $(state.stateTarget), '$(state.isInitial)', '$valueList')"
+        ('$(state.name)', 'State', $(state.stateTarget), '$(state.isInitial)',
+            '$attrName;[$(join( valueList, "," ))]')"
     SQLite.execute!( configDB, command )
 
     return
 
-end  # saveStateToDatabase( state, isInitial, configDB, configName )
+end  # saveStateToDatabase( state, attrName, configDB, configName )
 
 
 """
@@ -484,25 +477,18 @@ function readAttritionFromFile( wb::Workbook, configDB::SQLite.DB,
     configName::String )::Void
 
     sheet = getSheet( wb, "Attrition" )
-    isAttritionFixed = Bool( sheet[ "B", 4 ] )
 
-    # Nothing to do for fixed attrition rates of 0.
-    if isAttritionFixed && ( sheet[ "B", 5 ] == 0 )
-        return
-    end
-
-    attrScheme = Attrition( sheet[ "B", 5 ], sheet[ "B", 3 ] )
-
-    if !isAttritionFixed
-        lastRow = numRows( sheet, "C" )
-        nAttrEntries = lastRow - 7  # 7 is the header row of the attrition curve
-        attrCurve = zeros( Float64, nAttrEntries, 2 )
-        foreach( ii -> attrCurve[ ii, : ] = [ sheet[ "B", ii + 7 ] * 12,
-            sheet[ "C", ii + 7 ] ], 1:nAttrEntries )
-        setAttritionCurve( attrScheme, attrCurve )
-    end  # if Bool( s[ "B", 4 ] )
-
+    # Default attrition scheme.
+    attrScheme = readAttrition( sheet, 2, true )
     saveAttritionToDatabase( attrScheme, configDB, configName )
+    colNr = 5
+
+    # Read all other attrition schemes.
+    while !isa( sheet[ colNr, 5 ], Void )
+        attrScheme = readAttrition( sheet, colNr )
+        saveAttritionToDatabase( attrScheme, configDB, configName )
+        colNr += 3
+    end  # while !isa( s[ colNr, 5 ], Void )
 
     return
 
@@ -525,19 +511,19 @@ function saveAttritionToDatabase( attrScheme::Attrition, configDB::SQLite.DB,
 
     # If there's only one rate in the attrition curve, and it's zero, no need to
     #   store anything.
-    if ( length( attrScheme.attrRates ) == 1 ) &&
-        ( attrScheme.attrRates[ 1 ] == 0 )
-        return
-    end  # if ( length( attrScheme.attrRates ) == 1 ) && ...
+    # if ( length( attrScheme.attrRates ) == 1 ) &&
+    #     ( attrScheme.attrRates[ 1 ] == 0 )
+    #     return
+    # end  # if ( length( attrScheme.attrRates ) == 1 ) && ...
 
+    attrName = attrScheme.name
     attrPeriod = attrScheme.attrPeriod
-    attrCurvePoints = map( curvePoint -> curvePoint / 12,
-        attrScheme.attrCurvePoints )
-    attrCurve = join( map( ii -> "$(attrCurvePoints[ ii ]),$(attrScheme.attrRates[ ii ])",
-        eachindex( attrCurvePoints ) ), ";" )
+    attrCurvePoints = attrScheme.attrCurvePoints
+    attrCurve = join( map( ii -> "$(attrCurvePoints[ ii ]):$(attrScheme.attrRates[ ii ])",
+        eachindex( attrCurvePoints ) ), "," )
     command = "INSERT INTO $configName
         (parName, parType, strPar1) VALUES
-        ('Attrition', 'Attrition', '$attrPeriod;$attrCurve')"
+        ('$attrName', 'Attrition', '$attrPeriod;[$attrCurve]')"
     SQLite.execute!( configDB, command )
 
     return

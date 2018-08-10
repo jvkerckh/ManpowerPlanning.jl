@@ -1,7 +1,7 @@
 # This file holds the definition of the functions pertaining to the State type.
 
-# The functions of the State type require no additional types.
-requiredTypes = [ "state" ]
+# The functions of the State type require the Attrition type.
+requiredTypes = [ "attrition", "state" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
@@ -16,7 +16,8 @@ export setName,
        removeRequirement!,
        clearRequirements!,
        setInitial,
-       setTarget
+       setStateTarget,
+       setStateAttritionScheme
 
 
 """
@@ -149,9 +150,53 @@ function setStateTarget( state::State, target::Int )::Void
 end  # setStateTarget( state, target )
 
 
+"""
+```
+setStateAttritionScheme( state::State,
+                         attrScheme::Attrition )
+```
+This function sets the attrition scheme of the state `state` to `attrScheme`.
+
+This function returns `nothing.`
+"""
+function setStateAttritionScheme( state::State, attrScheme::Attrition )::Void
+
+    state.attrScheme = attrScheme
+    return
+
+end  # setStateAttritionScheme( state, attrScheme )
+
+
+"""
+```
+setStateAttritionScheme( state::State,
+                         attrName::String,
+                         mpSim::ManpowerSimulation )
+```
+This function sets the attrition scheme of the state `state` to the scheme with
+name `attrName` as defined in the manpower simulation `mpSim`. If the name is
+'default' or unknown, the default scheme is set.
+
+This function returns `nothing.`
+"""
+function setStateAttritionScheme( state::State, attrName::String,
+    mpSim::ManpowerSimulation )::Void
+
+    if ( attrName == "default" ) || !haskey( mpSim.attritionSchemes, attrName )
+        state.attrScheme = mpSim.defaultAttritionScheme
+        return
+    end  # if ( attrName == "default" ) || ...
+
+    state.attrScheme = mpSim.attritionSchemes[ attrName ]
+    return
+
+end  # setStateAttritionScheme( state, attrName, mpSim )
+
+
 function Base.show( io::IO, state::State )
 
     print( io, "  State: $(state.name)" )
+    print( io, "\n    Associated attrition scheme: $(state.attrScheme)" )
 
     if isempty( state.requirements )
         print( io, "\n    State '$(state.name)' has no requirements" )
@@ -189,26 +234,32 @@ readState( s::Taro.Sheet,
 This function reads the Excel sheet `s`, starting from line `sLine` and
 extracts the parameters of a single state from it.
 
-This function returns a `Tuple{State, Bool, Int}`. The first element is the
-state object as it is described in the Excel sheet, the second element is `true`
-if the state is a possible initial state, and the last element is the start line
-of the next state in the sheet.
+This function returns a `Tuple{State, Bool, String, Int}`. The first element is
+the state object as it is described in the Excel sheet, the second element is
+`true` if the state is a possible initial state, the third element is the name
+of the associated attrition regime, and the last element is the start line of
+the next state in the sheet.
 """
 function readState( s::Taro.Sheet, sLine::T ) where T <: Integer
 
     isInitial = s[ "B", sLine + 1 ] == 1
     newState = State( s[ "B", sLine ], isInitial )
-    nReqs = Int( s[ "B", sLine + 2 ] )
 
-    for ii in 1:nReqs
-        attr = s[ "B", sLine + 2 + ii ]
-        values = processStateOptions( s[ "C", sLine + 2 + ii ] )
+    # Read attrition scheme name.
+    attrName = s[ "B", sLine + 2 ]
+    attrName = isa( attrName, Void ) ? "default" : attrName
+    sLine += 3
+
+    # Read all the requirements.
+    while s[ "A", sLine ] != "Target # of personnel"
+        attr = s[ "B", sLine ]
+        values = processStateOptions( s[ "C", sLine ] )
         addRequirement!( newState, attr, values )
-    end  # for ii in 1:nReqs
+        sLine += 1
+    end
 
-    setStateTarget( newState, Int( s[ "B", sLine + 3 + nReqs ] ) )
-
-    return newState, isInitial, sLine + 5 + nReqs
+    setStateTarget( newState, Int( s[ "B", sLine ] ) )
+    return newState, isInitial, attrName, sLine + 2
 
 end  # readState( s, sLine )
 

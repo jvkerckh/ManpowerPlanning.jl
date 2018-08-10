@@ -158,10 +158,10 @@ function readStatesFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
 
     # Read every single state.
-    foreach( state -> saveStateToDatabase( state, configDB, configName ),
-        keys( mpSim.initStateList ) )
-    foreach( state -> saveStateToDatabase( state, configDB, configName ),
-        keys( mpSim.otherStateList ) )
+    foreach( state -> saveStateToDatabase( state, state.attrScheme.name,
+        configDB, configName ), keys( mpSim.initStateList ) )
+    foreach( state -> saveStateToDatabase( state, state.attrScheme.name,
+        configDB, configName ), keys( mpSim.otherStateList ) )
 
     return
 
@@ -240,14 +240,11 @@ This function returns `nothing`.
 function readAttritionFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
 
-    # Only process if there is an attrition scheme.
-    if mpSim.attritionScheme === nothing
-        return
-    end  # if mpSim.attritionScheme === nothing
-
-    attrScheme = mpSim.attritionScheme
+    attrScheme = mpSim.defaultAttritionScheme
     saveAttritionToDatabase( attrScheme, configDB, configName )
-
+    foreach( attrName -> saveAttritionToDatabase(
+        mpSim.attritionSchemes[ attrName ], configDB, configName),
+        keys( mpSim.attritionSchemes ) )
     return
 
 end  # readAttritionFromSim( mpSim, configDB, configName )

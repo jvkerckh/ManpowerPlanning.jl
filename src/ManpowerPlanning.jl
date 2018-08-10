@@ -26,6 +26,7 @@ module ManpowerPlanning
     types = [
 #        "historyEntry",
 #        "history",
+        "attrition",
         "personnelAttribute",
         "state",
         "condition",
@@ -36,7 +37,6 @@ module ManpowerPlanning
 #        "prerequisiteGroup",
         "recruitment",
         "retirement",
-        "attrition",
         "simulationReport",
         "manpowerSimulation"
     ]

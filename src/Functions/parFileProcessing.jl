@@ -50,6 +50,10 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
 
     readGeneralPars( mpSim, s )
 
+    # Read attrition parameters.
+    s = getSheet( w, "Attrition" )
+    readAttritionPars( mpSim, s )
+
     # Read attributes.
     s = getSheet( w, "Attributes" )
     readAttributes( mpSim, s )
@@ -65,10 +69,6 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     # Read recruitment parameters.
     s = getSheet( w, "Recruitment" )
     readRecruitmentPars( mpSim, s )
-
-    # Read attrition parameters.
-    s = getSheet( w, "Attrition" )
-    readAttritionPars( mpSim, s )
 
     # Read retirement parameters.
     s = getSheet( w, "Retirement" )
@@ -144,7 +144,8 @@ function readStates( mpSim::ManpowerSimulation, s::Taro.Sheet )
     ii = 1
 
     while ( sLine <= lastLine ) && ( ii <= nStates )
-        newState, isInitial, sLine = readState( s, sLine )
+        newState, isInitial, attrName, sLine = readState( s, sLine )
+        setStateAttritionScheme( newState, attrName, mpSim )
         addState!( mpSim, newState, isInitial )
         ii += 1
     end  # while ( sLine <= lastLine ) && ...
@@ -299,17 +300,17 @@ end  # function generateRecruitmentScheme( s, ii )
 
 function readAttritionPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
 
-    if s[ "B", 4 ] == 1
-        attrScheme = Attrition( s[ "B", 5 ], s[ "B", 3 ] )
-    else
-        lastRow = numRows( s, "C" )
-        nAttrEntries = lastRow - 7  # 7 is the header row of the attrition curve
-        attrCurve = zeros( Float64, nAttrEntries, 2 )
-        foreach( ii -> attrCurve[ ii, : ] = [ s[ "B", ii + 7 ] * 12,
-            s[ "C", ii + 7 ] ], 1:nAttrEntries )
-        attrScheme = Attrition( attrCurve, s[ "B", 3 ] )
-        setAttrition( mpSim, attrScheme )
-    end  # if s[ "B", 4 ] == 1
+    attrScheme = readAttrition( s, 2, true )
+    setAttrition( mpSim, attrScheme )
+    colNr = 5
+    clearAttritionSchemes!( mpSim )
+
+    # Read all other attrition schemes.
+    while !isa( s[ colNr, 5 ], Void )
+        attrScheme = readAttrition( s, colNr )
+        addAttritionScheme!( attrScheme, mpSim )
+        colNr += 3
+    end  # while !isa( s[ colNr, 5 ], Void )
 
 end  # readAttritionPars( mpSim, s )
 

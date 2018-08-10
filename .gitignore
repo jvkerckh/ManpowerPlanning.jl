@@ -6,3 +6,4 @@
 testReport.xlsx
 .cache*
 dependency graphs/*
+unit tests/*

@@ -1,8 +1,8 @@
 # This file defines the State type. This type defines a state that a personnel
 #   member can be in.
 
-# The State type does not require any other types.
-requiredTypes = []
+# The State type requires the Attrition type.
+requiredTypes = [ "attrition" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
@@ -25,6 +25,7 @@ The type contains the following fields:
 * `isInitial::Bool`: this flag states whether the state is an initial state or
   not.
 * `stateTarget::Int`: the target number of personnel members in this state.
+* `attrScheme::Attrition`: The attrition scheme attached to this state.
 * `inStateSince::Dict{String, Float64}`: a record of all the persons in the
   state, including the time they last entered the state.
 """
@@ -34,6 +35,7 @@ type State
     requirements::Dict{String, Vector{String}}
     isInitial::Bool
     stateTarget::Int
+    attrScheme::Attrition
     inStateSince::Dict{String, Float64}
 
 
@@ -45,6 +47,7 @@ type State
         newState.requirements = Dict{String, Vector{String}}()
         newState.isInitial = isInitial
         newState.stateTarget = 0
+        newState.attrScheme = Attrition()
         newState.inStateSince = Dict{String, Float64}()
         return newState
 

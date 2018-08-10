@@ -37,11 +37,11 @@ function configureSimFromDatabase( mpSim::ManpowerSimulation, dbName::String,
 
     # Get the general parameters
     readGeneralParsFromDatabase( configDB, mpSim, configName )
+    readAttritionFromDatabase( configDB, mpSim, configName )
     readAttributesFromDatabase( configDB, mpSim, configName )
     readStatesFromDatabase( configDB, mpSim, configName )
     readTransitionsFromDatabase( configDB, mpSim, configName )
     readRecruitmentFromDatabase( configDB, mpSim, configName )
-    readAttritionFromDatabase( configDB, mpSim, configName )
     readRetirementFromDatabase( configDB, mpSim, configName )
 
     return
@@ -252,20 +252,22 @@ function readStatesFromDatabase( configDB::SQLite.DB,
     nStates = length( states[ :parName ] )
 
     for ii in 1:nStates
+        stateName = strip( states[ :parName ][ ii ] )
+
         # Check if the isInitial attribute can be read properly.
         isInitial = states[ :boolPar1 ][ ii ]
         isInitial = isa( isInitial, String ) ? tryparse( Bool, isInitial ) :
             Nullable{Bool}()
 
         if !isInitial.hasvalue
-            error( "Can't determine if the state is an initial state or not." )
+            error( "Can't determine if state '$stateName' is an initial state or not." )
         end  # if !isInitial.hasvalue
 
         # Check if the stateTarget attrtibute can be read properly.
         stateTarget = states[ :intPar1 ][ ii ]
 
         if !isa( stateTarget, Int )
-            error( "Can't read target number of personnel member")
+            error( "Can't read target number of personnel members in state '$stateName'." )
         end  # if !isa( stateTarget, Int )
 
         # Check if the values can be read properly.
@@ -273,12 +275,26 @@ function readStatesFromDatabase( configDB::SQLite.DB,
 
         # Value list can't be missing.
         if !isa( reqList, String )
-            error( "Can't read the requirements of the state." )
+            error( "Can't read the parameters of state '$stateName'." )
         end  # if !isa( valList, String )
 
-        newState = State( states[ :parName ][ ii ], isInitial.value )
+        reqList = split( reqList, ";" )
+
+        if length( reqList ) != 2
+            error( "Can't read the parameters of state '$stateName'." )
+        end  # if length( reqList ) != 2
+
+        if !startswith( reqList[ 2 ], "[" ) || !endswith( reqList[ 2 ], "]" )
+            error( "Can't read requirements of state '$stateName'." )
+        end  # if !startswith( reqList[ 2 ], "[" ) || ...
+
+        newState = State( stateName, isInitial.value )
         setStateTarget( newState, stateTarget )
-        reqList = reqList == "" ? Vector{String}() : split( reqList, ";" )
+        setStateAttritionScheme( newState, String( strip( reqList[ 1 ] ) ),
+            mpSim )
+        reqList = reqList[ 2 ]
+        reqList = reqList[ 2:(end-1) ] == "" ? Vector{String}() :
+            split( reqList[ 2:(end-1) ], "," )
 
         for req in reqList
             attrValPair = split( req, ":" )
@@ -293,7 +309,7 @@ function readStatesFromDatabase( configDB::SQLite.DB,
 
             # If it's a list of possible values, extract them.
             if startswith( vals, "[" ) && endswith( vals, "]" )
-                vals = split( vals, "," )
+                vals = split( vals[ 2:(end-1) ], "/" )
                 vals = map( val -> String( strip( val ) ), vals )
             end  # if startswith( vals, "[" ) && ...
 
@@ -689,69 +705,97 @@ issue warnings, or throw an error depending on the severity.
 function readAttritionFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
-    queryCmd = "SELECT strPar1 FROM $configName
-        WHERE parType IS 'Attrition' AND parName IS 'Attrition'"
-    attrition = Array( SQLite.query( configDB, queryCmd ) )
+    queryCmd = "SELECT parName, strPar1 FROM $configName
+        WHERE parType IS 'Attrition'"
+    attrNameList = SQLite.query( configDB, queryCmd )[ 1 ]
+    attrParList = SQLite.query( configDB, queryCmd )[ 2 ]
+    nSchemes = length( attrParList )
+    isDefaultFound = false
 
     # If no attrition is in the database, set the attrition scheme to nothing
     #   and finish.
-    if length( attrition ) == 0
+    if nSchemes == 0
         setAttrition( mpSim )
         return
     end  # if length( retirement ) == 0
 
-    attrPars = attrition[ 1 ]
+    # Process attrition schemes.
+    for ii in 1:nSchemes
+        # Don't process if the parameters are missing.
+        if !isa( attrParList[ ii ], String )
+            warn( "Attrition parameters missing. Skipping attrition scheme." )
+            continue
+        end  # if !isa( attrParList[ ii ], String )
 
-    # Default to no attrition if the entry is missing...
-    if !isa( attrPars, String )
-        warn( "Attrition parameters missing. Setting attrition scheme to none." )
+        attrPars = split( attrParList[ ii ], ";" )
+        attrName = attrNameList[ ii ]
+        isDefaultFound = isDefaultFound || ( attrName == "default" )
+
+        # Check if number of parameters is correct.
+        if length( attrPars ) != 2
+            error( "Attrition parameters for attrition scheme '$attrName' corrupted." )
+        end  # if length( attrPars ) != 3
+
+        attrPeriod = tryparse( Float64, attrPars[ 1 ] )
+
+        # Check if period is a positive number.
+        if !attrPeriod.hasvalue || ( attrPeriod.value <= 0 )
+            error( "Invalid attrition period for attrition scheme '$attrName'." )
+        end  # if !attrPeriod.hasvalue || ...
+
+        attrPeriod = attrPeriod.value
+        attrCurve = attrPars[ 2 ]
+
+        # Check if the final entry is a vector.
+        if !startswith( attrCurve, "[" ) || !endswith( attrCurve, "]" )
+            error( "Invalid attrition curve for attrition scheme '$attrName'." )
+        end  # if !startswith( attrCurve, "[" ) || ...
+
+        attrCurve = split( attrCurve[ 2:(end-1) ], "," )
+        attrCurveDict = Array{Float64}( length( attrCurve ), 2 )
+
+        # Process the entries in the attrition curve.
+        for jj in 1:length( attrCurve )
+            curvePoint = split( attrCurve[ jj ], ":" )
+
+            # Check if entry is a time - rate pair.
+            if length( curvePoint ) != 2
+                error( "Entry $jj of attrition curve for attrition scheme '$attrName' is invalid." )
+            end  # if length( curvePoint ) != 2
+
+            timePoint = tryparse( Float64, curvePoint[ 1 ] )
+            attrRate = tryparse( Float64, curvePoint[ 2 ] )
+
+            # Check if the time and rate are numbers.
+            if !timePoint.hasvalue || !attrRate.hasvalue
+                error( "Entry $jj of attrition curve for attrition scheme '$attrName' is invalid." )
+            end  # if !timePoint.hasvalue || ...
+
+            timePoint = timePoint.value
+            attrRate = attrRate.value
+
+            # Check if the attrition rate makes sense.
+            if !( 0 <= attrRate < 1 )
+                error( "Attrition rate for curve entry $jj of attrition curve for attrition scheme '$attrName' is invalid." )
+            end  # if !( 0 <= attrRate < 1 )
+
+            attrCurveDict[ jj, 1 ] = timePoint
+            attrCurveDict[ jj, 2 ] = attrRate
+        end  # for jj in 1:length( attrCurve )
+
+        attrScheme = Attrition( attrName, attrCurveDict, attrPeriod )
+
+        if attrName == "default"
+            setAttrition( mpSim, attrScheme )
+        else
+            addAttritionScheme!( attrScheme, mpSim )
+        end  # if attrName == "default"
+    end  # for ii in 1:nSchemes
+
+    # Add a default attrition rate of 0% if there's no default in the database.
+    if !isDefaultFound
         setAttrition( mpSim )
-        return
-    end  # if !isa( retPars, String )
-
-    attrPars = split( attrPars, ";" )
-
-    # ... of if it is incorrectly formatted.
-    if ( length( attrPars ) < 2 ) ||
-        !tryparse( Float64, attrPars[ 1 ] ).hasvalue
-        warn( "Attrition parameters incorrectly formatted. Setting attrition scheme to none." )
-        setAttrition( mpSim )
-        return
-    end  # if ( length( attrPars ) < 2 ) || ...
-
-    attrPeriod = tryparse( Float64, attrPars[ 1 ] ).value
-    attrPars = split.( attrPars[ 2:end ], "," )
-    attrCurvePoints = map( parPair -> parPair[ 1 ], attrPars )
-    attrRates = map( parPair -> parPair[ 2 ], attrPars )
-
-    if !all( length.( attrPars ) .== 2 )
-        warn( "Attrition parameters incorrectly formatted. Setting attrition scheme to none." )
-        setAttrition( mpSim )
-        return
     end
-
-    attrCurvePoints = map( curvePoint -> tryparse( Float64, curvePoint ),
-        attrCurvePoints )
-    attrRates = map( rate -> tryparse( Float64, rate ), attrRates )
-
-    if !all( curvePoint -> curvePoint.hasvalue, attrCurvePoints ) ||
-        !all( rate -> rate.hasvalue, attrRates )
-        warn( "Attrition parameters incorrectly formatted. Setting attrition scheme to none." )
-        setAttrition( mpSim )
-        return
-    end
-
-    attrCurvePoints = map( curvePoint -> curvePoint.value * 12,
-        attrCurvePoints )
-    attrRates = map( rate -> rate.value, attrRates )
-
-    # Don't add an attrition scheme if the attrtion curve is a flat 0.
-    if ( length( attrRates ) == 1 ) && ( attrRates[ 1 ] == 0 )
-        setAttrition( mpSim )
-    else
-        attrScheme = Attrition( hcat( attrCurvePoints, attrRates ), attrPeriod )
-        setAttrition( mpSim, attrScheme )
-    end  # if ( length( attrRates ) == 1 ) && ...
 
     return
 

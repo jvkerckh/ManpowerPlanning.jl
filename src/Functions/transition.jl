@@ -419,7 +419,8 @@ end  # initiateTransitionProcesses( mpSim )
         @yield( timeout( sim, 0, priority = priority - Int8( 1 ) ) )
         tStart = now()
         executeTransitions( trans, transIDs, mpSim )
-        updateStates( trans, transIDs, nAttempts, mpSim )
+        newStateList = updateStates( trans, transIDs, nAttempts, mpSim )
+        updateTimeToAttrition( newStateList, mpSim )
         firePersonnel( trans, eligibleIDs, transIDs, nAttempts, maxAttempts,
             mpSim )
     end  # while timeOfCheck <= mpSim.simLength
@@ -606,105 +607,112 @@ end  # executeTransitions( trans, transIDs, mpSim )
 
 
 function updateStates( trans::Transition, transIDs::Vector{String},
-    nAttempts::Dict{String, Int}, mpSim::ManpowerSimulation )::Void
+    nAttempts::Dict{String, Int},
+    mpSim::ManpowerSimulation )::Dict{String, Vector{State}}
 
-    # Check which states have been added or removed as side effect from
-    #   the transition.
-    if !isempty( transIDs )
-        # Get current state of the personnel members undergoing the
-        #   transition.
-        queryCmd = "SELECT * FROM $(mpSim.personnelDBname)
-            WHERE $(mpSim.idKey) IN ('$(join( transIDs, "', '" ))')"
-        transIDsState = SQLite.query( mpSim.simDB, queryCmd )
+    newStateList = Dict{String, Vector{State}}()
 
-        isStartRetained = Vector{Bool}()
-        isEndReached = Vector{Bool}()
-        stateUpdates = Vector{String}()
+    if isempty( transIDs )
+        return newStateList
+    end  # if isempty( transIDs )
 
-        for state in keys( merge( mpSim.initStateList,
-            mpSim.otherStateList ) )
-            personsInState = transIDsState[ Symbol( mpSim.idKey ) ]
+    # Get current state of the personnel members undergoing the
+    #   transition.
+    queryCmd = "SELECT * FROM $(mpSim.personnelDBname)
+        WHERE $(mpSim.idKey) IN ('$(join( transIDs, "', '" ))')"
+    transIDsState = SQLite.query( mpSim.simDB, queryCmd )
 
-            # Check which IDs are in the state.
-            if !isempty( state.requirements )
-                personsInState = personsInState[ map( ii -> all( attr ->
-                    transIDsState[ Symbol( attr ) ][ ii ] ∈
-                        state.requirements[ attr ],
-                    keys( state.requirements ) ),
-                    eachindex( personsInState ) ) ]
-            end  # if !isempty( state.requirements )
+    isStartRetained = Vector{Bool}()
+    isEndReached = Vector{Bool}()
+    stateUpdates = Vector{String}()
+    newStateList = Dict{String, Vector{State}}()
+    foreach( id -> newStateList[ id ] = Vector{State}(), transIDs )
 
-            # If the personnel member is in the start or the end state of
-            #   the transition, make a note.
-            if state === trans.startState
-                isStartRetained = map( id -> id ∈ personsInState, transIDs )
-            elseif state === trans.endState
-                isEndReached = map( id -> id ∈ personsInState, transIDs )
-            # For the other states, note the changes.
-            else
-                newIDsInState = filter( id -> ( id ∈ personsInState ) &&
-                    !haskey( state.inStateSince, id ), transIDs )
-                droppedIDs = filter( id -> ( id ∉ personsInState ) &&
-                    haskey( state.inStateSince, id ), transIDs )
+    for state in keys( merge( mpSim.initStateList,
+        mpSim.otherStateList ) )
+        personsInState = transIDsState[ Symbol( mpSim.idKey ) ]
 
-                # For newly achieved states, add an entry that the state is
-                #   reached form an unknown state.
-                if !isempty( newIDsInState )
-                    suffix = "', $(now( mpSim )), '$(trans.name)', 'unknown', '$(state.name)')"
-                    push!( stateUpdates, join( "('" .* newIDsInState .*
-                        suffix, ", " ) )
+        # Check which IDs are in the state.
+        if !isempty( state.requirements )
+            personsInState = personsInState[ map( ii -> all( attr ->
+                transIDsState[ Symbol( attr ) ][ ii ] ∈
+                    state.requirements[ attr ],
+                keys( state.requirements ) ),
+                eachindex( personsInState ) ) ]
+        end  # if !isempty( state.requirements )
 
-                    for id in newIDsInState
-                        state.inStateSince[ id ] = now( mpSim )
-                    end  # for id in newIDsInState
-                end  # if !isempty( newIDsInState )
+        # If the personnel member is in the start or the end state of
+        #   the transition, make a note.
+        if state === trans.startState
+            isStartRetained = map( id -> id ∈ personsInState, transIDs )
+        elseif state === trans.endState
+            isEndReached = map( id -> id ∈ personsInState, transIDs )
+        # For the other states, note the changes.
+        else
+            newIDsInState = filter( id -> ( id ∈ personsInState ) &&
+                !haskey( state.inStateSince, id ), transIDs )
+            droppedIDs = filter( id -> ( id ∉ personsInState ) &&
+                haskey( state.inStateSince, id ), transIDs )
 
-                # For dropped states, add an entry that the state
-                #   transitions to an known state.
-                if !isempty( droppedIDs )
-                    suffix = "', $(now( mpSim )), '$(trans.name)', '$(state.name)', 'unknown')"
-                    push!( stateUpdates, join( "('" .* droppedIDs .* suffix,
-                        ", " ) )
+            # For newly achieved states, add an entry that the state is
+            #   reached form an unknown state.
+            if !isempty( newIDsInState )
+                suffix = "', $(now( mpSim )), '$(trans.name)', 'unknown', '$(state.name)')"
+                push!( stateUpdates, join( "('" .* newIDsInState .*
+                    suffix, ", " ) )
 
-                    for id in droppedIDs
-                        delete!( state.inStateSince, id )
-                    end  # for id in droppedIDs
-                end  # if !isempty( droppedIDs )
-            end  # if state === trans.startState
-        end  # for state in keys( merge( ...
+                for id in newIDsInState
+                    state.inStateSince[ id ] = now( mpSim )
+                end  # for id in newIDsInState
+            end  # if !isempty( newIDsInState )
 
-        # Add transition entries for start and end states.
-        for jj in eachindex( transIDs )
-            pid = transIDs[ jj ]
+            # For dropped states, add an entry that the state
+            #   transitions to an known state.
+            if !isempty( droppedIDs )
+                suffix = "', $(now( mpSim )), '$(trans.name)', '$(state.name)', 'unknown')"
+                push!( stateUpdates, join( "('" .* droppedIDs .* suffix,
+                    ", " ) )
 
-            if isEndReached[ jj ]
-                push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')" )
-                trans.endState.inStateSince[ pid ] = now( mpSim )
+                for id in droppedIDs
+                    delete!( state.inStateSince, id )
+                end  # for id in droppedIDs
+            end  # if !isempty( droppedIDs )
+        end  # if state === trans.startState
 
-                if isStartRetained[ jj ]
-                    push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', 'nuknown', '$(trans.endState.name)')" )
-                end
-            elseif !isStartRetained[ jj ]
-                push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', 'unknown')" )
-            end  # if isEndReached[ jj ]
+        # Add this state to the list for all persons in it.
+        foreach( id -> push!( newStateList[ id ], state ), personsInState )
+    end  # for state in keys( merge( ...
 
-            if !isStartRetained[ jj ]
-                delete!( trans.startState.inStateSince, pid )
-            end  # if !isStartRetained[ jj ]
+    # Add transition entries for start and end states.
+    for jj in eachindex( transIDs )
+        pid = transIDs[ jj ]
 
-            # Retain success of transition and note ineligibility of
-            #   personnel member to undergo it again even if they stay in
-            #   the required start state.
-            nAttempts[ pid ] = 0
-        end  # for jj in eachindex( transIDs )
+        if isEndReached[ jj ]
+            push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')" )
+            trans.endState.inStateSince[ pid ] = now( mpSim )
 
-        transChangesCmd = "INSERT INTO $(mpSim.transitionDBname)
-            ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
-            $(join( stateUpdates, ", " ))"
-        SQLite.execute!( mpSim.simDB, transChangesCmd )
-    end  # if !isempty( transIDs )
+            if isStartRetained[ jj ]
+                push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', 'nuknown', '$(trans.endState.name)')" )
+            end
+        elseif !isStartRetained[ jj ]
+            push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', 'unknown')" )
+        end  # if isEndReached[ jj ]
 
-    return
+        if !isStartRetained[ jj ]
+            delete!( trans.startState.inStateSince, pid )
+        end  # if !isStartRetained[ jj ]
+
+        # Retain success of transition and note ineligibility of
+        #   personnel member to undergo it again even if they stay in
+        #   the required start state.
+        nAttempts[ pid ] = 0
+    end  # for jj in eachindex( transIDs )
+
+    transChangesCmd = "INSERT INTO $(mpSim.transitionDBname)
+        ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
+        $(join( stateUpdates, ", " ))"
+    SQLite.execute!( mpSim.simDB, transChangesCmd )
+    return newStateList
 
 end  # function updateStates( trans, transIDs, nAttempts, mpSim )
 
@@ -728,266 +736,3 @@ function firePersonnel( trans::Transition, eligibleIDs::Vector{String},
 
 end  # firePersonnel( trans, eligibleIDs, transIDs, nAttempts, maxAttempts,
      #   mpSim )
-
-#=
-@resumable function transitionResetProcess( sim::Simulation, trans::Transition,
-    mpSim::ManpowerSimulation )
-
-    # Get the first time the reset must happen.
-    timeOfCheck = now( sim ) - trans.offset
-    timeOfCheck = ceil( timeOfCheck / trans.freq ) * trans.freq + trans.offset
-    priority = mpSim.phasePriorities[ :transition ] + Int8( 1 )
-
-    while timeOfCheck <= mpSim.simLength
-        @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority ) )
-        trans.currentFlux = 0
-        timeOfCheck += trans.freq
-    end  # while timeOfCheck <= simLength
-
-end  # transitionResetProcess( sim, trans )
-
-
-@resumable function transitionProcess( sim::Simulation,
-    trans::Transition, id::String, mpSim::ManpowerSimulation )
-
-    timeOfCheck = now( sim ) + trans.minTime
-
-    # Adjust check time to schedule
-    timeOfCheck -= trans.offset
-    timeOfCheck = ceil( timeOfCheck / trans.freq ) * trans.freq + trans.offset
-    priority = mpSim.phasePriorities[ :transition ]
-
-    # No need to do anything if the transition would occur past the sim
-    #   length.
-    if timeOfCheck > mpSim.simLength
-        return
-    end  # if timeOfCheck > mpSim.simLength
-
-    # Wait required time.
-    @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority ) )
-
-    # Check if personnel member is active and still satisfies the state.
-    tmpMaxAttempts = trans.maxAttempts <= 0 ? length( trans.probabilityList ) :
-        trans.maxAttempts
-    tmpTime = trans.timeBetweenAttempts == 0.0 ? 1.0 :
-        ceil( trans.timeBetweenAttempts / trans.freq )
-    tmpTime *= trans.freq
-    nAttempts = 1
-    startStateReqs = trans.startState.requirements
-    queryCmd = "SELECT * FROM $(mpSim.personnelDBname)
-        WHERE ( status NOT IN ( '$(join( retirementReasons, "', '" ))' ) )
-            AND ( $(mpSim.idKey) IS '$id' )"
-
-    for attr in keys( startStateReqs )
-        queryCmd *= " AND ( $attr IN ('" *
-            join( startStateReqs[ attr ], "', '" ) * "') )"
-    end  # for req in keys( startStateReqs )
-
-    isFirst = true
-    isFired = false
-    isTransitionOkay = false
-    nIDs = 1  # nIDs indicates if person satisfies requirements or not
-              #   (Yes = 1).
-
-    while ( nIDs == 1 ) && !isTransitionOkay &&
-        ( ( now( sim ) < mpSim.simLength ) || isFirst ) &&
-        ( nAttempts <= tmpMaxAttempts )
-        # Wait the required time until the next attempt.
-        if !isFirst
-            @yield( timeout( sim, tmpTime, priority = priority ) )
-        end  # if nAttempts > 1
-
-        isFirst = false
-
-        # Retrieve the list of all personnel members with the given id
-        #   satisfying the requirements. This means that if the list is empty,
-        #   the personnel member no longer satisfies the state requirements.
-        persons = SQLite.query( mpSim.simDB, queryCmd )
-        nIDs, nAttrs = size( persons )
-
-        # Attempt to perform transition only if the personnel member is still
-        #   eligible.
-        if nIDs == 1
-            person = Dict{String,Any}()
-
-            for ii in 1:nAttrs
-                person[ String( names( persons )[ ii ] ) ] = persons[ ii ][ 1 ]
-            end  # for ii in 1:nAttrs
-
-            isTransitionOkay = executeTransition( trans, nAttempts, id, person,
-                mpSim )
-        end  # nIDs == 1
-
-        # Go to the next attempt if no transition took place assuming the
-        #   personnel member is still in the start state.
-        if !isTransitionOkay && ( nIDs == 1 )
-            # Only increase number of attempts if the max number of attempts is
-            #   not infinitie, or the number of attempts isn't equal to the max
-            #   number.
-            if ( trans.maxAttempts >= 0 ) || ( nAttempts != tmpMaxAttempts )
-                nAttempts += 1
-            end  # if ( trans.maxAttempts >= 0 ) || ...
-        end  # if !isTransitionOkay && ...
-    end  # while ( nIDs == 1 ) && ...
-
-    # If the transition is fire-on-fail, if the person has exhausted their
-    #   attempts, and if they are still eligible, fire the person.
-    if trans.isFiredOnFail && ( nAttempts > tmpMaxAttempts ) && ( nIDs == 1 )
-        retirePerson( mpSim, id, "fired" )
-    end  # if trans.isFiredOnFail && ...
-
-end  # transitionProcess( sim, trans, id, mpSim )
-
-
-"""
-```
-executeTransition( trans::Transition,
-                   nAttempts::Int,
-                   id::String,
-                   person::Dict{String, Any},
-                   mpSim::ManpowerSimulation )
-```
-This function executes the transition `trans`, attempt `nAttempts`, for the
-person with ID `id` and attributes contained in `person` in the manpower
-simulation `mpSim`.
-
-This function returns a `Bool`, which indicates if the transition was succesful
-or not.
-"""
-function executeTransition( trans::Transition, nAttempts::Int, id::String,
-    person::Dict{String, Any}, mpSim::ManpowerSimulation )::Bool
-
-    # Don't perform checks if the maximum flux for this transition period is
-    #   already reached.
-    if trans.currentFlux == trans.maxFlux
-        return false
-    end
-
-    tmpAttempt = min( nAttempts, length( trans.probabilityList ) )
-
-    # Check if the person undergoes the transition.
-    if rand() > trans.probabilityList[ tmpAttempt ]
-        return false
-    end
-
-    trans.currentFlux += 1
-
-    # Make the changes from one state to the other.
-    tmpPerson = person
-    endStateReqs = trans.endState.requirements
-    changes = Dict{String, String}()
-
-    for attr in keys( endStateReqs )
-        if length( endStateReqs[ attr ] ) == 1
-            changes[ attr ] = endStateReqs[ attr ][ 1 ]
-        end  # if length( endStateReqs[ attr ] ) == 1
-    end  # for attr in keys( endStateReqs )
-
-    changedAttrs = collect( keys( changes ) )
-    # We only need to perform the changes for the attributes that need changing.
-    filter!( attr -> tmpPerson[ attr ] != changes[ attr ], changedAttrs )
-
-    # Only run the code to make changes if there are actual changes in attribute
-    #   values.
-    if !isempty( changedAttrs )
-        persCommand = Vector{String}( length( changedAttrs ) )
-        histCommand = Vector{String}( length( changedAttrs ) )
-
-        for ii in eachindex( changedAttrs )
-            attr = changedAttrs[ ii ]
-            tmpPerson[ attr ] = changes[ attr ]
-            persCommand[ ii ] = "$attr = '$(changes[ attr ])'"
-            histCommand[ ii ] = "( '$id', '$attr', $(now( mpSim )), '$(changes[ attr ])' )"
-        end  # for ii in eachindex( changedAttrs )
-
-        persCommand = "UPDATE $(mpSim.personnelDBname) SET " *
-            join( persCommand, ", " ) * " WHERE $(mpSim.idKey) IS '$id'"
-        histCommand = "INSERT INTO $(mpSim.historyDBname)
-            ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES " *
-            join( histCommand, ", " )
-        SQLite.execute!( mpSim.simDB, persCommand )
-        SQLite.execute!( mpSim.simDB, histCommand )
-    end  # if !isempty( changedattrs )
-
-    oldStateList = split( tmpPerson[ "states" ], "," )
-
-    # Only set up new transitions if the end state is different from the start
-    #   state.
-    if trans.startState.name != trans.endState.name
-        transCommand = "INSERT INTO $(mpSim.transitionDBname)
-            ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
-            ('$id', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')"
-        SQLite.execute!( mpSim.simDB, transCommand )
-        oldStateIndex = findfirst( oldStateList .== trans.startState.name )
-        oldStateList[ oldStateIndex ] = trans.endState.name
-
-        # Add inStateSince entry to target state for this ID.
-        trans.endState.inStateSince[ id ] = now( mpSim )
-
-        # Set up the new transitions from the end state.
-        newTransList = nothing
-
-        if trans.endState.isInitial
-            newTransList = mpSim.initStateList[ trans.endState ]
-        else
-            newTransList = mpSim.otherStateList[ trans.endState ]
-        end  # if trans.endState.isInitial
-
-        for newTrans in newTransList
-            @process transitionProcess( mpSim.sim, newTrans, id, mpSim )
-        end  # for newTrans in newTransList
-    end  # if trans.startState.name != trans.endState.name
-
-    # Find all the states the personnel member is in after the transition.
-    newStateList = Vector{String}()
-
-    for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
-        if isPersonnelOfState( tmpPerson, state )
-            push!( newStateList, state.name )
-        end  # if isPersonnelOfState( tmpPerson, state )
-    end  # for state in ...
-
-    # Update the personnel database to all the new states of the personnel
-    #   member.
-    persCommand = "UPDATE $(mpSim.personnelDBname)
-        SET states = '$(join( newStateList, "," ))'
-        WHERE $(mpSim.idKey) IS '$id'"
-    SQLite.execute!( mpSim.simDB, persCommand )
-
-    # Detect and log side effects from this transition.
-    extraTrans = Vector{String}()
-
-    # Dropped states have to be mentioned in the transaction database as
-    #   transitions to "unknown".
-    for state in filter( tmpState -> tmpState ∉ newStateList, oldStateList )
-        push!( extraTrans, "('$id', $(now( mpSim )), '$(trans.name)', '$state', 'unknown')" )
-    end  # for state in filter( ...
-
-    # Remove ID from inStateSince if the person has left the start state of the
-    #   transition.
-    if trans.startState.name ∉ newStateList
-        delete!( trans.startState.inStateSince, id )
-    end  # if trans.startState.name ∉ newStateList
-
-    # New states have to be mentioned in the transaction database as
-    #   transitions from "unknown".
-    for state in filter( tmpState -> tmpState ∉ oldStateList, newStateList )
-        push!( extraTrans, "('$id', $(now( mpSim )), '$(trans.name)', 'unknown', '$state')" )
-
-        # Do not add inStateSince entry if the person is still in the start
-        #   state of the transition.
-        if state != trans.startState
-        end  # if state != trans.startState
-    end  # for state in filter( ...
-
-    if !isempty( extraTrans )
-        transCommand = "INSERT INTO $(mpSim.transitionDBname)
-            ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
-            $(join( extraTrans, ", "))"
-        SQLite.execute!( mpSim.simDB, transCommand )
-    end  # if !isempty( extraTrans )
-
-    return true
-
-end  # executeTransition( trans, id, person, mpSim )
-=#

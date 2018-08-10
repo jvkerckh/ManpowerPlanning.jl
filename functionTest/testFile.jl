@@ -4,7 +4,7 @@ if !isdefined( :isUpToDate ) || !isUpToDate
     ENV[ "PLOTS_USE_ATOM_PLOTPANE" ] = "false"  # To open plots in external window
 
     try
-        Pkg.update()
+        # Pkg.update()
         isUpToDate = true
         println( "All packages updated." )
     catch

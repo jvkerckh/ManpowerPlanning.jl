@@ -71,8 +71,14 @@ type ManpowerSimulation
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
 
-    # The attrition scheme.
-    attritionScheme::Attrition
+    # The default attrition scheme.
+    defaultAttritionScheme::Attrition
+
+    # Other attrition schemes.
+    attritionSchemes::Dict{String, Attrition}
+
+    # The time between two checks of the attrition process (purely technical)
+    attritionTimeSkip::Float64
 
     # The retirement scheme.
     retirementScheme::Union{Void, Retirement}
@@ -144,8 +150,10 @@ type ManpowerSimulation
         newMPsim.initStateList = Dict{State, Vector{Transition}}()
         newMPsim.otherStateList = Dict{State, Vector{Transition}}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
-        newMPsim.attritionScheme = Attrition( "default" )
-        newMPsim.retirementScheme = nothing
+        newMPsim.defaultAttritionScheme = Attrition( "default" )
+        newMPsim.attritionSchemes = Dict{String, Attrition}()
+        newMPsim.attritionTimeSkip = 1.0
+        newMPsim.retirementScheme = Retirement()
         newMPsim.sim = Simulation()
         newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
         newMPsim.attrExecTimeElapsed = Dates.Millisecond( 0 )

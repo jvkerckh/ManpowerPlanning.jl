@@ -214,7 +214,7 @@ export setAttrition
 function setAttrition( mpSim::ManpowerSimulation,
     attrScheme::Union{Void, Attrition} = nothing )
 
-    mpSim.attritionScheme = attrScheme
+    mpSim.defaultAttritionScheme = attrScheme
 
 end  # setAttrition( mpSim, attrScheme )
 
@@ -583,9 +583,9 @@ function Base.show( io::IO, mpSim::ManpowerSimulation )
             mpSim.recruitmentSchemes )
     end  # if !isempty( mpSim.recruitmentSchemes )
 
-    if isa( mpSim.attritionScheme, Attrition )
-        print( io, "\nAttrition scheme: $(mpSim.attritionScheme)" )
-    end  #if isa( mpSim.attritionScheme, Attrition )
+    if isa( mpSim.defaultAttritionScheme, Attrition )
+        print( io, "\nDefault attrition scheme: $(mpSim.defaultAttritionScheme)" )
+    end  #if isa( mpSim.defaultAttritionScheme, Attrition )
 
     if isa( mpSim.retirementScheme, Retirement )
         print( io, "\nRetirement scheme: $(mpSim.retirementScheme)" )
