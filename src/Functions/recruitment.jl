@@ -405,7 +405,12 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         state -> isPersonnelOfState( initVals, state ),
         keys( mpSim.initStateList ) ) )
         # XXX Iterators.filter is needed to avoid deprecation warnings.
-    foreach( state -> state.inStateSince[ id ] = now( mpSim ), initPersStates )
+
+    for state in initPersStates
+        state.inStateSince[ id ] = now( mpSim )
+        state.isLockedForTransition[ id ] = false
+    end  # for state in initPersStates
+
     stateNames = map( state -> state.name, initPersStates )
     timeOfRetirement = computeExpectedRetirementTime( mpSim,
         mpSim.retirementScheme, ageAtRecruitment, now( mpSim ) )
@@ -555,3 +560,84 @@ function Base.show( io::IO, recScheme::Recruitment )
     end  # if recScheme.isAdaptive || ...
 
 end  # show( io, recScheme )
+
+
+# ==============================================================================
+# Non-exported methods
+# ==============================================================================
+
+function readRecruitmentScheme( sheet::XLSX.Worksheet,
+    ii::T )::Recruitment where T <: Integer
+
+    dataColNr = ii * 5 - 3
+    name = sheet[ XLSX.CellRef( 5, dataColNr ) ]
+    recScheme = Recruitment( name, sheet[ XLSX.CellRef( 6, dataColNr ) ],
+        sheet[ XLSX.CellRef( 7, dataColNr ) ] )
+    isAdaptive = sheet[ XLSX.CellRef( 10, dataColNr ) ] == "YES"
+    isRandom = sheet[ XLSX.CellRef( 11, dataColNr ) ] == "YES"
+    nRow = 15
+    numNodes = sheet[ XLSX.CellRef( nRow + 1, dataColNr ) ]
+
+    if isAdaptive
+        minRec = sheet[ XLSX.CellRef( 8, dataColNr ) ] === nothing ? 0 :
+            sheet[ XLSX.CellRef( 8, dataColNr ) ]
+        setRecruitmentLimits( recScheme, minRec,
+            sheet[ XLSX.CellRef( 9, dataColNr ) ] )
+    elseif isRandom
+        distType = distTypes[ sheet[ XLSX.CellRef( nRow, dataColNr ) ] ]
+        minNodes = distType == "Pointwise" ? 1 : 2
+        recDist = Dict{Int, Float64}()
+
+        for jj in (1:numNodes) + 2
+            node = sheet[ XLSX.CellRef( nRow + jj, dataColNr ) ]
+            weight = sheet[ XLSX.CellRef( nRow + jj, dataColNr + 1 ) ]
+
+            if isa( node, Real ) && !haskey( recDist, node ) && ( node >= 0 ) && ( weight >= 0 )
+                recDist[ floor( Int, node ) ] = weight
+            end  # if isa( node, Real ) && ...
+        end  # for ii in (1:numNodes) + 2
+
+        if length( recDist ) < minNodes
+            error( "Recruitment type $name has an insufficient number of valid nodes defined for its population size distribution." )
+        end  # if numNodes < minNodes
+
+        setRecruitmentDistribution( recScheme, recDist, distType )
+    else
+        setRecruitmentFixed( recScheme, sheet[ XLSX.CellRef( 9, dataColNr ) ] )
+    end  # if isAdaptive
+
+    isFixedAge = sheet[ XLSX.CellRef( 12, dataColNr ) ] == "YES"
+
+    # Add the age distribution.
+    if isFixedAge
+        setRecruitmentAge( recScheme,
+            sheet[ XLSX.CellRef( 13, dataColNr ) ] * 12.0 )
+    else
+        # Get to the start of the age distribution
+        nRow += numNodes + 4
+        distType = distTypes[ sheet[ XLSX.CellRef( nRow, dataColNr ) ] ]
+        numNodes = sheet[ XLSX.CellRef( nRow + 1, dataColNr ) ]
+        minNodes = distType == "Pointwise" ? 1 : 2
+        ageDist = Dict{Float64, Float64}()
+
+        for jj in (1:numNodes) + 2
+            age = sheet[ XLSX.CellRef( nRow + jj, dataColNr ) ]
+            pMass = sheet[ XLSX.CellRef( nRow + jj, dataColNr + 1 ) ]
+
+            # Only add the entry if it makes sense.
+            if isa( age, Real ) && !haskey( ageDist, age ) && ( age >= 0 ) &&
+                ( pMass >= 0 )
+                ageDist[ age * 12.0 ] = pMass
+            end  # if isa( age, Real ) && ...
+        end  # for jj in (1:numNodes) + 2
+
+        if length( ageDist ) < minNodes
+            error( "Recruitment type $name has an insufficient number of valid nodes defined for its recruitment age distribution." )
+        end  # if numNodes < ( distType == "Pointwise" ? 1 : 2 )
+
+        setAgeDistribution( recScheme, ageDist, distType )
+    end  # if isFixedAge
+
+    return recScheme
+
+end  # function generateRecruitmentScheme( s, ii )

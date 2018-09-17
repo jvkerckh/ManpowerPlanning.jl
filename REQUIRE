@@ -3,6 +3,7 @@ julia 0.6
 Plots
 LightGraphs
 MetaGraphs
+GraphIO
 GraphPlot
 Gadfly
 FileIO
@@ -13,3 +14,4 @@ Polynomials
 SimJulia
 ResumableFunctions
 Taro
+XLSX

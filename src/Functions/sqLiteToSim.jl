@@ -215,7 +215,7 @@ function readAttributesFromDatabase( configDB::SQLite.DB,
         end  # for ii in eachindex( valList )
 
         newAttr = PersonnelAttribute( attributes[ :parName ][ ii ],
-            isFixed.value )
+            isFixed = isFixed.value )
 
         if !isempty( values )
             setAttrValues!( newAttr, values )

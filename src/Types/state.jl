@@ -28,6 +28,8 @@ The type contains the following fields:
 * `attrScheme::Attrition`: The attrition scheme attached to this state.
 * `inStateSince::Dict{String, Float64}`: a record of all the persons in the
   state, including the time they last entered the state.
+* `isLockedForTransition::Dict{String, Bool}`: a record of all the persons ready
+  to undergo a transition.
 """
 type State
 
@@ -37,6 +39,7 @@ type State
     stateTarget::Int
     attrScheme::Attrition
     inStateSince::Dict{String, Float64}
+    isLockedForTransition::Dict{String, Bool}
 
 
     # Basic constructor.
@@ -49,6 +52,7 @@ type State
         newState.stateTarget = 0
         newState.attrScheme = Attrition()
         newState.inStateSince = Dict{String, Float64}()
+        newState.isLockedForTransition = Dict{String, Bool}()
         return newState
 
     end  # State( name, isInitial )

@@ -15,12 +15,18 @@ end  # for reqType in requiredTypes
 export setName,
        setState,
        setSchedule,
+       addCondition!,
+       clearConditions!,
+       addAttributeChange!,
+       clearAttributeChanges!,
        setMinTime,
        setTransProbabilities,
        setMaxAttempts,
        setTimeBetweenAttempts,
        setFireAfterFail
 
+
+dummyState = State( "Dummy" )
 
 """
 ```
@@ -90,6 +96,90 @@ function setSchedule( trans::Transition, freq::T1, offset::T2 = 0.0 )::Void wher
     return
 
 end  # setSchedule( trans, freq, offset )
+
+
+"""
+```
+addCondition!( trans::Transition,
+               cond::Condition )
+```
+This function adds the consition `cond` as extra condition to the transition
+`trans`. This function does NOT check if conditions are contradictory with each
+other or with the start state.
+
+This function returns `nothing`.
+"""
+function addCondition!( trans::Transition, cond::Condition )::Void
+
+    push!( trans.extraConditions, cond )
+    return
+
+end  # addCondition!( trans, cond )
+
+
+"""
+```
+clearConditions!( trans::Transition )
+```
+This function clear all extra conditions from the transition `trans`.
+
+This function returns `nothing`.
+"""
+function clearConditions!( trans::Transition )::Void
+
+    empty!( trans.extraConditions )
+    return
+
+end  # clearConditions!( trans )
+
+
+"""
+```
+addAttributeChange!( trans::Transition,
+                     attr::String,
+                     newVal::String )
+```
+This function adds an extra attribute change to the transition `trans`, ensuring
+that the attribute `attr` is changed to the value `newVal`. If the transition
+already changes the attribute, the change gets overwritten and the function
+issues a warning.
+
+This function returns `nothing`.
+"""
+function addAttributeChange!( trans::Transition, attr::String,
+    newVal::String )::Void
+
+    # XXX Logic overhaul needed?
+    changeIndex = findfirst( tmpAttr -> tmpAttr.name == attr,
+        trans.extraChanges )
+
+    if changeIndex == 0
+        newAttr = PersonnelAttribute( attr, Dict( newVal => 1.0 ), false )
+        push!( trans.extraChanges, newAttr )
+    else
+        warn( "Attribute change for attribute '$attr' already recorded. Overwriting the change." )
+        setAttrValues!( trans.extraChanges, Dict( newVal => 1.0 ) )
+    end  # if changeIndex == 0
+
+    return
+
+end  # addAttributeChange!( trans, attr, newVal )
+
+
+"""
+```
+clearAttributeChanges!( trans::Transition )
+```
+This function clears all attribute changes from the transition `trans`.
+
+This function returns `nothing`.
+"""
+function clearAttributeChanges!( trans::Transition )::Void
+
+    empty!( trans.extraChanges)
+    return
+
+end  # clearAttributeChanges!( trans )
 
 
 """
@@ -294,79 +384,94 @@ end  # Base.show( io, trans )
 # Non-exported methods.
 # ==============================================================================
 
+function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
 
-function readTransition( s::Taro.Sheet, sLine::T ) where T <: Integer
+    newTrans = Transition( sheet[ "A$sLine" ], dummyState, dummyState )
+    startState, endState = sheet[ "B$sLine" ], sheet[ "C$sLine" ]
+    setSchedule( newTrans, sheet[ "D$sLine" ], sheet[ "E$sLine" ] )
 
-    startState = s[ "B", sLine + 1 ]
-    endState = s[ "B", sLine + 2 ]
-    dummyState = State( "Dummy" )
-    newTrans = Transition( s[ "B", sLine ], dummyState, dummyState )
-    numConds = Int( s[ "B", sLine + 3 ] )
+    # Read time related conditions.
+    sCol = 7
+    nTimeConds = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
 
-    for ii in 1:numConds
-        newCond, isCondOkay = processCondition( s[ "B", sLine + 3 + ii ],
-            s[ "C", sLine + 3 + ii ], s[ "D", sLine + 3 + ii ] )
+    for ii in 1:nTimeConds
+        newCond, isCondOkay = processCondition(
+            sheet[ XLSX.CellRef( sLine, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 1, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 2, sCol + ii ) ] )
 
         if isCondOkay
-            push!( newTrans.extraConditions, newCond )
+            addCondition!( newTrans, newCond )
         end  # if isCondOkay
-    end  # for ii in 1:numConds
+    end  # for ii in 1:nTimeConds
 
-    sLine += numConds
-    numExtra = Int( s[ "B", sLine + 4 ] )
 
-    for ii in 1:numExtra
-        newAttr = PersonnelAttribute( s[ "B", sLine + 4 + ii ],
-            Dict( s[ "C", sLine + 4 + ii ] => 1.0 ), false )
-        push!( newTrans.extraChanges, newAttr )
-    end  # for ii in 1:numExtra
+    # Read other/attribute conditions.
+    sCol += nTimeConds + 2
+    nOtherConds = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
 
-    sLine += numExtra
-    setSchedule( newTrans, s[ "B", sLine + 5 ], s[ "B", sLine + 6 ] )
-    setMinTime( newTrans, s[ "B", sLine + 7 ] *
-        ( s[ "C", sLine + 7 ] == "years" ? 12.0 : 1.0 ) )
-    setMaxAttempts( newTrans, Int( s[ "B", sLine + 8 ] ) )
-    setFireAfterFail( newTrans, s[ "B", sLine + 9 ] == 1 )
-    setMaxFlux( newTrans, Int( s[ "B", sLine + 10 ] ) )
-    numProbs = Int( s[ "B", sLine + 11 ] )
-    probs = Vector{Float64}( numProbs )
+    for ii in 1:nOtherConds
+        newCond, isCondOkay = processCondition(
+            sheet[ XLSX.CellRef( sLine, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 1, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 2, sCol + ii ) ] )
 
-    for ii in 1:numProbs
-        tmpProb = s[ "B", sLine + 11 + ii ]
-        probs[ ii ] = isa( tmpProb, Real ) ? tmpProb : -1.0
-    end  # for ii in 1:numProbs
+        if isCondOkay
+            addCondition!( newTrans, newCond )
+        end  # if isCondOkay
+    end  # for ii in 1:nOtherConds
+
+    # Read dynamics.
+    sCol += nOtherConds + 2
+    maxFlux = sheet[ XLSX.CellRef( sLine, sCol ) ]
+    setMaxFlux( newTrans, isa( maxFlux, Missings.Missing ) ? -1 :
+        Int( maxFlux ) )
+    maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 1 ) ]
+    setMaxAttempts( newTrans, isa( maxAttempts, Missings.Missing ) ? -1 :
+        Int( maxAttempts ) )
+
+    if isa( maxAttempts, Missings.Missing )
+        setFireAfterFail( newTrans, false )
+    else
+        setFireAfterFail( newTrans,
+            sheet[ XLSX.CellRef( sLine, sCol + 2 ) ] == "YES" )
+    end  # if !isa( maxAttempts, Missings.Missing )
+
+    # Read probability vector.
+    sCol += 3
+    nProbs = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
+    probs = Vector{Float64}( nProbs )
+
+    for ii in 1:nProbs
+        probs[ ii ] = sheet[ XLSX.CellRef( sLine, sCol + ii ) ]
+    end  # for ii in 1:nProbs
 
     setTransProbabilities( newTrans, probs )
-    return newTrans, startState, endState, sLine + 13 + numProbs
 
-end  # readTransition( s, sLine )
+    # Read extra attribute changes.
+    sCol += nProbs + 2
+    nExtraChanges = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
 
-#=
-"""
-```
-initiateTransitionResets( mpSim::ManpowerSimulation )
-```
-This function initiates the processes that reset the flux counters for each
-transition to zero at the start of each transition's cycle.
+    for ii in 1:nExtraChanges
+        addAttributeChange!( newTrans,
+            sheet[ XLSX.CellRef( sLine, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 1, sCol + ii ) ] )
+    end  # for ii in 1:nExtraChanges
 
-This function returns `nothing`.
-"""
-function initiateTransitionResets( mpSim::ManpowerSimulation )::Void
+    return newTrans, startState, endState
 
-    for state in keys( mpSim.initStateList ),
-        trans in mpSim.initStateList[ state ]
-        @process transitionResetProcess( mpSim.sim, trans, mpSim )
-    end  # for state in keys( mpSim.initStateList ), ...
+end  # readTransition( sheet, sLine )
 
-    for state in keys( mpSim.otherStateList ),
-        trans in mpSim.otherStateList[ state ]
-        @process transitionResetProcess( mpSim.sim, trans, mpSim )
-    end  # for state in keys( mpSim.otherStateList ), ...
 
+function purgeRedundantExtraChanges( trans::Transition )::Void
+
+    endStateReqs = collect( keys( trans.endState.requirements ) )
+    indsToRemove = find( attr -> attr.name ∈ endStateReqs, trans.extraChanges )
+    deleteat!( trans.extraChanges, indsToRemove )
     return
 
-end  # initiateTransitionResets( mpSim )
-=#
+end  # purgeRedundantExtraChanges( trans )
+
 
 function initiateTransitionProcesses( mpSim::ManpowerSimulation )::Void
 
@@ -405,10 +510,19 @@ end  # initiateTransitionProcesses( mpSim )
         tStart = now()
         timeOfCheck += trans.freq
 
-        # Identify all persons who're in the start state long enough.
-        eligibleIDs = filter( id -> trans.minTime <=
-            now( sim ) - trans.startState.inStateSince[ id ],
-            collect( keys( trans.startState.inStateSince ) ) )
+        if any( id -> !haskey( trans.startState.inStateSince, id ),
+            keys( trans.startState.isLockedForTransition ) ) ||
+            any( id -> !haskey( trans.startState.isLockedForTransition, id ),
+                keys( trans.startState.inStateSince ) )
+            println( "Transition '$(trans.name)' at $(now( sim ))" )
+            println( "Start state '$(trans.startState.name)'" )
+            println( trans.startState.inStateSince )
+            println( trans.startState.isLockedForTransition )
+            error( "PROBLEM!" )
+        end
+        # Identify all persons who're in the start state long enough and are not
+        #   already going to transition to another state.
+        eligibleIDs = getEligibleIDs( trans, mpSim )
         updateAttemptsAndIDs!( nAttempts, maxAttempts, eligibleIDs )
         checkedIDs = checkExtraConditions( trans, eligibleIDs, mpSim )
         transIDs = determineTransitionIDs( trans, checkedIDs, nAttempts )
@@ -429,6 +543,23 @@ end  # initiateTransitionProcesses( mpSim )
     println( "Transition process for '$(trans.name)' took $(processTime.value / 1000) seconds." )
 
 end  # transitionNewProcess( sim, trans, mpSim )
+
+
+function getEligibleIDs( trans::Transition,
+    mpSim::ManpowerSimulation )::Vector{String}
+
+    eligibleIDs = collect( keys( trans.startState.inStateSince ) )
+    filter!( id -> !trans.startState.isLockedForTransition[ id ], eligibleIDs )
+
+    for cond in filter( cond -> cond.attr == "time_in_state",
+        trans.extraConditions )
+        filter!( id -> cond.rel( now( mpSim ) -
+            trans.startState.inStateSince[ id ], cond.val ), eligibleIDs )
+    end  # for cond in filter( ...
+
+    return eligibleIDs
+
+end  # getEligibleIDs( trans, mpSim )
 
 
 function updateAttemptsAndIDs!( nAttempts::Dict{String, Int}, maxAttempts::Int,
@@ -472,17 +603,18 @@ function checkExtraConditions( trans::Transition, eligibleIDs::Vector{String},
     checkedIDs = eligibleIDs
 
     if !isempty( eligibleIDs ) && !isempty( trans.extraConditions )
-        queryCmd = "SELECT *, ageAtRecruitment + $(now( mpSim )) - timeEntered age
+        queryCmd = "SELECT *, ageAtRecruitment + $(now( mpSim )) - timeEntered age, $(now( mpSim )) - timeEntered tenure
             FROM $(mpSim.personnelDBname)
             WHERE $(mpSim.idKey) IN ('$(join( eligibleIDs, "', '" ))')"
         eligibleIDsState = SQLite.query( mpSim.simDB, queryCmd )
         isIDokay = isa.( eligibleIDs, String )
 
-        for cond in trans.extraConditions
-            attr = Symbol( lowercase( cond.attr ) == "age" ? "age" : cond.attr )
+        for cond in filter( cond -> cond.attr != "time_in_state",
+            trans.extraConditions )
             isIDokay = isIDokay .& map( ii -> cond.rel(
-                eligibleIDsState[ attr ][ ii ], cond.val ), eachindex( isIDokay ) )
-        end  # for cond in trans.extraConditions
+                eligibleIDsState[ Symbol( cond.attr ) ][ ii ], cond.val ),
+                eachindex( isIDokay ) )
+        end  # for cond in filter( ...
 
         checkedIDs = eligibleIDsState[ Symbol( mpSim.idKey ) ][ isIDokay ]
     end  # if !isempty( eligibleIDs )
@@ -535,6 +667,10 @@ function determineTransitionIDs( trans::Transition, eligibleIDs::Vector{String},
                 #   vector that puts the vector of random numbers in sorted
                 #   order.
         end  # if ( toChoose != -1 ) && ...
+
+        # Lock the chosen IDs for transition.
+        foreach( id -> trans.startState.isLockedForTransition[ id ] = true,
+            transIDs )
     end  # if !isempty( eligibleIDs )
 
     return transIDs
@@ -560,12 +696,10 @@ function executeTransitions( trans::Transition, transIDs::Vector{String},
 
         # End state attributes.
         for attr in keys( trans.endState.requirements )
-            if length( trans.endState.requirements[ attr ] ) == 1
-                push!( changedAttrs, attr )
-                push!( newAttrValues,
-                    trans.endState.requirements[ attr ][ 1 ] )
-                push!( persChangesCmd, "$attr = '$(newAttrValues[ end ])'" )
-            end  # if length( trans.endState.requirements ) == 1
+            push!( changedAttrs, attr )
+            push!( newAttrValues,
+                trans.endState.requirements[ attr ][ 1 ] )
+            push!( persChangesCmd, "$attr = '$(newAttrValues[ end ])'" )
         end  # for attr in keys( trans.endState.requirements )
 
         # Extra attribute changes.
@@ -579,7 +713,6 @@ function executeTransitions( trans::Transition, transIDs::Vector{String},
             SET $(join( persChangesCmd, ", " ))
             WHERE $(mpSim.idKey) IN ('$(join( tmpIDs, "', '" ))')"
         SQLite.execute!( mpSim.simDB, persChangesCmd )
-        # XXX include extra attribute changes.
 
         # Record attribute changes in history database.
         histChangesCmd = Vector{String}()
@@ -663,11 +796,12 @@ function updateStates( trans::Transition, transIDs::Vector{String},
 
                 for id in newIDsInState
                     state.inStateSince[ id ] = now( mpSim )
+                    state.isLockedForTransition[ id ] = false
                 end  # for id in newIDsInState
             end  # if !isempty( newIDsInState )
 
             # For dropped states, add an entry that the state
-            #   transitions to an known state.
+            #   transitions to an unknown state.
             if !isempty( droppedIDs )
                 suffix = "', $(now( mpSim )), '$(trans.name)', '$(state.name)', 'unknown')"
                 push!( stateUpdates, join( "('" .* droppedIDs .* suffix,
@@ -675,6 +809,7 @@ function updateStates( trans::Transition, transIDs::Vector{String},
 
                 for id in droppedIDs
                     delete!( state.inStateSince, id )
+                    delete!( state.isLockedForTransition, id )
                 end  # for id in droppedIDs
             end  # if !isempty( droppedIDs )
         end  # if state === trans.startState
@@ -690,6 +825,7 @@ function updateStates( trans::Transition, transIDs::Vector{String},
         if isEndReached[ jj ]
             push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')" )
             trans.endState.inStateSince[ pid ] = now( mpSim )
+            trans.endState.isLockedForTransition[ pid ] = false
 
             if isStartRetained[ jj ]
                 push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', 'nuknown', '$(trans.endState.name)')" )
@@ -700,6 +836,7 @@ function updateStates( trans::Transition, transIDs::Vector{String},
 
         if !isStartRetained[ jj ]
             delete!( trans.startState.inStateSince, pid )
+            delete!( trans.startState.isLockedForTransition, pid )
         end  # if !isStartRetained[ jj ]
 
         # Retain success of transition and note ineligibility of

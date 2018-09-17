@@ -180,8 +180,11 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
     end  # if !in( reason, retirementReasons )
 
     mpSim.personnelSize -= 1
-    foreach( state -> delete!( state.inStateSince, id ),
-        keys( merge( mpSim.initStateList, mpSim.otherStateList ) ) )
+
+    for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
+        delete!( state.inStateSince, id )
+        delete!( state.isLockedForTransition, id )
+    end  # for id in keys( merge( ...
 
     # Change the person's status in the personnel database.
     command = "UPDATE $(mpSim.personnelDBname)
@@ -213,8 +216,10 @@ function retirePersons( mpSim::ManpowerSimulation, ids::Vector{String},
 
     mpSim.personnelSize -= length( ids )
 
-    for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
-        foreach( id -> delete!( state.inStateSince, id ), ids )
+    for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) ),
+        id in ids
+        delete!( state.inStateSince, id )
+        delete!( state.isLockedForTransition, id )
     end  # for state in keys( merge( ...
 
     # Change the person's status in the personnel database.

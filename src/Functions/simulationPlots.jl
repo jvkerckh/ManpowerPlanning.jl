@@ -2,8 +2,7 @@
 
 export showPlotsFromFile,
        plotSimulationResults,
-       plotTransitionMap,
-       plotTransitionMapFromFile
+       plotTransitionMap
 
 
 """
@@ -18,7 +17,7 @@ the plots.
 
 This function returns `nothing`.
 """
-function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )
+function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
 
     if now( mpSim ) == 0
         warn( "Simulation hasn't started yet. Can't create plots." )
@@ -26,34 +25,28 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )
     end  # if now( mpSim ) == 0
 
     tmpFilename = fName * ( endswith( fName, ".xlsx" ) ? "" : ".xlsx" )
-    w = Workbook( tmpFilename )
-    s = getSheet( w, "Output plots" )
 
-    if s.ptr === Ptr{Void}( 0 )
-        warn( "Excel file doesn't have sheet 'Output plots'. Can't create plots." )
-        return
-    end  # if s.ptr === Ptr{Void}( 0 )
+    XLSX.openxlsx( tmpFilename ) do xf
+        if !XLSX.hassheet( xf, "Output plots" )
+            warn( "Excel file doesn't have sheet 'Output plots'. Can't create plots." )
+            return
+        end  # if !hassheet( xf, "Outpot plots" )
 
-    if s[ "B", 5 ] == 1
-        readPlotInfoFromFile( mpSim, s, 2, "active" )
-    end  # if s[ "B", 5 ] == 1
+        sheet = xf[ "Output plots" ]
 
-    nExtraPlots = Int( s[ "F", 3 ] )
-    stateList = collect( keys( merge( mpSim.initStateList,
-        mpSim.otherStateList ) ) )
+        if sheet[ "B5" ] == "YES"
+            readPlotInfoFromFile( mpSim, sheet, 2, "active" )
+        end  # if sheet[ "B5" ] == "YES"
 
-    for ii in 1:nExtraPlots
-        colNum = 2 + 4 * ii
-        state = s[ colNum, 5 ]
-        state = isa( state, Void ) || ( state == "" ) ? "active" :
-            String( state )
+        nExtraPlots = sheet[ "D3" ]
 
-        # Only plot if state exists.
-        if ( state == "active" ) || any( tmpState -> state == tmpState.name,
-            stateList )
-            readPlotInfoFromFile( mpSim, s, colNum, state )
-        end  # if ( state == "active" ) ||
-    end  # for ii in 1:nPlots
+        for colNum in (1:nExtraPlots) + 3
+            state = sheet[ XLSX.CellRef( 5, colNum ) ]
+            state = isa( state, Missings.Missing ) || ( state == "" ) ?
+                "active" : state
+            readPlotInfoFromFile( mpSim, sheet, colNum, state )
+        end
+    end  # XLSX.openxlsx( tmpFilename ) do xf
 
     return
 
@@ -238,13 +231,12 @@ end  # plotSimulationResults( mpSim, timeRes, toShow...; state,
 ```
 plotTransitionMap( mpSim::ManpowerSimulation,
                    states::String...;
-                   format::Symbol = :local,
                    fileName::String = "" )
 ```
 This function returns `nothing`.
 """
 function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
-    format::Symbol = :local, fileName::String = "" )::Void
+    fileName::String = "" )::Void
 
     # Filter out non-existing nodes.
     stateList = merge( mpSim.initStateList, mpSim.otherStateList )
@@ -267,9 +259,9 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
             keys( mpSim.initStateList ) )
             if !isInitCreated
                 add_vertex!( graph )
-                push!( graphStates, "Potential recruits" )
+                push!( graphStates, "External" )
                 nStates += 1
-                set_prop!( graph, nStates, :state, "Potential recruits" )
+                set_prop!( graph, nStates, :state, "External" )
                 isInitCreated = true
             end  # if !isInitCreated
 
@@ -339,39 +331,110 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
         vertices( graph ) ),
         edgelabel = map( edge -> get_prop( graph, edge, :trans ),
         edges( graph ) ) ) )
+
+    # XXX Add code to save to GraphML.
+    if fileName == ""
+        return
+    end  # if fileName == ""
+
+    # Save the structure of the network.
+    savegraph( fileName, graph, GraphMLFormat(); compress = false )
+
+    # Grab it for editing.
+    xmlGraph = readxml( fileName )
+    graphRoot = root( xmlGraph )  # on Julia 0.6
+
+    # Set link to yEd elements.
+    graphRoot[ "xmlns:y" ] = "http://www.yworks.com/xml/graphml"
+    # graphRoot = xmlGraph.root  # on Julia 0.7+
+
+    # Add required keys for processing.
+    key = ElementNode( "key" )
+    key[ "for" ] = "node"
+    key[ "id" ] = "d6"
+    key[ "yfiles.type" ] = "nodegraphics"
+    link!( graphRoot, key )
+    key = ElementNode( "key" )
+    key[ "for" ] = "edge"
+    key[ "id" ] = "d10"
+    key[ "yfiles.type" ] = "edgegraphics"
+    link!( graphRoot, key )
+
+    # Grab the contents of the graph.
+    graphDef = elements( graphRoot )[ 1 ]
+    graphElements = elements( graphDef )
+    nElements = length( graphElements )
+    nNodes = 0
+    nEdges = 0
+    nodeList = collect( vertices( graph ) )
+    edgeList = collect( edges( graph ) )
+
+    for ii in 1:nElements
+        elementData = ElementNode( "data" )
+        isNode = nodename( graphElements[ ii ] ) == "node"
+        nNodes += isNode ? 1 : 0
+        nEdges += isNode ? 0 : 1
+        elementData[ "key" ] = isNode ? "d6" : "d10"
+        elementForm = ElementNode( "y:" *
+            ( isNode ? "ShapeNode" : "PolyEdgeLine" ) )
+        elementLabelText = isNode ?
+            get_prop( graph, nodeList[ nNodes ], :state ) :
+            get_prop( graph, edgeList[ nEdges ], :trans )
+        elementLabel = ElementNode( "y:" * ( isNode ? "Node" : "Edge" ) *
+            "Label" )
+        setnodecontent!( elementLabel, elementLabelText )
+        elementShape = ElementNode( "y:" * ( isNode ? "Shape" : "Arrows" ) )
+
+        if isNode
+            elementShape[ "type" ] = elementLabelText ∈ states ? "ellipse" :
+                "roundrectangle"
+        else
+            elementShape[ "source" ] = "none"
+            elementShape[ "target" ] = "standard"
+        end  # if isNode
+
+        link!( elementForm, elementLabel )
+        link!( elementForm, elementShape )
+        link!( elementData, elementForm )
+        link!( graphElements[ ii ], elementData )
+    end  # for ii in 1:nElements
+
+    write( fileName, xmlGraph )
+
     return
 
-end  # plotTransitionMap( mpSim, states, format, fileName )
+end  # plotTransitionMap( mpSim, states, fileName )
 
 
 """
 ```
 plotTransitionMap( mpSim::ManpowerSimulation,
-                   s::Taro.Sheet )
+                   sheet::XLSX.Worksheet )
 ```
 This function plots a transition map of the manpower simulation `mpSim` with the
-nodes requested in the Excel sheet `s`.
+nodes requested in the Excel sheet `sheet`.
 
 This function returns `nothing`.
 """
-function plotTransitionMap( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function plotTransitionMap( mpSim::ManpowerSimulation,
+    sheet::XLSX.Worksheet )::Void
 
-    numNodes = s[ "B", 5 ]
+    fileName = sheet[ "B4" ]
+    fileName = isa( fileName, Void ) ? "" : fileName * ".graphml"
+    numNodes = Int( sheet[ "B7" ] )
     nodeList = Vector{String}()
-    ii = 1
 
-    while ( ii <= numNodes ) && ( s[ "B", 5 + ii ] !== nothing )
-        push!( nodeList, s[ "B", 5 + ii ] )
-        ii += 1
-    end  # while ( ii <= numNodes ) && ...
+    for ii in 1:numNodes
+        push!( nodeList, sheet[ "B$(8 + ii)" ] )
+    end  # for ii in 1:numNodes
 
     if !isempty( nodeList )
-        plotTransitionMap( mpSim, nodeList... )
+        plotTransitionMap( mpSim, nodeList...; fileName = fileName )
     end  # if !isempty( nodeList )
 
     return
 
-end  # plotTransitionMap( mpSim, s )
+end  # plotTransitionMap( mpSim, sheet )
 
 
 
@@ -379,19 +442,23 @@ end  # plotTransitionMap( mpSim, s )
 # Non-exported methods.
 # ==============================================================================
 
-function readPlotInfoFromFile( mpSim::ManpowerSimulation, sheet::Taro.Sheet,
+function readPlotInfoFromFile( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
     colNum::Int, state::String )::Void
 
     toShow = [ "personnel", "flux in", "flux out", "net flux" ]
-    plotRes = sheet[ colNum, 6 ]
-    tmpToShow = [ sheet[ colNum, 7 ] == 1, sheet[ colNum, 8 ] == 1,
-        sheet[ colNum, 9 ] == 1, sheet[ colNum, 10 ] == 1 ]
-    breakdownBy = isa( sheet[ colNum, 12 ], Void ) ? "" : sheet[ colNum, 12 ]
+    plotRes = sheet[ XLSX.CellRef( 6, colNum ) ]
+    tmpToShow = [ sheet[ XLSX.CellRef( 7, colNum ) ] == "YES",
+        sheet[ XLSX.CellRef( 8, colNum ) ] == "YES",
+        sheet[ XLSX.CellRef( 9, colNum ) ] == "YES",
+        sheet[ XLSX.CellRef( 10, colNum ) ] == "YES" ]
+    breakdownBy = isa( sheet[ XLSX.CellRef( 12, colNum ) ], Missings.Missing ) ?
+        "" : sheet[ XLSX.CellRef( 12, colNum ) ]
     plotSimulationResults( mpSim, plotRes, toShow[ tmpToShow ]...;
-        state = state, countBreakdownBy = breakdownBy,
-        timeFactor = 12, isByType = sheet[ colNum, 13 ] == 1,
-        showBreakdowns = ( sheet[ colNum, 14 ] == 1, sheet[ colNum, 15 ] == 1,
-        sheet[ colNum, 16 ] == 1 ) )
+        state = state, countBreakdownBy = breakdownBy, timeFactor = 12,
+        isByType = sheet[ XLSX.CellRef( 13, colNum ) ] == "YES",
+        showBreakdowns = ( sheet[ XLSX.CellRef( 14, colNum ) ] == "YES",
+            sheet[ XLSX.CellRef( 15, colNum ) ] == "YES",
+            sheet[ XLSX.CellRef( 16, colNum ) ] == "YES" ) )
     return
 
 end  # readPlotInfoFromFile( mpSim, sheet, colNum, state )

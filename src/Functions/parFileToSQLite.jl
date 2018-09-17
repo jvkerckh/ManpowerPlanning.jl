@@ -27,7 +27,7 @@ function readParFileToDatabase( fileName::String, dbName::String,
         error( "File '$tmpFileName' does not exist." )
     end  # if !isfile( tmpFileName )
 
-    # Read and validate the parameter file
+    # Read and validate the parameter file.
     wb = Workbook( tmpFileName )
 
     if !validateParFile( wb )

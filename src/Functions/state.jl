@@ -11,30 +11,30 @@ for reqType in requiredTypes
 end  # for reqType in requiredTypes
 
 
-export setName,
+export setName!,
        addRequirement!,
        removeRequirement!,
        clearRequirements!,
-       setInitial,
-       setStateTarget,
-       setStateAttritionScheme
+       setInitial!,
+       setStateTarget!,
+       setStateAttritionScheme!
 
 
 """
 ```
-setName( state::State,
-         name::String )
+setName!( state::State,
+          name::String )
 ```
 This function sets the name of the state `state` to `name`.
 
 This function returns `nothing`.
 """
-function setName( state::State, name::String )::Void
+function setName!( state::State, name::String )::Void
 
     state.name = name
     return
 
-end  # setName( state, name )
+end  # setName!( state, name )
 
 
 """
@@ -52,7 +52,13 @@ This function returns `nothing`.
 """
 function addRequirement!( state::State, attribute::String, value::String )::Void
 
-    state.requirements[ replace( attribute, " ", "_" ) ] = [ value ]
+    tmpAttr = replace( attribute, " ", "_" )
+
+    if haskey( state.requirements, tmpAttr )
+        warn( "State already has a requirement on attribute '$attribute'." )
+    end  # if haskey( state.requirements, tmpAttr )
+
+    state.requirements[ tmpAttr ] = [ value ]
     return
 
 end  # addRequirement!( state, attribute, value )
@@ -74,7 +80,13 @@ This function returns `nothing`.
 function addRequirement!( state::State, attribute::String,
     values::Vector{String} )::Void
 
-    state.requirements[ replace( attribute, " ", "_" ) ] = values
+    tmpAttr = replace( attribute, " ", "_" )
+
+    if haskey( state.requirements, tmpAttr )
+        warn( "State already has a requirement on attribute '$attribute'." )
+    end  # if haskey( state.requirements, tmpAttr )
+
+    state.requirements[ tmpAttr ] = values
     return
 
 end  # addRequirement!( state, attribute, values )
@@ -92,7 +104,7 @@ This function returns `nothing`.
 """
 function removeRequirement!( state::State, attribute::String )::Void
 
-    delete!( state.requirements, attribute )
+    delete!( state.requirements, replace( attribute, " ", "_" ) )
     return
 
 end  # removeRequirement!( state, attribute )
@@ -116,62 +128,87 @@ end  # clearRequirements!( state )
 
 """
 ```
-setInitial( state::State,
-            isInitial::Bool )
+setInitial!( state::State,
+             isInitial::Bool )
 ```
 This function sets the flag of `state` which indicates the state is an initial
 state to `isInitial`.
 
 This function returns `nothing`.
 """
-function setInitial( state::State, isInitial::Bool )::Void
+function setInitial!( state::State, isInitial::Bool )::Void
 
     state.isInitial = isInitial
     return
 
-end  # setInitial( state, isInitial )
+end  # setInitial!( state, isInitial )
 
 
 """
 ```
-setStateTarget( state::State,
-                target::Int )
+setStateTarget!( state::State,
+                 target::Int )
 ```
 This function sets the target number of personnel members in state `state` to
 `target`. If the number is less than zero, it means there's no target.
 
 This function returns `nothing`.
 """
-function setStateTarget( state::State, target::Int )::Void
+function setStateTarget!( state::State, target::Int )::Void
 
     state.stateTarget = target < 0 ? -1 : target
     return
 
-end  # setStateTarget( state, target )
+end  # setStateTarget!( state, target )
 
 
 """
 ```
-setStateAttritionScheme( state::State,
-                         attrScheme::Attrition )
+setStateAttritionScheme!( state::State,
+                          attrScheme::Attrition )
 ```
 This function sets the attrition scheme of the state `state` to `attrScheme`.
 
 This function returns `nothing.`
 """
-function setStateAttritionScheme( state::State, attrScheme::Attrition )::Void
+function setStateAttritionScheme!( state::State, attrScheme::Attrition )::Void
 
     state.attrScheme = attrScheme
     return
 
-end  # setStateAttritionScheme( state, attrScheme )
+end  # setStateAttritionScheme!( state, attrScheme )
 
 
 """
 ```
-setStateAttritionScheme( state::State,
-                         attrName::String,
-                         mpSim::ManpowerSimulation )
+setStateAttritionScheme!( state::State,
+                          attrRate::Float64,
+                          attrPeriod::Float64,
+                          mpSim::ManpowerSimulation )
+```
+This function sets the attrition scheme of the state `state` to a new attrition
+scheme with an attrition rate of `attrRate` per period of `attrPeriod`, and
+stores the scheme in the manpower simulation `mpSim`.
+
+This function returns `nothing.`
+"""
+function setStateAttritionScheme!( state::State, attrRate::Float64,
+    attrPeriod::Float64, mpSim::ManpowerSimulation )::Void
+
+    newAttrScheme = Attrition( "Attrition:" * state.name, attrRate, attrPeriod )
+    addAttritionScheme!( newAttrScheme, mpSim )
+    state.attrScheme = newAttrScheme
+    return
+
+end  # setStateAttritionScheme!( state, attrScheme )
+
+
+
+"""
+```
+setStateAttritionScheme!( state::State,
+                          attrName::String,
+                          mpSim::ManpowerSimulation )
 ```
 This function sets the attrition scheme of the state `state` to the scheme with
 name `attrName` as defined in the manpower simulation `mpSim`. If the name is
@@ -179,18 +216,19 @@ name `attrName` as defined in the manpower simulation `mpSim`. If the name is
 
 This function returns `nothing.`
 """
-function setStateAttritionScheme( state::State, attrName::String,
+function setStateAttritionScheme!( state::State, attrName::String,
     mpSim::ManpowerSimulation )::Void
 
-    if ( attrName == "default" ) || !haskey( mpSim.attritionSchemes, attrName )
+    if ( lowercase( attrName ) == "default" ) ||
+        !haskey( mpSim.attritionSchemes, attrName )
         state.attrScheme = mpSim.defaultAttritionScheme
         return
-    end  # if ( attrName == "default" ) || ...
+    end  # if ( lowercase( attrName ) == "default" ) || ...
 
     state.attrScheme = mpSim.attritionSchemes[ attrName ]
     return
 
-end  # setStateAttritionScheme( state, attrName, mpSim )
+end  # setStateAttritionScheme!( state, attrName, mpSim )
 
 
 function Base.show( io::IO, state::State )
@@ -225,43 +263,69 @@ end  # show( io, state )
 # Non-exported methods.
 # ==============================================================================
 
-
 """
 ```
-readState( s::Taro.Sheet,
+readState( sheet::XLSX.Worksheet,
+           stateCat::XLSX.Worksheet,
            sLine::T )
 ```
-This function reads the Excel sheet `s`, starting from line `sLine` and
-extracts the parameters of a single state from it.
+This function reads line `sline` of the Excel sheet `sheet`, and uses the state
+catalogue sheet `stateCat` to generate a single state from it.
 
-This function returns a `Tuple{State, Bool, String, Int}`. The first element is
-the state object as it is described in the Excel sheet, the second element is
-`true` if the state is a possible initial state, the third element is the name
-of the associated attrition regime, and the last element is the start line of
-the next state in the sheet.
+This function returns a `Tuple{State, T}` where `T` is either a `String` or a
+`Tuple{Float64, Float64}`. The first element is the state object as it is
+described in the Excel sheet, the second element is either the name of the
+attached attrition scheme, or the attrition period/rate pair describing
+attrition in this state.
 """
-function readState( s::Taro.Sheet, sLine::T ) where T <: Integer
+function readState( sheet::XLSX.Worksheet, stateCat::XLSX.Worksheet,
+    sLine::T ) where T <: Integer
 
-    isInitial = s[ "B", sLine + 1 ] == 1
-    newState = State( s[ "B", sLine ], isInitial )
+    newState = State( string( sheet[ "A$sLine" ] ) )
+    catLine = sheet[ "C$sLine" ]
 
-    # Read attrition scheme name.
-    attrName = s[ "B", sLine + 2 ]
-    attrName = isa( attrName, Void ) ? "default" : attrName
-    sLine += 3
+    if isa( catLine, Missings.Missing )
+        error( "State '$(newState.name)' not defined in catalogue." )
+    end  # if isa( catLine, Void )
 
-    # Read all the requirements.
-    while s[ "A", sLine ] != "Target # of personnel"
-        attr = s[ "B", sLine ]
-        values = processStateOptions( s[ "C", sLine ] )
-        addRequirement!( newState, attr, values )
-        sLine += 1
+    stateTarget = sheet[ "B$sLine" ]
+    setStateTarget!( newState, isa( stateTarget, Missings.Missing ) ? -1 :
+        stateTarget )
+    catLine += 1
+    setInitial!( newState, stateCat[ "B$catLine" ] == "YES" )
+
+    # Read attrition scheme.
+    isFixedAttr = stateCat[ "C$catLine" ] == "YES"
+
+    if isFixedAttr
+        attrPar = Float64( stateCat[ "D$catLine" ] ),
+            Float64( stateCat[ "E$catLine" ] )
+
+        if any( par -> isa( par, Missings.Missing ), attrPar )
+            error( "Attrition parameters for state '$(newState.name)' aren't properly defined." )
+        end  # if any( par -> isa( par, Missings.Missing ), attrPar )
+
+    else
+        attrPar = stateCat[ "F$catLine" ]
+
+        if isa( attrPar, Missings.Missing )
+            attrPar = "default"
+        end  # if isa( attrPar, Missings.Missing )
+
     end
 
-    setStateTarget( newState, Int( s[ "B", sLine ] ) )
-    return newState, isInitial, attrName, sLine + 2
+    # Read state requirements/updates.
+    nReqs = Int( stateCat[ "G$catLine" ] )
 
-end  # readState( s, sLine )
+    for ii in 1:nReqs
+        addRequirement!( newState,
+            stateCat[ XLSX.CellRef( catLine, 6 + 2 * ii ) ],
+            stateCat[ XLSX.CellRef( catLine, 7 + 2 * ii ) ] )
+    end  # for ii in 1:nReqs
+
+    return newState, attrPar
+
+end  # readState( sheet, stateCat, sLine )
 
 
 """

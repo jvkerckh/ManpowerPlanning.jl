@@ -18,25 +18,35 @@ equivalent to a field in the personnel database.
 
 The type contains the following fields:
 * `name::String`: the name of the attribute.
+* `isOrdinal::Bool`: a flag that indicates if the attribute has ordinal values,
+  that is, string values that have a hierarchical ordering.
+* `possibleValues::Vector{String}`: the vector of possible values the attribute
+  can take. If the field `isOrdinal` is `true`, these values must be ordered
+  from lowest to highest in the hierarchy.
 * `values::Dict{String, Float64}`: all the values the attribute can take, along
-with the probability that the values are generated upon creation of a new
-personnel member in the simulation.
+  with the probability that the values are generated upon creation of a new
+  personnel member in the simulation.
 * `isFixed::Bool`: a flag that indicates whether the value of the attribute
-remains constant throughout the lifetime of a personnel member in the
-simulation.
+  remains constant throughout the lifetime of a personnel member in the
+  simulation.
 """
 type PersonnelAttribute
 
     name::String
+    isOrdinal::Bool
+    possibleValues::Vector{String}
     values::Dict{String, Float64}
     isFixed::Bool
 
 
     # Basic constructor.
-    function PersonnelAttribute( name::String, isFixed::Bool = true )
+    function PersonnelAttribute( name::String; isOrdinal = false,
+        isFixed::Bool = true )
 
         newAttr = new()
         newAttr.name = replace( name, " ", "_" )
+        newAttr.isOrdinal = isOrdinal
+        newAttr.possibleValues = Vector{String}()
         newAttr.values = Dict{String, Float64}()
         newAttr.isFixed = isFixed
         return newAttr
@@ -48,7 +58,7 @@ type PersonnelAttribute
     function PersonnelAttribute( name::String, vals::Dict{String, Float64},
         isFixed::Bool = true )
 
-        newAttr = PersonnelAttribute( name, isFixed )
+        newAttr = PersonnelAttribute( name, isFixed = isFixed )
         setAttrValues!( newAttr, vals )
         return newAttr
 

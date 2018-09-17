@@ -19,6 +19,7 @@ export ManpowerSimulation
 type ManpowerSimulation
     # This is the name of the parameter configuration file. If this is an empty
     #   string, the simulation must be configured manually.
+    catFileName::String
     parFileName::String
 
     # this is the name of the simulation database file.
@@ -98,6 +99,9 @@ type ManpowerSimulation
     # The length of the simulation.
     simLength::Float64
 
+    # The start date of the simulation.
+    simStartDate::Date
+
     # The generated reports of the simulation.
     simReports::Dict{Float64, SimulationReport}
 
@@ -106,6 +110,8 @@ type ManpowerSimulation
         simName::String = "testSim" )
 
         newMPsim = new()
+        newMPsim.catFileName = ""
+        newMPsim.parFileName = ""
         newMPsim.simName = simName
 
         # This block creates the database file if necessary and opens a link to
@@ -163,6 +169,7 @@ type ManpowerSimulation
             :retirement => 40,
             :attrition => 50 )
         newMPsim.simLength = 1.0
+        newMPsim.simStartDate = Date( now() )
         newMPsim.simReports = Dict{Float64, SimulationReport}()
         return newMPsim
 
@@ -171,6 +178,7 @@ type ManpowerSimulation
     function ManpowerSimulation( configFileName::String )
 
         newMPsim = ManpowerSimulation()
+        newMPsim.parFileName = configFileName
         initialiseFromExcel( newMPsim, configFileName )
         initialise( newMPsim )
         return newMPsim

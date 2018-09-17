@@ -51,7 +51,8 @@ setAttritionPeriod( attrScheme::Attrition,
     where T <: Real
 
 This function sets the attrition period of the attrition scheme `attrScheme` to
-`period`. If the attrition curve is a flat 0, the attrition period is kept at 1.
+`period`. If the attrition curve is a flat 0, the function warns that it has no
+practical effect.
 
 This function returns `nothing`.
 """
@@ -265,45 +266,42 @@ end  # clearAttritionSchemes!( mpSim )
 # Non-exported methods.
 # ==============================================================================
 
+
 """
 ```
-readAttrition( s::Taro.Sheet,
-               colNr::Int,
-               isDefault::Bool = false )
+readAttrition( attrCat::XLSX.Worksheet,
+               sLine::Int )
 ```
-This function reads the Excel sheet `s`, starting in the column with number
-`colNr`, to read the parameters of the attritition scheme. If `isDefault` is set
-to `true`, this will be the default attrition scheme (name field will not be
-read).
+This function reads the Excel sheet `attrCat`, starting in the row with number
+`sLine`, to read the parameters of the attritition scheme.
 
 This function returns an object of type `Attrition`, the attrition scheme.
 """
-function readAttrition( s::Taro.Sheet, colNr::Int,
-    isDefault::Bool = false )::Attrition
+function readAttrition( attrCat::XLSX.Worksheet, sLine::Int )::Attrition
 
-    attrName = isDefault ? "default" : string( s[ colNr, 5 ] )
+    attrName = string( attrCat[ "A$sLine" ] )
 
-    # Fixed attrition percentage.
-    if s[ colNr, 7 ] == 1
-        return Attrition( attrName, s[ colNr, 8 ], s[ colNr, 6 ] )
-    end  # if s[ colNr, 7 ] == 1
+    # Check if it's the default attrition scheme.
+    if lowercase( attrName ) == "default"
+        attrName = "default"
+    end  # if lowercase( attrName ) == "default"
 
-    lastRow = numRows( s, colNr, colNr + 1 )
-    attrCurveHeaderRow = 10
-    nAttrEntries = lastRow - attrCurveHeaderRow  # 10 is the header row of the attrition curve
-    attrCurve = zeros( Float64, nAttrEntries, 2 )
+    newAttrScheme = Attrition( attrName )
+    attrPeriod = attrCat[ "B$sLine" ]
+    nPoints =  attrCat[ "C$sLine" ]
+    attrCurve = zeros( nPoints, 2 )
 
-    try  # Works only if all entries are good.
-        foreach( ii -> attrCurve[ ii, : ] =
-            [ s[ colNr, ii + attrCurveHeaderRow ] * 12,
-                s[ colNr + 1, ii + attrCurveHeaderRow ] ], 1:nAttrEntries )
-    catch errMsg
-        error( "Improperly defined attrition curve for attrition scheme $attrName." )
-    end  # try
+    for ii in 1:nPoints
+        attrCurve[ ii, : ] = [ attrCat[ XLSX.CellRef( sLine, 2 + 2 * ii ) ],
+            attrCat[ XLSX.CellRef( sLine, 3 + 2 * ii ) ] ]
+    end  # for ii in 1:nPoints
 
-    return Attrition( attrName, attrCurve, s[ colNr, 6 ] )
+    attrCurve[ :, 1 ] *= attrPeriod
+    setAttritionCurve( newAttrScheme, attrCurve )
+    setAttritionPeriod( newAttrScheme, attrPeriod )
+    return newAttrScheme
 
-end  # readAttrition( s, colNr, isDefault )
+end  # readAttrition( attrCat, sLine )
 
 
 """
@@ -416,7 +414,8 @@ function updateTimeToAttrition( stateList::Dict{String, Vector{State}},
         if attrList[ :attritionScheme ][ ii ] != attrScheme.name
             timeToAttr = generateTimeOfAttrition( attrScheme, now( mpSim ) )
             push!( idList, id )
-            push!( newAttrTimeList, timeToAttr )
+            push!( newAttrTimeList,
+                isa( timeToAttr, String ) ? +Inf : timeToAttr )
 
             # Update database
             updateCmd = "UPDATE $(mpSim.personnelDBname)
@@ -442,7 +441,7 @@ function updateTimeToAttrition( stateList::Dict{String, Vector{State}},
                 newAttrTimeList[ ii ], mpSim )
         end  # if newAttrTimeList[ ii ] <= newProcessCheckTime
     end
-    
+
 end  # updateTimeToAttrition( stateList, mpSim )
 
 

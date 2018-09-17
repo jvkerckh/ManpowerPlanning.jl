@@ -19,6 +19,7 @@ end  # for reqType in requiredTypes
 
 relationFunctions = Dict( "IS" => ==, "IS NOT" => !=, "IN" => ∈, "NOT IN" => ∉,
     ">" => >, ">=" => >=, "<" => <, "<=" => <= )
+timeAttrs = [ "age", "tenure", "time_in_state" ]
 
 
 function processCondition( attr::String, rel::String, val::T ) where T <: Union{Real, String}
@@ -33,13 +34,13 @@ function processCondition( attr::String, rel::String, val::T ) where T <: Union{
         return newCond, false
     end  # if isa( relOp, Void )
 
-    attrName = strip( attr )
-    attrName = lowercase( attrName ) == "age" ? "age" :
-        replace( attrName, " ", "_" )
+    attrName = replace( strip( attr ), " ", "_" )
+    attrName = lowercase( attrName ) ∈ timeAttrs ? lowercase( attrName ) :
+        attrName
 
     # If the condition is on the age, only process if the operator makes sense.
-    if ( attrName == "age" ) && ( relOp ∉ [ ∈, ∉ ] )
-        newCond = Condition{T}( attrName, relOp, val * 12.0 )
+    if ( attrName ∈ timeAttrs ) && ( relOp ∉ [ ∈, ∉ ] )
+        newCond = Condition{Float64}( attrName, relOp, val * 12.0 )
     else
         attrVal = val
         valType = T
@@ -51,7 +52,7 @@ function processCondition( attr::String, rel::String, val::T ) where T <: Union{
         end  # if relOp ∈ [ ∈, ∉ ]
 
         newCond = Condition{valType}( attrName, relOp, attrVal )
-    end  # if ( attrName == "age" ) &&
+    end  # if ( attrName ∈ timeAttrs ) && ...
 
     return newCond, true
 

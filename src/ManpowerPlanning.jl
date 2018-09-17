@@ -13,6 +13,8 @@ module ManpowerPlanning
     using Plots
     using LightGraphs
     using MetaGraphs
+    using GraphIO
+    using EzXML
     using GraphPlot
     using Gadfly
     using Distributions
@@ -21,6 +23,7 @@ module ManpowerPlanning
     using SQLite
     using DataFrames
     using StatsBase
+    using XLSX
     using ExcelWrapper
 
     types = [

@@ -56,6 +56,16 @@ function setPersonnelCap( mpSim::ManpowerSimulation, cap::T ) where T <: Integer
 end  # setPersonnelCap( mpSim, cap )
 
 
+# This function sets the start date of the simulation.
+export setSimStartDate
+function setSimStartDate( mpSim::ManpowerSimulation, startDate::Date )::Void
+
+    mpSim.simStartDate = startDate
+    return
+
+end
+
+
 # This function sets the time between two database commits.
 export setDatabaseCommitTime
 function setDatabaseCommitTime( mpSim::ManpowerSimulation, commitFreq::T ) where T <: Real
@@ -70,16 +80,28 @@ function setDatabaseCommitTime( mpSim::ManpowerSimulation, commitFreq::T ) where
 end  # setDatabaseCommitTime( mpSim, commitFreq )
 
 
-# This function adds a personnel attribute to the manpower simulation. Note that
-#   it does not check whether the attribute has been defined already or not.
+# This function adds a personnel attribute to the manpower simulation. If an
+#   attribute with the same name already exists in the simulation, the atrtibute
+#   will be overwritten and a warning wil be issued.
 # This function only works if the simulation hasn't started yet.
 export addAttribute!
-function addAttribute!( mpSim::ManpowerSimulation, attr::PersonnelAttribute )
+function addAttribute!( mpSim::ManpowerSimulation,
+    attr::PersonnelAttribute )::Void
 
-    if now( mpSim ) == 0
-        push!( isempty( attr.values ) ? mpSim.otherAttrList :
-            mpSim.initAttrList, attr )
-    end  # if now( mpSim ) == 0
+    if now( mpSim ) > 0
+        return
+    end  # if now( mpSim ) > 0
+
+    isInit = !isempty( attr.values )
+    listToCheck = isInit ? mpSim.initAttrList : mpSim.otherAttrList
+    indexOfAttr = findfirst( tmpAttr -> tmpAttr.name == attr.name, listToCheck )
+
+    if indexOfAttr > 0
+        warn( "Attribute with name '$(attr.name)' already exists, overwriting the attribute." )
+        listToCheck[ indexOfAttr ] = attr
+    else
+        push!( listToCheck, attr )
+    end  # if indexOfAttr > 0
 
     return
 
@@ -303,8 +325,10 @@ function resetSimulation( mpSim::ManpowerSimulation )
     mpSim.personnelSize = 0
     mpSim.resultSize = 0
 
-    foreach( state -> state.inStateSince = Dict{String, Float64}(),
-        keys( merge( mpSim.initStateList, mpSim.otherStateList ) ) )
+    for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
+        empty!( state.inStateSince )
+        empty!( state.isLockedForTransition )
+    end  # for state in keys( merge( 
 
     # And wipe all existing simulation reports.
     empty!( mpSim.simReports )
@@ -401,6 +425,136 @@ end
 include( joinpath( dirname( Base.source_path() ), "dbManagement.jl" ) )
 
 
+export configureSimFromGraph
+function configureSimFromGraph( mpSim::ManpowerSimulation, graphFile::String,
+    showPlot::Bool = true,
+    exportFileName::String = "networkExport.graphml" )::Void
+
+    if !ispath( graphFile )
+        error( "File '$graphFile' does not exist." )
+    end  # if !ispath(  )
+
+    resetSimulation( mpSim )
+    empty!( mpSim.initAttrList )
+    empty!( mpSim.otherAttrList )
+    empty!( mpSim.initStateList )
+    empty!( mpSim.otherStateList )
+
+    # Get the graph
+    xmlGraph = readxml( graphFile )
+    fileRoot = root( xmlGraph )
+    fileElements = elements( fileRoot )
+    graphIndex = findfirst( el -> nodename( el ) == "graph", fileElements )
+    graphRoot = fileElements[ graphIndex ]
+
+    # Find the indices of the nodes (States) and edges (Transitions) in the
+    #   graph element.
+    graphElements = elements( graphRoot )
+    nodeIndices = find( el -> nodename( el ) == "node", graphElements )
+    edgeIndices = find( el -> nodename( el ) == "edge", graphElements )
+
+    # Read all states.
+    systemNetwork = MetaDiGraph( SimpleDiGraph() )
+    nodeDict = Dict{String, String}()
+    nNodes = 0
+
+    for ii in nodeIndices
+        nodeRoot = graphElements[ ii ]
+        nodeID = nodeRoot[ "id" ]
+        shapeIndex = findfirst( el -> el[ "key" ] == "d6", elements( nodeRoot ) )
+        shapeNode = elements( nodeRoot )[ shapeIndex ]
+        shapeNode = elements( shapeNode )[ 1 ]
+        shapeElements = elements( shapeNode )
+        labelIndex = findfirst( el -> nodename( el ) == "NodeLabel",
+            shapeElements )
+        nodeLabel = "State $ii"
+
+        if labelIndex == 0
+            warn( "Node has no label, setting it to $nodeLabel." )
+        else
+            nodeLabel = nodecontent( shapeElements[ labelIndex ] )
+        end  # if labelIndex == 0
+
+        if lowercase( nodeLabel ) ∉ [ "in", "external" ]
+            nNodes += 1
+            nodeDict[ nodeID ] = nodeLabel
+            add_vertex!( systemNetwork )
+            set_prop!( systemNetwork, nNodes, :state, nodeLabel )
+        end  # if lowercase( nodeLabel ) != "in"
+    end  # for ii in nodeIndices
+
+    stateList = map( node -> get_prop( systemNetwork, node, :state ),
+        vertices( systemNetwork ) )
+
+    # Read all transitions.
+    for ii in edgeIndices
+        edgeRoot = graphElements[ ii ]
+        edgeID = edgeRoot[ "id" ]
+        sourceName = get( nodeDict, edgeRoot[ "source" ], "in" )
+        targetName = get( nodeDict, edgeRoot[ "target" ], "in" )
+        shapeIndex = findfirst( el -> el[ "key" ] == "d10",
+            elements( edgeRoot ) )
+        shapeNode = elements( edgeRoot )[ shapeIndex ]
+        shapeNode = elements( shapeNode )[ 1 ]
+        shapeElements = elements( shapeNode )
+        labelIndex = findfirst( el -> nodename( el ) == "EdgeLabel",
+            shapeElements )
+
+        if "in" ∉ [ sourceName, targetName ]
+            edgeLabel = "$(sourceName)_to_$(targetName)"
+
+            if labelIndex == 0
+                warn( "Edge has no label. Setting it to $edgeLabel" )
+            else
+                edgeLabel = nodecontent( shapeElements[ labelIndex ] )
+            end  # if labelIndex == 0
+
+            sourceVertex = findfirst( node ->
+                get_prop( systemNetwork, node, :state ) == sourceName,
+                vertices( systemNetwork ) )
+            targetVertex = findfirst( node ->
+                get_prop( systemNetwork, node, :state ) == targetName,
+                vertices( systemNetwork ) )
+            add_edge!( systemNetwork, sourceVertex, targetVertex )
+            set_prop!( systemNetwork, sourceVertex, targetVertex, :trans,
+                edgeLabel )
+        end  # if "in" ∉ [ sourceName, targetName ]
+    end
+
+    stateDict = Dict{String, State}()
+
+    # Add states to simulation.
+    for stateNode in vertices( systemNetwork )
+        isInitial = isempty( inneighbors( systemNetwork, stateNode ) )
+        stateName = get_prop( systemNetwork, stateNode, :state )
+        newState = State( stateName, isInitial)
+        stateDict[ stateName ] = newState
+        addState!( mpSim, newState, isInitial )
+    end  # for stateNode in vertices( systemNetwork )
+
+    # Add transitions to simulation.
+    for transEdge in edges( systemNetwork )
+        transName = get_prop( systemNetwork, transEdge, :trans )
+        sourceName = stateList[ src( transEdge ) ]
+        targetName = stateList[ dst( transEdge ) ]
+        newTrans = Transition( transName, stateDict[ sourceName ],
+            stateDict[ targetName ] )
+        addTransition!( mpSim, newTrans )
+    end  # for transEdge in edges( systemNetwork )
+
+    if showPlot
+        plotTransitionMap( mpSim, stateList..., fileName = exportFileName )
+    end  # if showPlot
+
+    return
+
+end  # configureSimFromGraph( mpSim::ManpowerSimulation, graphFile::String )
+
+
+# This file holds the functions to upload an initial population snapshot.
+include( joinpath( dirname( Base.source_path() ), "snapshot.jl" ) )
+
+
 # This function runs the manpower simulation if it has been properly
 #   initialised.
 # function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
@@ -470,26 +624,29 @@ function runSimFromFile( fName::String )
     mpSim = ManpowerSimulation( fName )
     println( "Simulation initialised." )
 
-    wb = Taro.Workbook( fName )
-    s = getSheet( wb, "State Map" )
+    XLSX.openxlsx( fName ) do xf
+        # Make network plot if requested.
+        if XLSX.hassheet( xf, "State Map" )
+            sheet = xf[ "State Map" ]
 
-    # Make network plot if requested.
-    if ( s.ptr !== Ptr{Void}( 0 ) ) && ( s[ "B", 3 ] == 1 )
-        println( "Creating network plot." )
-        tStart = now()
-        plotTransitionMap( mpSim, s )
-        tEnd = now()
-        timeElapsed = (tEnd - tStart).value / 1000
-        println( "Network plot time: $timeElapsed seconds." )
-    end  # if ( s.ptr !=== Ptr{Void}( 0 ) ) && ...
+            if sheet[ "B3" ] == "YES"
+                println( "Creating network plot." )
+                tStart = now()
+                plotTransitionMap( mpSim, sheet )
+                tEnd = now()
+                timeElapsed = (tEnd - tStart).value / 1000
+                println( "Network plot time: $timeElapsed seconds." )
+            end  # if sheet[ "B3" ] == "YES"
+        end  # if XLSX.hassheet( xf, "State Map" )
 
-    # Run only if flag is okay.  XXX to implement
-    s = getSheet( wb, "General" )
+        # Run only if flag is okay.
+        sheet = xf[ "General" ]
 
-    if s[ "B", 10 ] != 1
-        println( "No simulation run requested." )
-        return
-    end  # if s[ "B", 10 ] != 1
+        if sheet[ "B11" ] == "NO"
+            println( "No simulation run requested." )
+            return
+        end  # if sheet[ "B11" ] == "NO"
+    end  # XLSX.openxlsx( fName ) do xf
 
     println( "Running simulation." )
     tStart = now()

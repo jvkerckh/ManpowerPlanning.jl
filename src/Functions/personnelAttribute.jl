@@ -12,10 +12,50 @@ for reqType in requiredTypes
 end  # for reqType in requiredTypes
 
 
-export setAttrValues!,
+export setOrdinal!,
+       setPossibleValues!,
+       setAttrValues!,
+       setFixed!,
        addValueToAttr!,
        removeValueFromAttr!,
        generateAttrValue
+
+
+"""
+```
+setOrdinal!( attr::PersonnelAttribute,
+             isOrdinal::Bool )
+```
+This function sets the isOrdinal flag of the personnel attribute `attr` to
+`isOrdinal`.
+
+This function returns `nothing`.
+"""
+function setOrdinal!( attr::PersonnelAttribute, isOrdinal::Bool )::Void
+
+    attr.isOrdinal = isOrdinal
+    return
+
+end  # setOrdinal!( attr, isOrdinal )
+
+
+"""
+```
+setPossibleValues!( attr::PersonnelAttribute,
+                    vals::Vector{String} )
+```
+This function sets the list of possible values of the personnel attribute `attr`
+to the list given in `vals`.
+
+This function returns `nothing`.
+"""
+function setPossibleValues!( attr::PersonnelAttribute,
+    vals::Vector{String} )::Void
+
+    attr.possibleValues = unique( vals )
+    return
+
+end  # setPossibleValues!( attr, vals )
 
 
 """
@@ -51,7 +91,25 @@ function setAttrValues!( attr::PersonnelAttribute,
     attr.values = tmpVals
     return
 
-end  # setValues!( attr, vals )
+end  # setAttrValues!( attr, vals )
+
+
+"""
+```
+setFixed!( attr::PersonnelAttribute,
+           isFixed::Bool )
+```
+This function sets the isFixed flag of the personnel attribute `attr` to
+`isFixed`.
+
+This function returns `nothing`.
+"""
+function setFixed!( attr::PersonnelAttribute, isFixed::Bool )::Void
+
+    attr.isFixed = isFixed
+    return
+
+end  # setFixed!( attr, isFixed )
 
 
 """
@@ -133,12 +191,20 @@ function Base.show( io::IO, attr::PersonnelAttribute )
     print( io, attr.isFixed ? "fixed" : "variable" )
     print( io, ")" )
 
+    if isempty( attr.possibleValues )
+        print( io, "\n    Attribute can't take any values." )
+        return
+    end  # if isempty( attr.possibleValues )
+
+    print( io, "\n    Possible values: " )
+    print( io, join( attr.possibleValues, ", " ) )
+
     if isempty( attr.values )
-        print( io, "\n    No possible values" )
+        print( io, "\n    No possible initial values" )
         return
     end  # if isempty( attr.values )
 
-    print( io, "\n    Values:" )
+    print( io, "\n    Initial values:" )
     foreach( val -> print( io, "\n      $val ($(signif(attr.values[ val ] * 100, 3))%)" ),
         keys( attr.values ) )
 
@@ -169,35 +235,41 @@ end  # generateAttrValue( attr )
 # Non-exported methods.
 # ==============================================================================
 
+function readAttribute( sheet::XLSX.Worksheet, attrCat::XLSX.Worksheet,
+    sLine::Integer )::PersonnelAttribute
 
-function readAttribute( s::Taro.Sheet, sLine::T ) where T <: Integer
+    newAttr = PersonnelAttribute( string( sheet[ "A$sLine" ] ) )
+    catLine = sheet[ "B$sLine" ]
 
-    newAttr = PersonnelAttribute( s[ "B", sLine ], s[ "B", sLine + 1 ] == 1 )
-    nOpts = Int( s[ "B", sLine + 2 ] )
+    if isa( catLine, Missings.Missing )  # XXX Check what happens with N/A
+        error( "Attribute '$(newAttr.name)' not defined in catalogue." )
+    end  # if isa( catLine, Void )
 
-    if nOpts > 0
-        attrDict = Dict{String, Float64}()
+    catLine = catLine + 1
+    setFixed!( newAttr, attrCat[ "B$catLine" ] == "YES" )
+    setOrdinal!( newAttr, attrCat[ "C$catLine" ] == "YES" )
+    nVals = attrCat[ "E$catLine" ]
+    vals = Vector{String}( nVals )
 
-        for ii in 1:nOpts
-            val = isa( s[ "B", sLine + 4 + ii ], Void ) ? "undefined" :
-                s[ "B", sLine + 4 + ii ]
-            weight = s[ "C", sLine + 4 + ii ]
+    for ii in 1:nVals
+        vals[ ii ] = strip( attrCat[ XLSX.CellRef( catLine, 5 + ii ) ] )
+    end  # for ii in 1:nVals
 
-            if isa( weight, Float64 ) && ( weight > 0 )
-                attrDict[ val ] = weight + ( haskey( attrDict, val ) ?
-                    attrDict[ val ] : 0 )
-            end  # if isa( weight, Float64 ) && ...
-        end  # for ii in 1:nOpts
+    setPossibleValues!( newAttr, vals )
+    ii = 1
+    nInitVals = sheet[ "B$(sLine + 2)" ]
+    vals = Dict{String, Float64}()
 
-        foreach( ii -> attrDict[ s[ "B", sLine + 4 + ii ] ] =
-            s[ "C", sLine + 4 + ii ], 1:nOpts )
-        setAttrValues!( newAttr, attrDict )
-    # If there are no options, the attribute is by definition a variable
-    #   attribute.
-    else
-        newAttr.isFixed = false
-    end  # if nOpts > 0
+    for ii in (1:nInitVals) + 2
+        val = sheet[ XLSX.CellRef( sLine, ii ) ]
+        weight = sheet[ XLSX.CellRef( sLine + 1, ii ) ]
 
-    return newAttr, sLine + 6 + nOpts
+        if isa( weight, Real )
+            vals[ val ] = weight + get( vals, val, 0.0 )
+        end  # if isa( weight, Real )
+    end  # for ii in (1:nInitVals) + 2
 
-end  # readAttribute( s, sLine )
+    setAttrValues!( newAttr, vals )
+    return newAttr
+
+end  # readAttribute( sheet, attrCat, sLine )

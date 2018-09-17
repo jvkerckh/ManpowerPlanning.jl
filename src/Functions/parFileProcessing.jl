@@ -18,7 +18,7 @@ This function initalises the simulation `mpSim` from the Excel file with name
 initialised as well.
 """
 function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
-    initDB::Bool = false )
+    initDB::Bool = false )::Void
 
     # Do nothing if the file isn't an Excel file.
     if !endswith( fileName, ".xlsx" )
@@ -26,65 +26,77 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         return
     end  # if !endswith( fileName, ".xlsx" )
 
-    # Check if the file has the required sheets.
-    w = Workbook( fileName )
-    sheets = [ "General",
-               "Attributes",
-               "States",
-               "Transitions",
-               "Recruitment",
-               "Attrition",
-               "Retirement" ]
+    XLSX.openxlsx( fileName ) do xf
+        # Check if the file has the required sheets.
+        sheets = [ "General",
+                   "Attributes",
+                   "States",
+                   "Transitions",
+                   "Recruitment",
+                   "Retirement" ]
 
-    if any( shName -> getSheet( w, shName ).ptr === Ptr{Void}( 0 ), sheets )
-        warn( "Improperly formatted Excel parameter file. Not making any changes." )
-        return
-    end  # if any( shName -> getSheet( w, shName ).ptr === ...
+        if any( shName -> !XLSX.hassheet( xf, shName ), sheets )
+            warn( "Improperly formatted Excel parameter file. Not making any changes." )
+            return
+        end  # if any( shName -> !XLSX.hassheet( xf, shName ), sheets )
 
-    # Read general parameters.
-    s = getSheet( w, "General" )
+        println( "Parameter check okay." )
+        sheet = xf[ "General" ]
 
-    if initDB
-        readDBpars( mpSim, s )
-    end  # if initDB
+        # Read database parameters.
+        if initDB
+            readDBpars( mpSim, sheet )
+        end  # if initDB
 
-    readGeneralPars( mpSim, s )
+        println( "Database parameters read okay." )
+        # Read general parameters.
+        readGeneralPars( mpSim, sheet )
+        println( "General sim parameters read okay." )
 
-    # Read attrition parameters.
-    s = getSheet( w, "Attrition" )
-    readAttritionPars( mpSim, s )
+        XLSX.openxlsx( mpSim.catFileName ) do catXF
+            # Read attrition schemes.
+            readAttritionSchemes( mpSim, catXF )
+            println( "Attrition schemes read okay." )
 
-    # Read attributes.
-    s = getSheet( w, "Attributes" )
-    readAttributes( mpSim, s )
+            # Read attributes.
+            sheet = xf[ "Attributes" ]
+            catSheet = catXF[ "Attributes" ]
+            readAttributes( mpSim, sheet, catSheet )
+            println( "Attributes read okay." )
 
-    # Read states.
-    s = getSheet( w, "States" )
-    readStates( mpSim, s )
+            # Read states.
+            sheet = xf[ "States" ]
+            catSheet = catXF[ "States" ]
+            readStates( mpSim, sheet, catSheet )
+            println( "States read okay." )
+        end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
-    # Read transitions.
-    s = getSheet( w, "Transitions" )
-    readTransitions( mpSim, s )
+        # Read transitions.
+        sheet = xf[ "Transitions" ]
+        readTransitions( mpSim, sheet )
+        println( "Transitions read okay." )
 
-    # Read recruitment parameters.
-    s = getSheet( w, "Recruitment" )
-    readRecruitmentPars( mpSim, s )
+        # Read recruitment parameters.
+        sheet = xf[ "Recruitment" ]
+        readRecruitmentPars( mpSim, sheet )
 
-    # Read retirement parameters.
-    s = getSheet( w, "Retirement" )
-    readRetirementPars( mpSim, s )
+        # Read retirement parameters.
+        sheet = xf[ "Retirement" ]
+        readRetirementPars( mpSim, sheet )
+    end  # XLSX.openxlsx( fileName ) do xf
 
     # Make sure the databases are okay.
     resetSimulation( mpSim )
 
+    return
+
 end  # initialiseFromExcel( mpSim, fileName )
 
 
-function readDBpars( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
 
-    # This block creates the database file if necessary and opens a link to
-    #   it.  XXX Persistent??
-    tmpDBname = s[ "B", 3 ] * ".sqlite"
+    # This block creates the database file if necessary and opens a link to it.
+    tmpDBname = sheet[ "B4" ] * ".sqlite"
     println( "Database file \"$tmpDBname\" ",
         isfile( tmpDBname ) ? "exists" : "does not exist", "." )
     mpSim.simDB = SQLite.DB( tmpDBname )
@@ -92,8 +104,9 @@ function readDBpars( mpSim::ManpowerSimulation, s::Taro.Sheet )
     # This line ensures that foreign key logic works.
     SQLite.execute!( mpSim.simDB, "PRAGMA foreign_keys = ON" )
 
-    mpSim.personnelDBname = "Personnel_" * s[ "B", 4 ]
-    mpSim.historyDBname = "History_" * s[ "B", 4 ]
+    simName = sheet[ "B5" ]
+    mpSim.personnelDBname = "Personnel_" * simName
+    mpSim.historyDBname = "History_" * simName
 
     # Check if databases are present and issue a warning if so.
     tmpTableList = SQLite.tables( mpSim.simDB )[ :name ]
@@ -103,225 +116,152 @@ function readDBpars( mpSim::ManpowerSimulation, s::Taro.Sheet )
         warn( "Results for a simulation called \"$(mpSim.simName)\" already in database. These will be overwritten." )
     end  # if mpSim.personnelDBname ∈ tmpTableList
 
-end  # readDBpars( mpSim, s )
+    return
+
+end  # readDBpars( mpSim, sheet )
 
 
-function readGeneralPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function readGeneralPars( mpSim::ManpowerSimulation,
+    sheet::XLSX.Worksheet )::Void
 
-    setPersonnelCap( mpSim, Int( s[ "B", 5 ] ) )
-    setSimulationLength( mpSim, s[ "B", 7 ] * 12 )
-    setDatabaseCommitTime( mpSim, s[ "B", 7 ] * 12 / s[ "B", 8 ] )
+    # Read the name of the catalogue file.
+    catalogueName = sheet[ "B3" ] * ".xlsx"
 
-end  # readGeneralPars( mpSim, s )
+    if !ispath( catalogueName )
+        error( "Catalogue file '$catalogueName' does not exist." )
+    end  # if !ispath( catalogueName )
+
+    mpSim.catFileName = catalogueName
+
+    # Set general simulation parameters.
+    setPersonnelCap( mpSim, sheet[ "B6" ] )
+
+    if !isa( sheet[ "B7" ], Missings.Missing )
+        setSimStartDate( mpSim, sheet[ "B7" ] )
+    end  # if !isa( sheet[ "B7" ], Missings.Missing )
+    
+    setSimulationLength( mpSim, sheet[ "B8" ] * 12.0 )
+    setDatabaseCommitTime( mpSim, sheet[ "B8" ] * 12.0 / sheet[ "B9" ] )
+    return
+
+end  # readGeneralPars( mpSim, sheet )
 
 
-function readAttributes( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function readAttritionSchemes( mpSim::ManpowerSimulation,
+    catXF::XLSX.XLSXFile )::Void
 
-    nAttrs = s[ "B", 3 ]
-    clearAttributes!( mpSim )
-    sLine = 5
-    lastLine = numRows( s, "C" )
-    ii = 1
+    catSheet = catXF[ "General" ]
+    nSchemes = catSheet[ "B4" ]
+    catSheet = catXF[ "Attrition" ]
+    isDefaultDefined = false
+    clearAttritionSchemes!( mpSim )
 
-    # Read every single attribute.
-    while ( sLine <= lastLine ) && ( ii <= nAttrs )
-        newAttr, sLine = readAttribute( s, sLine )
-        addAttribute!( mpSim, newAttr )
-        ii += 1
-    end  # while ( sLine <= lastLine ) && ...
+    for sLine in (1:nSchemes) + 1
+        newAttrScheme = readAttrition( catSheet, sLine )
+
+        if newAttrScheme.name == "default"
+            isDefaultDefined = true
+            setAttrition( mpSim, newAttrScheme )
+        else
+            addAttritionScheme!( newAttrScheme, mpSim )
+        end  # if newAttrScheme.name == "default"
+    end  # for ii in (1:nSchemes) + 1
 
     return
 
-end  # readAttributes( mpSim, s )
+end  # readAttritionSchemes( mpSim, catXF )
 
 
-function readStates( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function readAttributes( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
+    attrCat::XLSX.Worksheet )::Void
 
-    nStates = s[ "B", 3 ]
+    nAttrs = sheet[ "B4" ]
+    clearAttributes!( mpSim )
+
+    for sLine in 4 + 3 * ( 1:nAttrs )
+        newAttr = readAttribute( sheet, attrCat, sLine )
+        addAttribute!( mpSim, newAttr )
+    end  # for sLine in 4 + 3 * ( 1::nAttrs )
+
+    return
+
+end  # readAttributes( mpSim, sheet, attrCat )
+
+
+function readStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
+    stateCat::XLSX.Worksheet )::Void
+
+    nStates = sheet[ "B4" ]
     clearStates!( mpSim )
-    sLine = 5
-    lastLine = numRows( s, "C" )
-    ii = 1
+    # listOfStates = Vector{String}()
 
-    while ( sLine <= lastLine ) && ( ii <= nStates )
-        newState, isInitial, attrName, sLine = readState( s, sLine )
-        setStateAttritionScheme( newState, attrName, mpSim )
-        addState!( mpSim, newState, isInitial )
-        ii += 1
-    end  # while ( sLine <= lastLine ) && ...
+    for ii in 1:nStates
+        newState, attrPar = readState( sheet, stateCat, 6 + ii )
+
+        if isa( attrPar, String )
+            setStateAttritionScheme!( newState, attrPar, mpSim )
+        else
+            setStateAttritionScheme!( newState, attrPar[ 2 ], attrPar[ 1 ],
+                mpSim )
+        end  # if isa( attrPar, String )
+
+        addState!( mpSim, newState, newState.isInitial )
+    end  # for ii in 1:nStates
 
     return
 
 end  # readStates( mpSim, s )
 
 
-function readTransitions( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function readTransitions( mpSim::ManpowerSimulation,
+    sheet::XLSX.Worksheet )::Void
 
-    nTransitions = s[ "B", 3 ]
+    nTransitions = Int( sheet[ "B4" ] )
     clearTransitions!( mpSim )
-    sLine = 5
-    lastLine = numRows( s, "C" )
-    ii = 1
     stateList = collect( keys( merge( mpSim.initStateList,
         mpSim.otherStateList ) ) )
 
-    while ( sLine <= lastLine ) && ( ii <= nTransitions )
-        newTrans, startName, endName, sLine = readTransition( s, sLine )
+    for sLine in 3 + 4 * ( 1:nTransitions )
+        newTrans, startName, endName = readTransition( sheet, sLine )
         startInd = findfirst( state -> state.name == startName, stateList )
         endInd = findfirst( state -> state.name == endName, stateList )
-        isExtraCondsOkay = true
-
-        # Test if all the extra conditions deal with attributes (or age)
-        for cond in newTrans.extraConditions
-            if isExtraCondsOkay
-                isExtraCondsOkay = ( cond.attr == "age" ) ||
-                    any( attr -> attr.name == cond.attr,
-                    vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
-            end  # if isExtraCondsOkay
-        end  # for cond in newTrans.extraConditions
-
-        for attr in newTrans.extraChanges
-            if isExtraCondsOkay
-                isExtraCondsOkay = any( tmpAttr -> tmpAttr.name == attr.name,
-                    vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
-            end  # if isExtraCondsOkay
-        end  # for attr in newTrans.extraChanges
-
-        # If either of the states with the given name can't be found, throw an
-        #   error.
-        if startInd * endInd == 0
-            error( "Start state or end state unknown." )
-        elseif !isExtraCondsOkay
-            error( "Extra transition conditions/changes on unknown attribute." )
-        end  # if startInd * endInd == 0
-
         setState( newTrans, stateList[ startInd ] )
         setState( newTrans, stateList[ endInd ], true )
+        # purgeRedundantExtraChanges( newTrans )
         addTransition!( mpSim, newTrans )
-        ii += 1
-    end  # while ( sLine <= lastLine ) && ...
+    end  # for sLine in 3 + 4 * ( 1:nTransitions )
 
     return
 
-end  # readTransitions( mpSim, s )
+end  # readTransitions( mpSim, sheet )
 
 
-function readRecruitmentPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
+function readRecruitmentPars( mpSim::ManpowerSimulation,
+    sheet::XLSX.Worksheet )::Void
 
     clearRecruitmentSchemes!( mpSim )
-    numSchemes = Int( s[ "B", 3 ] )
+    numSchemes = sheet[ "B3" ]
 
     for ii in 1:numSchemes
-        recScheme = generateRecruitmentScheme( s, ii )
+        recScheme = readRecruitmentScheme( sheet, ii )
         addRecruitmentScheme!( mpSim, recScheme )
     end  # for ii in 1:numSchemes
 
-end  # readRecruitmentPars( mpSim, s )
+    return
+
+end  # readRecruitmentPars( mpSim, sheet )
 
 
-function generateRecruitmentScheme( s::Taro.Sheet, ii::T ) where T <: Integer
+function readRetirementPars( mpSim::ManpowerSimulation,
+    sheet::XLSX.Worksheet )::Void
 
-    dataColNr = ii * 5 - 3
-    name = s[ dataColNr, 5 ]
-    recScheme = Recruitment( name, s[ dataColNr, 6 ], s[ dataColNr, 7 ] )
-    isAdaptive = s[ dataColNr, 10 ] == 1
-    isRandom = s[ dataColNr, 11 ] == 1
-    nRow = 17
-
-    if isAdaptive
-        minRec = s[ dataColNr, 8 ] === nothing ? 0 : Int( s[ dataColNr, 8 ] )
-        setRecruitmentLimits( recScheme, minRec, Int( s[ dataColNr, 9 ] ) )
-    elseif isRandom
-        distType = distTypes[ s[ dataColNr, 15 ] ]
-        numNodes = Int( s[ dataColNr, 16 ] )
-        minNodes = distType == "Pointwise" ? 1 : 2
-        recDist = Dict{Int, Float64}()
-
-        for jj in 1:numNodes
-            node = s[ dataColNr, nRow + jj ]
-            weight = s[ dataColNr + 1, nRow + jj ]
-
-            if isa( node, Float64 ) && !haskey( recDist, node ) &&
-                ( node >= 0 ) && isa( weight, Float64 ) && ( weight >= 0 )
-                recDist[ floor( Int, node ) ] = weight
-            end  # if isa( node, Float64 ) && ...
-        end  # for ii in 1:numNodes
-
-        if length( recDist ) < minNodes
-            error( "Recruitment type $name has an insufficient number of valid nodes defined for its population size distribution." )
-        end  # if numNodes < ( distType == "Pointwise" ? 1 : 2 )
-
-        setRecruitmentDistribution( recScheme, recDist, distType )
-    else
-        setRecruitmentFixed( recScheme, Int( s[ dataColNr, 9 ] ) )
-    end  # if isAdaptive
-
-    isFixedAge = s[ dataColNr, 12 ] == 1
-
-    # Add the age distribution.
-    if isFixedAge
-        setRecruitmentAge( recScheme, s[ dataColNr, 13 ] * 12 )
-    else
-        # Get to the start of the age distribution
-        nRow += 1
-
-        while isa( s[ dataColNr - 1, nRow ], Void )
-            nRow += 1
-        end  # while isa( s[ dataColNr - 1, nRow ], Void )
-
-        distType = distTypes[ s[ dataColNr, nRow ] ]
-        numNodes = Int( s[ dataColNr, nRow + 1 ] )
-        minNodes = distType == "Pointwise" ? 1 : 2
-        nRow += 2
-        ageDist = Dict{Float64, Float64}()
-
-        for jj in 1:numNodes
-            age = s[ dataColNr, nRow + jj ] * 12
-            pMass = s[ dataColNr + 1, nRow + jj ]
-
-            # Only add the entry if it makes sense.
-            if isa( age, Float64 ) && !haskey( ageDist, age ) && ( age >= 0 ) &&
-                isa( pMass, Float64 ) && ( pMass >= 0 )
-                ageDist[ age ] = pMass
-            end  # if isa( age, Float64 ) && ...
-        end  # for jj in (rowNrOfDist + 2):rowNrOfDistEnd
-
-        if length( ageDist ) < minNodes
-            error( "Recruitment type $name has an insufficient number of valid nodes defined for its recruitment age distribution." )
-        end  # if numNodes < ( distType == "Pointwise" ? 1 : 2 )
-
-        setAgeDistribution( recScheme, ageDist, distType )
-    end  # if isFixedAge
-
-    return recScheme
-
-end  # function generateRecruitmentScheme( s, ii )
-
-
-function readAttritionPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
-
-    attrScheme = readAttrition( s, 2, true )
-    setAttrition( mpSim, attrScheme )
-    colNr = 5
-    clearAttritionSchemes!( mpSim )
-
-    # Read all other attrition schemes.
-    while !isa( s[ colNr, 5 ], Void )
-        attrScheme = readAttrition( s, colNr )
-        addAttritionScheme!( attrScheme, mpSim )
-        colNr += 3
-    end  # while !isa( s[ colNr, 5 ], Void )
-
-end  # readAttritionPars( mpSim, s )
-
-
-function readRetirementPars( mpSim::ManpowerSimulation, s::Taro.Sheet )
-
-    maxTenure = s[ "B", 5 ] * 12
-    maxAge = s[ "B", 6 ] * 12
-    isEither = s[ "B", 7 ] == "EITHER"
-    retScheme = Retirement( freq = s[ "B", 3 ], offset = s[ "B", 4 ],
+    maxTenure = sheet[ "B5" ] * 12.0
+    maxAge = sheet[ "B6" ] * 12.0
+    isEither = sheet[ "B7" ] == "EITHER"
+    retScheme = Retirement( freq = sheet[ "B3" ], offset = sheet[ "B4" ],
         maxCareer = maxTenure, retireAge = maxAge, isEither = isEither )
     setRetirement( mpSim, retScheme )
 
-end  # readRetirementPars( mpSim, s )
+    return
+
+end  # readRetirementPars( mpSim, sheet )
