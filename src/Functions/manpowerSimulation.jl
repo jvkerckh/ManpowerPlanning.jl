@@ -328,7 +328,7 @@ function resetSimulation( mpSim::ManpowerSimulation )
     for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
         empty!( state.inStateSince )
         empty!( state.isLockedForTransition )
-    end  # for state in keys( merge( 
+    end  # for state in keys( merge(
 
     # And wipe all existing simulation reports.
     empty!( mpSim.simReports )
@@ -552,7 +552,7 @@ end  # configureSimFromGraph( mpSim::ManpowerSimulation, graphFile::String )
 
 
 # This file holds the functions to upload an initial population snapshot.
-include( joinpath( dirname( Base.source_path() ), "snapshot.jl" ) )
+# include( joinpath( dirname( Base.source_path() ), "snapshot.jl" ) )
 
 
 # This function runs the manpower simulation if it has been properly
