@@ -2,9 +2,9 @@
 #   methods for the manpower planning project.
 
 # XXX Not sure if this file needs to be defined outside the module...
-include( joinpath( dirname( Base.source_path() ), "Functions",
-    "ExcelWrapper.jl" ) )
-isExcelOkay = true
+# include( joinpath( dirname( Base.source_path() ), "Functions",
+#     "ExcelWrapper.jl" ) )
+# isExcelOkay = true
 
 
 module ManpowerPlanning
@@ -24,7 +24,7 @@ module ManpowerPlanning
     using DataFrames
     using StatsBase
     using XLSX
-    using ExcelWrapper
+    # using ExcelWrapper
 
     types = [
 #        "historyEntry",

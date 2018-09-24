@@ -510,19 +510,9 @@ end  # initiateTransitionProcesses( mpSim )
         tStart = now()
         timeOfCheck += trans.freq
 
-        if any( id -> !haskey( trans.startState.inStateSince, id ),
-            keys( trans.startState.isLockedForTransition ) ) ||
-            any( id -> !haskey( trans.startState.isLockedForTransition, id ),
-                keys( trans.startState.inStateSince ) )
-            println( "Transition '$(trans.name)' at $(now( sim ))" )
-            println( "Start state '$(trans.startState.name)'" )
-            println( trans.startState.inStateSince )
-            println( trans.startState.isLockedForTransition )
-            error( "PROBLEM!" )
-        end
         # Identify all persons who're in the start state long enough and are not
         #   already going to transition to another state.
-        eligibleIDs = getEligibleIDs( trans, mpSim )
+        eligibleIDs = getEligibleIDs( trans, nAttempts, maxAttempts, mpSim )
         updateAttemptsAndIDs!( nAttempts, maxAttempts, eligibleIDs )
         checkedIDs = checkExtraConditions( trans, eligibleIDs, mpSim )
         transIDs = determineTransitionIDs( trans, checkedIDs, nAttempts )
@@ -530,7 +520,7 @@ end  # initiateTransitionProcesses( mpSim )
         # Halt execution until the transition candidates for all transitions at
         #   the current time are determined.
         processTime += now() - tStart
-        @yield( timeout( sim, 0, priority = priority - Int8( 1 ) ) )
+        # @yield( timeout( sim, 0, priority = priority - Int8( 1 ) ) )
         tStart = now()
         executeTransitions( trans, transIDs, mpSim )
         newStateList = updateStates( trans, transIDs, nAttempts, mpSim )
@@ -545,11 +535,19 @@ end  # initiateTransitionProcesses( mpSim )
 end  # transitionNewProcess( sim, trans, mpSim )
 
 
-function getEligibleIDs( trans::Transition,
-    mpSim::ManpowerSimulation )::Vector{String}
+function getEligibleIDs( trans::Transition, nAttempts::Dict{String, Int},
+    maxAttempts::Int, mpSim::ManpowerSimulation )::Vector{String}
 
     eligibleIDs = collect( keys( trans.startState.inStateSince ) )
     filter!( id -> !trans.startState.isLockedForTransition[ id ], eligibleIDs )
+
+    # Check if attempts have been exhausted (imprtant if transition doesn't fire
+    #   after exhaustion of attempts).
+    if maxAttempts > 0
+        # The first condition means 0 attempts so far.
+        filter!( id -> !haskey( nAttempts, id ) ||
+            ( nAttempts[ id ] < maxAttempts ), eligibleIDs )
+    end  # if maxAttempts > 0
 
     for cond in filter( cond -> cond.attr == "time_in_state",
         trans.extraConditions )
@@ -565,32 +563,17 @@ end  # getEligibleIDs( trans, mpSim )
 function updateAttemptsAndIDs!( nAttempts::Dict{String, Int}, maxAttempts::Int,
     eligibleIDs::Vector{String} )::Void
 
-    # Clear entries of non-eligible IDs.
-    for id in keys( nAttempts )
-        if id ∉ eligibleIDs
-            delete!( nAttempts, id )
-        end  # if id ∉ eligibleIDs
-    end  # for id in keys( nAttempts )
-
-    # Update number of attempts.
-    if !isempty( eligibleIDs )
-        # Increase number of attempts for all eligible IDs. 0 attempts means
-        #   the personnel member has already executed the transition
-        #   succesfully while stil being eligible for it.
-        for id in eligibleIDs
-            if haskey( nAttempts, id ) && ( ( maxAttempts == -1 ) ||
-                ( nAttempts[ id ] <= maxAttempts ) ) && ( nAttempts[ id ] > 0 )
-                nAttempts[ id ] += 1
-            else
-                nAttempts[ id ] = 1
-            end  # if haskey( nAttempts, id ) && ...
-        end  # for id in eligibleIDs
-
-        # Remove the ones who have more attempts than the maximum (if there
-        #   is a maximum).
-        filter!( id -> ( maxAttempts == -1 ) || ( ( nAttempts[ id ] > 0 ) &&
-            ( nAttempts[ id ] <= maxAttempts ) ), eligibleIDs )
-    end  # if !isempty( eligibleIDs )
+    # Increase number of attempts for all eligible IDs. 0 attempts means
+    #   the personnel member has already executed the transition
+    #   succesfully while stil being eligible for it.
+    for id in eligibleIDs
+        if haskey( nAttempts, id ) && ( ( maxAttempts == -1 ) ||
+            ( nAttempts[ id ] <= maxAttempts ) ) && ( nAttempts[ id ] > 0 )
+            nAttempts[ id ] += 1
+        else
+            nAttempts[ id ] = 1
+        end  # if haskey( nAttempts, id ) && ...
+    end  # for id in eligibleIDs
 
     return
 
@@ -602,6 +585,7 @@ function checkExtraConditions( trans::Transition, eligibleIDs::Vector{String},
 
     checkedIDs = eligibleIDs
 
+    # Check extra conditions.
     if !isempty( eligibleIDs ) && !isempty( trans.extraConditions )
         queryCmd = "SELECT *, ageAtRecruitment + $(now( mpSim )) - timeEntered age, $(now( mpSim )) - timeEntered tenure
             FROM $(mpSim.personnelDBname)
@@ -620,6 +604,7 @@ function checkExtraConditions( trans::Transition, eligibleIDs::Vector{String},
     end  # if !isempty( eligibleIDs )
 
     return checkedIDs
+
 end  # checkExtraConditions( trans, eligibleIDs, mpSim )
 
 
@@ -749,6 +734,26 @@ function updateStates( trans::Transition, transIDs::Vector{String},
         return newStateList
     end  # if isempty( transIDs )
 
+    stateUpdates = Vector{String}( length( transIDs ) )
+
+    for ii in eachindex( transIDs )
+        pid = transIDs[ ii ]
+        newStateList[ pid ] = [ trans.endState ]
+        delete!( trans.startState.inStateSince, pid )
+        delete!( trans.startState.isLockedForTransition, pid )
+        delete!( nAttempts, pid )
+        trans.endState.inStateSince[ pid ] = now( mpSim )
+        trans.endState.isLockedForTransition[ pid ] = false
+        stateUpdates[ ii ] = "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')"
+    end  # for id in transIDs
+
+    transChangesCmd = "INSERT INTO $(mpSim.transitionDBname)
+        ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
+        $(join( stateUpdates, ", " ))"
+    SQLite.execute!( mpSim.simDB, transChangesCmd )
+    return newStateList
+
+    #=
     # Get current state of the personnel members undergoing the
     #   transition.
     queryCmd = "SELECT * FROM $(mpSim.personnelDBname)
@@ -850,6 +855,7 @@ function updateStates( trans::Transition, transIDs::Vector{String},
         $(join( stateUpdates, ", " ))"
     SQLite.execute!( mpSim.simDB, transChangesCmd )
     return newStateList
+    =#
 
 end  # function updateStates( trans, transIDs, nAttempts, mpSim )
 
@@ -861,8 +867,9 @@ function firePersonnel( trans::Transition, eligibleIDs::Vector{String},
     # Fire the personnel members who haven't succesfully made the transition
     #   after the maximum number of attempts.
     if trans.isFiredOnFail && ( maxAttempts >= 0 ) && !isempty( eligibleIDs )
-        fireIDs = filter( id -> ( nAttempts[ id ] == maxAttempts ) &&
-            ( id ∉ transIDs ), eligibleIDs )
+        fireIDs = filter( id -> ( id ∉ transIDs ) &&
+            ( nAttempts[ id ] == maxAttempts ), eligibleIDs )
+
         if !isempty( fireIDs )
             foreach( id -> delete!( nAttempts, id ), fireIDs )
             retirePersons( mpSim, fireIDs, "fired" )

@@ -6,7 +6,7 @@
     while now( sim ) + mpSim.commitFrequency < toTime
         @yield timeout( sim, mpSim.commitFrequency )
         SQLite.execute!( mpSim.simDB, "COMMIT" )
-        println( "DB commit executed at $(now( sim ))" )
+        # println( "DB commit executed at $(now( sim ))" )
         SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
     end  # while now( sim ) + mpSim.commitFrequency < toTime
 

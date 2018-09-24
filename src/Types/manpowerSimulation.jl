@@ -68,6 +68,10 @@ type ManpowerSimulation
     # The states.
     initStateList::Dict{State, Vector{Transition}}
     otherStateList::Dict{State, Vector{Transition}}
+    stateList::Dict{String, State}
+
+    # The transitions.
+    transList::Dict{String, Transition}
 
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
@@ -83,6 +87,9 @@ type ManpowerSimulation
 
     # The retirement scheme.
     retirementScheme::Union{Void, Retirement}
+
+    # A flag to track if the system is well defined.
+    isWellDefined::Bool
 
     # SimJulia simulation.
     sim::Simulation
@@ -155,11 +162,14 @@ type ManpowerSimulation
         newMPsim.otherAttrList = Vector{PersonnelAttribute}()
         newMPsim.initStateList = Dict{State, Vector{Transition}}()
         newMPsim.otherStateList = Dict{State, Vector{Transition}}()
+        newMPsim.stateList = Dict{String, State}()
+        newMPsim.transList = Dict{String, Transition}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
         newMPsim.defaultAttritionScheme = Attrition( "default" )
         newMPsim.attritionSchemes = Dict{String, Attrition}()
         newMPsim.attritionTimeSkip = 1.0
         newMPsim.retirementScheme = Retirement()
+        newMPsim.isWellDefined = true
         newMPsim.sim = Simulation()
         newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
         newMPsim.attrExecTimeElapsed = Dates.Millisecond( 0 )
@@ -178,7 +188,8 @@ type ManpowerSimulation
     function ManpowerSimulation( configFileName::String )
 
         newMPsim = ManpowerSimulation()
-        newMPsim.parFileName = configFileName
+        newMPsim.parFileName = joinpath( dirname( Base.source_path() ),
+            configFileName )
         initialiseFromExcel( newMPsim, configFileName )
         initialise( newMPsim )
         return newMPsim

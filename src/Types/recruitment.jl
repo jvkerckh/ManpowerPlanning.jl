@@ -32,6 +32,9 @@ type Recruitment
     minRecruit::Int
     maxRecruit::Int
 
+    # The state to recruit into.
+    recState::String
+
     # The type of the recruitment distribution.
     recDistType::Symbol
 
@@ -64,6 +67,7 @@ type Recruitment
         newRec.isAdaptive = true
         newRec.minRecruit = 0
         newRec.maxRecruit = typemax( Int )
+        newRec.recState = ""
         newRec.recDistType = :disc
         newRec.recDistNodes = Dict{Float64, Float64}()
         newRec.recDist = function() return 0 end

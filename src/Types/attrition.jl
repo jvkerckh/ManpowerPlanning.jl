@@ -54,9 +54,7 @@ type Attrition
         newAttr.attrPeriod = rate == 0.0 ? 1.0 : period
         newAttr.attrCurvePoints = [ 0.0 ]
         newAttr.attrRates = [ rate ]
-        newAttr.lambdas = [ 0.0 ]
-        newAttr.betas = [ 0.0 ]
-        newAttr.gammas = [ 1.0 ]
+        computeDistPars( newAttr )
         return newAttr
 
     end  # Attrition( name, rate, period )

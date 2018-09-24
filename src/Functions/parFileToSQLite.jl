@@ -21,7 +21,9 @@ will throw an error.
 function readParFileToDatabase( fileName::String, dbName::String,
     configName::String = "config" )::Void
 
-    tmpFileName = fileName * ( endswith( fileName, ".xlsx" ) ? "" : ".xlsx" )
+    newMPsim = ManpowerSimulation( fileName )
+    saveSimConfigToDatabase( mpSim, dbName, configName )
+#=    tmpFileName = fileName * ( endswith( fileName, ".xlsx" ) ? "" : ".xlsx" )
 
     if !isfile( tmpFileName )
         error( "File '$tmpFileName' does not exist." )
@@ -52,7 +54,7 @@ function readParFileToDatabase( fileName::String, dbName::String,
     readRetirementFromFile( wb, configDB, configName )
 
     command = "COMMIT"
-    SQLite.execute!( configDB, command )
+    SQLite.execute!( configDB, command )=#
 
     return
 
@@ -63,7 +65,7 @@ end  # readParFileToDatabase( fileName, dbName )
 # Non-exported methods.
 # ==============================================================================
 
-
+#=
 """
 ```
 
@@ -566,3 +568,4 @@ function readRetirementFromFile( wb::Workbook, configDB::SQLite.DB,
     return
 
 end  # readRetirementFromFile( wb, configDB, configName )
+=#

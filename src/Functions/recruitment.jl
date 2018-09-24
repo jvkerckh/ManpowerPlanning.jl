@@ -49,7 +49,7 @@ issues a warning.
 function setRecruitmentLimits( recScheme::Recruitment, minRec::T1,
     maxRec::T2 )::Void where T1 <: Real where T2 <: Real
 
-    if maxRec <= 0
+    if maxRec < 0
         warn( "Max recruitment must be > 0. Not making any changes." )
         return
     end  # if maxRec <= 0
@@ -68,34 +68,16 @@ function setRecruitmentLimits( recScheme::Recruitment, minRec::T1,
 end  # setRecruitmentLimits( recScheme, minRec, maxRec )
 
 
-#=
-# This function defines the distribution for the number of available people
-#   each recruiting period. If the number of available positions is lower than
-#   this, a smaller number of people will of course be recruited.
-# The dictionary argument gives the (unweighted) probabilities for each outcome.
-# Values < 0 are ignored, and so are unweighted probabilities <= 0.
-export setRecruitmentDistribution
-function setRecruitmentDistribution( recScheme::Recruitment,
-    recDist::Dict{Int, Float64} )
+# This function sets the state to recruit into. Note that it doesn't check if
+#   the state is defined in the simulation. If it isn't, the function will
+#   perform general recruitment instead.
+export setRecruitState
+function setRecruitState( recScheme::Recruitment, stateName::String )::Void
 
-    tmpMap = collect( keys( recDist ) )
-    tmpMap = tmpMap[ map( key -> ( key >= 0 ) && ( recDist[ key ] > 0 ),
-        tmpMap ) ]
+    recScheme.recState = stateName
+    return
 
-    # Throw an error if there are no valid outcomes.
-    if length( tmpMap ) == 0
-        error( "No valid positive outcomes (p > 0) for the proposed recruitment distribution." )
-    end
-
-    # Reweight the probability vector to 1.
-    tmpProbs = map( key -> recDist[ key ], tmpMap )
-    tmpProbs /= sum( tmpProbs )
-
-    recScheme.recruitDist = Categorical( tmpProbs )
-    recScheme.recruitMap = tmpMap
-
-end  #  setRecruitmentDistribution( recScheme, recDist )
-=#
+end  # setRecruitState( recScheme, stateName )
 
 
 # This function sets the fixed number of people to recruit during every
@@ -368,7 +350,7 @@ function generatePoolSize( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     nrToRecruit = recScheme.maxRecruit
 
-    if ( mpSim.personnelTarget > 0 ) && ( recScheme.isAdaptive )
+    if recScheme.isAdaptive && ( mpSim.personnelTarget > 0 )
         personnelNeeded = mpSim.personnelTarget - mpSim.personnelSize
         nrToRecruit = max( min( personnelNeeded, nrToRecruit ),
             recScheme.minRecruit )
@@ -380,10 +362,31 @@ function generatePoolSize( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
 end  # generatePoolSize( mpSim, recScheme )
 
+function generatePoolSize( mpSim::ManpowerSimulation, recScheme::Recruitment,
+    recState::State )
+
+    nrToRecruit = recScheme.maxRecruit
+
+    if recScheme.isAdaptive
+        persToOrgTarget = mpSim.personnelTarget > 0 ? mpSim.personnelTarget -
+            mpSim.personnelSize : typemax( Int )
+        persToStateTarget = recState.stateTarget >= 0 ? recState.stateTarget -
+            length( recState.inStateSince ) : typemax( Int )
+        nrToRecruit = max( min( persToOrgTarget, persToStateTarget,
+            nrToRecruit ), recScheme.minRecruit )
+    elseif !recScheme.isAdaptive
+        nrToRecruit = recScheme.recDist()
+    end  # if ( mpSim.personnelTarget > 0 ) && ...
+
+    return nrToRecruit
+
+end  # generatePoolSize( mpSim, recScheme )
+
 
 # This function generates a single personnel member using the information in
 #   the recruitment scheme.
-function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
+function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
+    recState::T = nothing ) where T <: Union{Void, State}
 
     # Create the person in the database.
     id = "Sim" * string( mpSim.resultSize + 1 )
@@ -399,12 +402,30 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
         initValsFixed[ attr.name ] = attr.isFixed
     end  # for attr in mpSim.initAttrList
 
+    if isa( recState, State )
+        for attr in keys( recState.requirements )
+            initVals[ attr ] = recState.requirements[ attr ][ 1 ]
+            initValsFixed[ attr ] = false
+        end  # for attr in keys( recState.requirements )
+    end  # if isa( recState, State )
+
     # Identify all initial states the person belongs to and add entry info to
     #   each of those states.
     initPersStates = collect( Iterators.filter(
         state -> isPersonnelOfState( initVals, state ),
         keys( mpSim.initStateList ) ) )
         # XXX Iterators.filter is needed to avoid deprecation warnings.
+
+    # Check if each person can be assigned to exactly one state.
+    if mpSim.isWellDefined
+        if isempty( initPersStates )
+            mpSim.isWellDefined = false
+            warn( "Person created that couldn't be assigned to any state. Please check system configuration for consistency." )
+        elseif length( initPersStates ) > 1
+            mpSim.isWellDefined = false
+            warn( "Person created that can be assigned to multiple states. Please check system configuration for consistency." )
+        end  # if isempty( initPersStates )
+    end  # if mpSim.isWellDefined
 
     for state in initPersStates
         state.inStateSince[ id ] = now( mpSim )
@@ -468,26 +489,6 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     SQLite.execute!( mpSim.simDB, command )
 
-    # If a proper retirement scheme has been defined, start this person's
-    #   retirement process.
-    # Necessary to retain expected retirement time in database? Yes!
-    # timeOfRetirement = computeExpectedRetirementTime( mpSim, id,
-    #     ageAtRecruitment, now( mpSim ) )
-    # retProc = nothing
-    #
-    # if isa( mpSim.retirementScheme, Retirement )
-    #     retProc = @process retireProcess( mpSim.sim, id, timeOfRetirement,
-    #         mpSim )
-    # end  # if isa( mpSim.retirementScheme, Retirement )
-
-    # If a proper attrition scheme has been defined, set the attrition process.
-    #   This must be defined AFTER the retirement scheme because it requires the
-    #   expected time of retirement.
-    # if isa( mpSim.defaultAttritionScheme, Attrition )
-    #     @process attritionProcess( mpSim.sim, id, timeOfRetirement, #retProc,
-    #         mpSim )
-    # end  # if isa( mpSim.defaultAttritionScheme, Attrition )
-
     # Adjust the size of the personnel database.
     mpSim.personnelSize += 1
     mpSim.resultSize += 1
@@ -499,25 +500,21 @@ end  # createPerson( mpSim, recScheme )
 function recruitmentCycle( mpSim::ManpowerSimulation, recScheme::Recruitment )
 
     nrToRecruit = generatePoolSize( mpSim, recScheme )
+    recState = recScheme.recState == "" ? nothing :
+        mpSim.stateList[ recScheme.recState ]
+
+    if !isa( recState, Void )
+        nrToRecruit = generatePoolSize( mpSim, recScheme, recState )
+    end  # if !isa( recState, Void )
 
     # Stop here if no recruitments happen in this period.
     if nrToRecruit == 0
         return
     end  # if nrToRecruit == 0
 
-#    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+    foreach( ii -> createPerson( mpSim, recScheme, recState ), 1:nrToRecruit )
 
-    for ii in 1:nrToRecruit
-        createPerson( mpSim, recScheme )
-    end  # for ii in 1:nrToRecruit
-
-#    command = "INSERT INTO $(mpSim.personnelDBname) ($(mpSim.idKey), status, " *
-#        "timeEntered, ageAtRecruitment) values " * join( persBuffer, ", " )
-#    SQLite.execute!( mpSim.simDB, command )
-    # command = "INSERT INTO $(mpSim.historyDBname) ($(mpSim.idKey), " *
-    #     "attribute, timeIndex, strValue) values " * join( histBuffer, ", " )
-    # SQLite.execute!( mpSim.simDB, command )
-#    SQLite.execute!( mpSim.simDB, "COMMIT" )
+    return
 
 end  # recruitmentCycle( mpSim, recScheme )
 
@@ -573,16 +570,20 @@ function readRecruitmentScheme( sheet::XLSX.Worksheet,
     name = sheet[ XLSX.CellRef( 5, dataColNr ) ]
     recScheme = Recruitment( name, sheet[ XLSX.CellRef( 6, dataColNr ) ],
         sheet[ XLSX.CellRef( 7, dataColNr ) ] )
-    isAdaptive = sheet[ XLSX.CellRef( 10, dataColNr ) ] == "YES"
-    isRandom = sheet[ XLSX.CellRef( 11, dataColNr ) ] == "YES"
-    nRow = 15
+    recState = sheet[ XLSX.CellRef( 8, dataColNr ) ]
+    recState = isa( recState, Missings.Missing ) ||
+        lowercase( recState ) == "active" ? "" : recState
+    setRecruitState( recScheme, recState )
+    isAdaptive = sheet[ XLSX.CellRef( 11, dataColNr ) ] == "YES"
+    isRandom = sheet[ XLSX.CellRef( 12, dataColNr ) ] == "YES"
+    nRow = 16
     numNodes = sheet[ XLSX.CellRef( nRow + 1, dataColNr ) ]
 
     if isAdaptive
-        minRec = sheet[ XLSX.CellRef( 8, dataColNr ) ] === nothing ? 0 :
-            sheet[ XLSX.CellRef( 8, dataColNr ) ]
+        minRec = sheet[ XLSX.CellRef( 9, dataColNr ) ] === nothing ? 0 :
+            sheet[ XLSX.CellRef( 9, dataColNr ) ]
         setRecruitmentLimits( recScheme, minRec,
-            sheet[ XLSX.CellRef( 9, dataColNr ) ] )
+            sheet[ XLSX.CellRef( 10, dataColNr ) ] )
     elseif isRandom
         distType = distTypes[ sheet[ XLSX.CellRef( nRow, dataColNr ) ] ]
         minNodes = distType == "Pointwise" ? 1 : 2
@@ -592,7 +593,8 @@ function readRecruitmentScheme( sheet::XLSX.Worksheet,
             node = sheet[ XLSX.CellRef( nRow + jj, dataColNr ) ]
             weight = sheet[ XLSX.CellRef( nRow + jj, dataColNr + 1 ) ]
 
-            if isa( node, Real ) && !haskey( recDist, node ) && ( node >= 0 ) && ( weight >= 0 )
+            if isa( node, Real ) && !haskey( recDist, node ) && ( node >= 0 ) &&
+                ( weight >= 0 )
                 recDist[ floor( Int, node ) ] = weight
             end  # if isa( node, Real ) && ...
         end  # for ii in (1:numNodes) + 2
@@ -603,15 +605,15 @@ function readRecruitmentScheme( sheet::XLSX.Worksheet,
 
         setRecruitmentDistribution( recScheme, recDist, distType )
     else
-        setRecruitmentFixed( recScheme, sheet[ XLSX.CellRef( 9, dataColNr ) ] )
+        setRecruitmentFixed( recScheme, sheet[ XLSX.CellRef( 10, dataColNr ) ] )
     end  # if isAdaptive
 
-    isFixedAge = sheet[ XLSX.CellRef( 12, dataColNr ) ] == "YES"
+    isFixedAge = sheet[ XLSX.CellRef( 13, dataColNr ) ] == "YES"
 
     # Add the age distribution.
     if isFixedAge
         setRecruitmentAge( recScheme,
-            sheet[ XLSX.CellRef( 13, dataColNr ) ] * 12.0 )
+            sheet[ XLSX.CellRef( 14, dataColNr ) ] * 12.0 )
     else
         # Get to the start of the age distribution
         nRow += numNodes + 4

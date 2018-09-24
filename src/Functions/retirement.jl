@@ -180,8 +180,13 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
     end  # if !in( reason, retirementReasons )
 
     mpSim.personnelSize -= 1
+    personInStates = [ "active" ]
 
     for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
+        if haskey( state.inStateSince, id )
+            push!( personInStates, state.name )
+        end  # if haskey( state.inStateSince, id )
+
         delete!( state.inStateSince, id )
         delete!( state.isLockedForTransition, id )
     end  # for id in keys( merge( ...
@@ -199,9 +204,11 @@ function retirePerson( mpSim::ManpowerSimulation, id::String, reason::String )
     SQLite.execute!( mpSim.simDB, command )
 
     # Add the person's retirement event to the transition database.
+    retEvents = "('$id', $(now( mpSim )), '$reason', '" .*
+        personInStates .* "')"
     command = "INSERT INTO $(mpSim.transitionDBname)
         ($(mpSim.idKey), timeIndex, transition, startState) VALUES
-        ('$id', $(now( mpSim )), '$reason', 'active')"
+        $(join( retEvents, ", " ))"
     SQLite.execute!( mpSim.simDB, command )
 
 end  # retirePerson( mpSim, id, reason )
@@ -215,9 +222,16 @@ function retirePersons( mpSim::ManpowerSimulation, ids::Vector{String},
     end  # if !in( reason, retirementReasons )
 
     mpSim.personnelSize -= length( ids )
+    idsInStates = ids
+    personInStates = fill( "active", length( ids ) )
 
     for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) ),
         id in ids
+        if haskey( state.inStateSince, id )
+            push!( idsInStates, id )
+            push!( personInStates, state.name )
+        end  # if haskey( state.inStateSince, id )
+
         delete!( state.inStateSince, id )
         delete!( state.isLockedForTransition, id )
     end  # for state in keys( merge( ...
@@ -232,14 +246,15 @@ function retirePersons( mpSim::ManpowerSimulation, ids::Vector{String},
     command = "('" .* ids .* "', 'status', $(now( mpSim )), '$reason')"
     command = "INSERT INTO $(mpSim.historyDBname)
         ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES
-        $(join( command, ", "))"
+        $(join( command, ", " ))"
     SQLite.execute!( mpSim.simDB, command )
 
     # Add the person's retirement event to the transition database.
-    command = "('" .* ids .* "', $(now( mpSim )), '$reason', 'active')"
+    command = "('" .* idsInStates .* "', $(now( mpSim )), '$reason', '" .*
+        personInStates .* "')"
     command = "INSERT INTO $(mpSim.transitionDBname)
         ($(mpSim.idKey), timeIndex, transition, startState) VALUES
-        $(join( command, ", "))"
+        $(join( command, ", " ))"
     SQLite.execute!( mpSim.simDB, command )
 
 end  # function retirePersons( mpSim, ids, reason )

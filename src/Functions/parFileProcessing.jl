@@ -18,7 +18,7 @@ This function initalises the simulation `mpSim` from the Excel file with name
 initialised as well.
 """
 function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
-    initDB::Bool = false )::Void
+    initDB::Bool = true )::Void
 
     # Do nothing if the file isn't an Excel file.
     if !endswith( fileName, ".xlsx" )
@@ -40,7 +40,6 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             return
         end  # if any( shName -> !XLSX.hassheet( xf, shName ), sheets )
 
-        println( "Parameter check okay." )
         sheet = xf[ "General" ]
 
         # Read database parameters.
@@ -48,33 +47,27 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             readDBpars( mpSim, sheet )
         end  # if initDB
 
-        println( "Database parameters read okay." )
         # Read general parameters.
         readGeneralPars( mpSim, sheet )
-        println( "General sim parameters read okay." )
 
         XLSX.openxlsx( mpSim.catFileName ) do catXF
             # Read attrition schemes.
             readAttritionSchemes( mpSim, catXF )
-            println( "Attrition schemes read okay." )
 
             # Read attributes.
             sheet = xf[ "Attributes" ]
             catSheet = catXF[ "Attributes" ]
             readAttributes( mpSim, sheet, catSheet )
-            println( "Attributes read okay." )
 
             # Read states.
             sheet = xf[ "States" ]
             catSheet = catXF[ "States" ]
             readStates( mpSim, sheet, catSheet )
-            println( "States read okay." )
         end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
         # Read transitions.
         sheet = xf[ "Transitions" ]
         readTransitions( mpSim, sheet )
-        println( "Transitions read okay." )
 
         # Read recruitment parameters.
         sheet = xf[ "Recruitment" ]
@@ -96,7 +89,13 @@ end  # initialiseFromExcel( mpSim, fileName )
 function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
 
     # This block creates the database file if necessary and opens a link to it.
-    tmpDBname = sheet[ "B4" ] * ".sqlite"
+    try
+        mkdir( mpSim.parFileName[ 1:(end-5) ] )
+    catch
+    end
+
+    tmpDBname = joinpath( mpSim.parFileName[ 1:(end-5) ],
+        sheet[ "B4" ] * ".sqlite" )
     println( "Database file \"$tmpDBname\" ",
         isfile( tmpDBname ) ? "exists" : "does not exist", "." )
     mpSim.simDB = SQLite.DB( tmpDBname )
@@ -125,7 +124,8 @@ function readGeneralPars( mpSim::ManpowerSimulation,
     sheet::XLSX.Worksheet )::Void
 
     # Read the name of the catalogue file.
-    catalogueName = sheet[ "B3" ] * ".xlsx"
+    catalogueName = joinpath( dirname( mpSim.parFileName ),
+        sheet[ "B3" ] * ".xlsx" )
 
     if !ispath( catalogueName )
         error( "Catalogue file '$catalogueName' does not exist." )
@@ -139,7 +139,7 @@ function readGeneralPars( mpSim::ManpowerSimulation,
     if !isa( sheet[ "B7" ], Missings.Missing )
         setSimStartDate( mpSim, sheet[ "B7" ] )
     end  # if !isa( sheet[ "B7" ], Missings.Missing )
-    
+
     setSimulationLength( mpSim, sheet[ "B8" ] * 12.0 )
     setDatabaseCommitTime( mpSim, sheet[ "B8" ] * 12.0 / sheet[ "B9" ] )
     return

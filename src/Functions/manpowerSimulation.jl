@@ -135,6 +135,8 @@ function addState!( mpSim::ManpowerSimulation, state::State,
         else
             mpSim.otherStateList[ state ] = Vector{Transition}()
         end  # if isinitial
+
+        mpSim.stateList[ state.name ] = state
     end  # if now( mpSim ) == 0
 
     return
@@ -150,6 +152,8 @@ function clearStates!( mpSim::ManpowerSimulation )
     if now( mpSim ) == 0
         empty!( mpSim.initStateList )
         empty!( mpSim.otherStateList )
+        empty!( mpSim.stateList )
+        empty!( mpSim.transList )
     end  # if now( mpSim ) == 0
 
     return
@@ -168,6 +172,8 @@ function addTransition!( mpSim::ManpowerSimulation, trans::Transition )
         else
             push!( mpSim.otherStateList[ trans.startState ], trans )
         end  # if isStartInit
+
+        mpSim.transList[ trans.name ] = trans
     end  # if now( mpSim ) == 0
 
     return
@@ -185,6 +191,7 @@ function clearTransitions!( mpSim::ManpowerSimulation )
             keys( mpSim.initStateList ) )
         foreach( state -> empty!( mpSim.otherStateList[ state ] ),
             keys( mpSim.otherStateList ) )
+        empty!( mpSim.transList )
     end  # if now( mpSim ) == 0
 
     return
@@ -552,7 +559,7 @@ end  # configureSimFromGraph( mpSim::ManpowerSimulation, graphFile::String )
 
 
 # This file holds the functions to upload an initial population snapshot.
-# include( joinpath( dirname( Base.source_path() ), "snapshot.jl" ) )
+include( joinpath( dirname( Base.source_path() ), "snapshot.jl" ) )
 
 
 # This function runs the manpower simulation if it has been properly
@@ -572,7 +579,9 @@ function SimJulia.run( mpSim::ManpowerSimulation )
             @process recruitProcess( mpSim.sim, ii, mpSim )
         end  # for ii in eachindex( mpSim.recruitmentSchemes )
 
+        mpSim.isWellDefined = true
         mpSim.isVirgin = false
+        readSnapshot( mpSim )
     end  # if mpSim.isVirgin
 
     toTime = 0.0

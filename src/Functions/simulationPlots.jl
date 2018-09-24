@@ -1,7 +1,9 @@
 # This file holds all the functions related to plotting simulation results.
 
 export showPlotsFromFile,
+       showFluxPlotsFromFile,
        plotSimulationResults,
+       plotFluxResults,
        plotTransitionMap
 
 
@@ -51,6 +53,99 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
     return
 
 end  # showPlotsFromFile( mpSim, fName )
+
+
+"""
+```
+showPlotsFromFile( mpSim::ManpowerSimulation,
+                   fName::String )
+```
+This function generates all the flux plots for manpower simulation `mpSim` that
+are requested in the tab `Output plots (trans)` of the Excel file with name
+`fName`. If the simulation hasn't started yet, the function will generate a
+warning to that effect, and will not create the plots.
+
+This function returns `nothing`.
+"""
+function showFluxPlotsFromFile( mpSim::ManpowerSimulation,
+    fileName::String )::Void
+
+    if now( mpSim ) == 0
+        warn( "Simulation hasn't started yet. Can't create plots." )
+        return
+    end  # if now( mpSim ) == 0
+
+    tmpFileName = endswith( fileName, ".xlsx" ) ? fileName : fileName * ".xlsx"
+
+    if !ispath( tmpFileName )
+        warn( "'$tmpFileName' is not a valid file. Can't create flux plots." )
+        return
+    end  # if !ispath( tmpFilename )
+
+    XLSX.openxlsx( tmpFileName ) do xf
+        if !XLSX.hassheet( xf, "Output plots (trans)" )
+            warn( "Excel file has no sheet 'Output plots (trans)'. Can't create flux plots." )
+            return
+        end  # if !XLSX.hassheet( xf, "Output plots (trans)" )
+
+        # Get the general info.
+        plotSheet = xf[ "Output plots (trans)" ]
+        showPlots = plotSheet[ "B3" ] == "YES"
+        reportFileName = plotSheet[ "B4" ] == "YES" ? plotSheet[ "B5" ] : ""
+        reportFileName = isa( reportFileName, Missings.Missing ) ? "" :
+            reportFileName
+        nPlots = plotSheet[ "B8" ]
+        plotList = Dict{Float64, Vector{Union{String, Tuple{String, String}}}}()
+
+        # Get all requested transitions and time resolutions.
+        for ii in 1:nPlots
+            jj = ii + 10
+            isST = plotSheet[ "A$jj" ] == "YES"
+            timeRes = Float64( plotSheet[ "E$jj" ] )
+
+            # Add time resolution to list.
+            if !haskey( plotList, timeRes )
+                plotList[ timeRes ] = Vector{Union{String, Tuple{String, String}}}()
+            end  # if !haskey( plotList, timeRes )
+
+            if isST
+                sourceName = plotSheet[ "C$jj" ]
+                targetName = plotSheet[ "D$jj" ]
+                sourceName = isa( sourceName, Missings.Missing ) ? "" :
+                    string( sourceName )
+                targetName = isa( targetName, Missings.Missing ) ? "" :
+                    string( targetName )
+                push!( plotList[ timeRes ], ( sourceName, targetName ) )
+            else
+                transName = plotSheet[ "B$jj" ]
+
+                if isa( transName, String )
+                    push!( plotList[ timeRes ], transName )
+                end  # if isa( transName, String )
+            end  # if isST
+        end  # for ii in 1:nPlots
+
+        overWrite = true
+
+        # Make the plots.
+        if showPlots
+            for timeRes in keys( plotList )
+                plotFluxResults( mpSim, timeRes, plotList[ timeRes ]...,
+                    fileName = reportFileName, overWrite = overWrite )
+                overWrite = false
+            end  # for timeRes in keys( plotList )
+        elseif reportFileName != ""
+            for timeRes in keys( plotList )
+                generateExcelFluxReport( mpSim, timeRes, plotList[ timeRes ]...,
+                    fileName = reportFileName, overWrite = overWrite )
+                overWrite = false
+            end  # for timeRes in keys( plotList )
+        end  # if showPlots
+    end  # XLSX.openxlsx( tmpFileName ) do xf
+
+    return
+
+end  # showFluxPlotsFromFile( mpSim, fileName )
 
 
 """
@@ -132,10 +227,9 @@ plotSimulationResults( mpSim::ManpowerSimulation,
                        timeRes::T1,
                        toShow::String...;
                        state::String = "active",
-                       countBreakdownBy::String = "",
-                       isByType::Bool = false,
+                       isByTransition::Bool = false,
                        showBreakdowns::Tuple{Bool, Bool, Bool} = ( false, false, false ),
-                       timeFactor::T2 = 1 )::Void
+                       timeFactor::T2 = 12 )::Void
     where T1 <: Real where T2 <: Real
 ```
 This function generates a (number of) plot(s) for the manpower simulation
@@ -147,15 +241,15 @@ the information in `toShow`. Only the values `"personnel"`, `"flux in"`,
 * The parameter `countBreakdownBy` indicates the attribute by which the
   (sub)population counts are broken down. If this is empty, or a non-existent
   attribute, no breakdown occurs.
-* The flag `isByType` indicates whether the in/out fluxes are broken down by
-  transition, or by target/source state.
+* The flag `isByTransition` indicates whether the in/out fluxes are broken down
+  by transition, or by target/source state.
 * The flags in the parameter `showBreakdowns` indicate which types of breakdown
   plots are shown. The first flag is for regular line plots, the second for
   stacked area plots, the third for stacked percentage area plots.
 * The parameter `timeFactor` indicates the factor by which the time axis is
   compressed. This is useful if for example the simulation time unit is months,
-  but the visualization should be with the time axis in years (use factor 12 in
-  this case).
+  but the visualization should be with the time axis in years (use default
+  factor 12 in this case).
 
 This function returns `nothing`. The function will generate the general line
 plot of the requested information, and then all requested breakdown plots.
@@ -163,10 +257,9 @@ Remark that the percentage plots show a total of 0 at the times the investigated
 (sub)population is empty [similar to Excel].
 """
 function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
-    toShow::String...; state::String = "active", countBreakdownBy::String = "",
-    isByType::Bool = false,
+    toShow::String...; state::String = "active", isByTransition::Bool = true,
     showBreakdowns::Tuple{Bool, Bool, Bool} = ( false, false, false ),
-    timeFactor::T2 = 1 )::Void where T1 <: Real where T2 <: Real
+    timeFactor::T2 = 12 )::Void where T1 <: Real where T2 <: Real
 
     # Make a list of all the requested plots.
     validPlots = [ "personnel", "flux in", "flux out", "net flux" ]
@@ -177,53 +270,135 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
         return
     end  # if isempty( tmpShow )
 
-    tmpBreakdownBy = replace( countBreakdownBy, " ", "_" )
-
-    if !any( showBreakdowns )
-        tmpBreakdownBy = ""
-    end  # if !any( showBreakdowns )
-
     # Generate the reports for the requested state.
-    personnelCounts = generateCountReport( mpSim, state, timeRes,
-        tmpBreakdownBy )
-    fluxInCounts = generateFluxInReport( mpSim, state, timeRes, !isByType )
-    fluxOutCounts = generateFluxOutReport( mpSim, state, timeRes, !isByType )
-    timeGrid = personnelCounts[ 1 ] / timeFactor
+    personnelCounts = generateCountReport( mpSim, timeRes, state )
+    fluxInCounts = generateFluxReport( mpSim, timeRes, true, isByTransition,
+        state )
+    fluxOutCounts = generateFluxReport( mpSim, timeRes, false, isByTransition,
+        state )
+    timeGrid = personnelCounts[ 1 ] ./ timeFactor
 
     # Make a plot of the totals.
-    plotSimResults( state, timeGrid, personnelCounts[ 2 ], fluxInCounts[ 2 ],
-        fluxOutCounts[ 2 ], tmpShow )
+    plotSimResults( state, timeGrid, Vector{Int}( personnelCounts[ 2 ] ),
+        Vector{Int}( fluxInCounts[ end ] ), Vector{Int}( fluxOutCounts[ end ] ),
+        tmpShow )
 
     if !any( showBreakdowns )
         return
     end  # if !any( showBreakdowns )
 
+    # Plot the flux breakdown plots.
     plotTypes = [ :normal, :stacked, :percentage ]
-    isUsed = Vector{Bool}( 3 )
-    foreach( ii -> isUsed[ ii ] = showBreakdowns[ ii ], 1:3 )
+    isUsed = map(  ii -> showBreakdowns[ ii ], 1:3 )
 
     # Make a plot of the breakdown of the fluxes.
     for plotStyle in plotTypes[ isUsed ]
-        if ( "personnel" ∈ tmpShow ) && ( length( personnelCounts ) == 4 )
-            plotBreakdown( state, timeGrid, personnelCounts[ 2 ],
-                personnelCounts[ 4 ], personnelCounts[ 3 ], :pers, plotStyle )
-        end  # if ( "personnel" ∈ tmpShow ) && ...
+        # if ( "personnel" ∈ tmpShow ) && ( length( personnelCounts ) == 4 )
+        #     plotBreakdown( state, timeGrid, personnelCounts[ 2 ],
+        #         personnelCounts[ 4 ], personnelCounts[ 3 ], :pers, plotStyle )
+        # end  # if ( "personnel" ∈ tmpShow ) && ...
 
         if "flux in" ∈ tmpShow
-            plotBreakdown( state, timeGrid[ 2:end ], fluxInCounts[ 2 ],
-                fluxInCounts[ 4 ], fluxInCounts[ 3 ], :in, plotStyle )
+            plotBreakdown( state, fluxInCounts, :in, plotStyle,
+                Float64( timeFactor ) )
         end  # if "flux in" ∈ tmpShow
 
         if "flux out" ∈ tmpShow
-            plotBreakdown( state, timeGrid[ 2:end ], fluxOutCounts[ 2 ],
-                fluxOutCounts[ 4 ], fluxOutCounts[ 3 ], :out, plotStyle )
-        end  # if "flux in" ∈ tmpShow
+            plotBreakdown( state, fluxOutCounts, :out, plotStyle,
+                Float64( timeFactor ) )
+        end  # if "flux out" ∈ tmpShow
     end  # for plotStyle in plotTypes[ isUsed ]
 
     return
 
 end  # plotSimulationResults( mpSim, timeRes, toShow...; state,
-     #   countBreakdownBy, isBreakdown, isByType, breakdownPlotStyle,
+     #   countBreakdownBy, isBreakdown, isByTransition, breakdownPlotStyle,
+     #   timeFactor )
+
+
+"""
+```
+plotFluxResults( mpSim::ManpowerSimulation,
+                 timeRes::T1,
+                 transList::Union{String, Tuple{String, String}}...;
+                 fileName::String = "",
+                 overWrite = true,
+                 timeFactor::T2 = 12.0 )
+    where T1 <: Real where T2 <: Real
+```
+This function creates a report on fluxes in the manpower simulation `mpSim` on a
+grid with time resolution `timeRes`, showing all the transitions
+(transition types) listed in `transList`. These transitions can be entered by
+transition name (as `String`) or as source/target state pairs (as
+`Union{String, Tuple{String, String}}`). Non existing transitions are ignored,
+names of recruitment schemes are accepted, the outflows `retired`,
+`resigned`, and `fired` are accepted, and the empty state or state `external` is
+accepted to describe in and out transitions. The results are then plotted in
+separate plots. If the parameter `fileName` is not blank, the results are then
+saved in the Excel file with that name, with the extension `".xlsx"` added if
+necessary. If the flag `overWrite` is `true`, a new Excel file is created.
+Otherwise, the report is added to the Excel file. Times are compressed by a
+factor `timeFactor`.
+
+This function returns `nothing`.
+"""
+function plotFluxResults( mpSim::ManpowerSimulation, timeRes::T1,
+    transList::Union{String, Tuple{String, String}}...;
+    fileName::String = "", overWrite = true, timeFactor::T2 = 12.0 ) where T1 <: Real where T2 <: Real
+
+    # Issue warning if time resolution is negative.
+    if timeRes <= 0
+        warn( "Negative time resolution for grid. Resolution must be > 0.0" )
+        return resultReport
+    end
+
+    # Issue warning when trying to generate report of a simultation that hasn't
+    #   started.
+    if now( mpSim ) == 0
+        warn( "Simulation hasn't started yet. Cannot generate report." )
+        return resultReport
+    end  # if now( mpSim ) == 0
+
+    # Issue warninig when trying to apply a negative time compression factor.
+    if timeFactor <= 0.0
+        warn( "Time compression factor must be greater than 0. Cannot generate report." )
+        return resultReport
+    end  # if timeFactor <= 0.0
+
+    tStart = now()
+
+    # Generate the data.
+    fluxData = generateFluxReport( mpSim, timeRes, transList... )
+    fluxData[ 1 ] /= timeFactor
+    fluxData[ 2 ] /= timeFactor
+    tNames = string.( names( fluxData )[ 3:end ] )
+    tNodes = fluxData[ 2 ]
+
+    for ii in eachindex( tNames )
+        yMax = max( maximum( fluxData[ ii + 2 ] ), 1 )
+        plotTitle = "Flux plot of transition '$(tNames[ ii ])' per interval of " *
+            string( timeRes / timeFactor )
+        gui( Plots.plot( tNodes, fluxData[ ii + 2 ], size = ( 960, 540 ),
+            lw = 2, ylim = [ 0, yMax ], title = plotTitle, legend = false ) )
+    end  # for ii in eachindex( tNames )
+
+    tElapsed = ( now() - tStart ).value / 1000.0
+
+    println( "Plots for time resolution $(timeRes / timeFactor) generated. ",
+        "Elapsed time: $tElapsed seconds." )
+
+    # Write Excel report if desired.
+    if fileName != ""
+        tmpFileName = endswith( fileName, ".xlsx" ) ? fileName :
+            fileName * ".xlsx"
+        tmpFileName = joinpath( mpSim.parFileName[ 1:(end-5) ], tmpFileName )
+        dumpFluxData( mpSim, fluxData, timeRes, tmpFileName, overWrite,
+            timeFactor, tElapsed )
+    end  # if fileName != ""
+
+    return
+
+end  # plotFluxResults( mpSim, timeRes, transList, fileName, overWrite,
      #   timeFactor )
 
 
@@ -338,10 +513,11 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
     end  # if fileName == ""
 
     # Save the structure of the network.
-    savegraph( fileName, graph, GraphMLFormat(); compress = false )
+    tmpFileName = joinpath( mpSim.parFileName[ 1:(end-5) ], fileName )
+    savegraph( tmpFileName, graph, GraphMLFormat(); compress = false )
 
     # Grab it for editing.
-    xmlGraph = readxml( fileName )
+    xmlGraph = readxml( tmpFileName )
     graphRoot = root( xmlGraph )  # on Julia 0.6
 
     # Set link to yEd elements.
@@ -399,7 +575,7 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
         link!( graphElements[ ii ], elementData )
     end  # for ii in 1:nElements
 
-    write( fileName, xmlGraph )
+    write( tmpFileName, xmlGraph )
 
     return
 
@@ -451,14 +627,12 @@ function readPlotInfoFromFile( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
         sheet[ XLSX.CellRef( 8, colNum ) ] == "YES",
         sheet[ XLSX.CellRef( 9, colNum ) ] == "YES",
         sheet[ XLSX.CellRef( 10, colNum ) ] == "YES" ]
-    breakdownBy = isa( sheet[ XLSX.CellRef( 12, colNum ) ], Missings.Missing ) ?
-        "" : sheet[ XLSX.CellRef( 12, colNum ) ]
     plotSimulationResults( mpSim, plotRes, toShow[ tmpToShow ]...;
-        state = state, countBreakdownBy = breakdownBy, timeFactor = 12,
-        isByType = sheet[ XLSX.CellRef( 13, colNum ) ] == "YES",
-        showBreakdowns = ( sheet[ XLSX.CellRef( 14, colNum ) ] == "YES",
-            sheet[ XLSX.CellRef( 15, colNum ) ] == "YES",
-            sheet[ XLSX.CellRef( 16, colNum ) ] == "YES" ) )
+        state = state, timeFactor = 12,
+        isByTransition = sheet[ XLSX.CellRef( 12, colNum ) ] == "YES",
+        showBreakdowns = ( sheet[ XLSX.CellRef( 13, colNum ) ] == "YES",
+            sheet[ XLSX.CellRef( 14, colNum ) ] == "YES",
+            sheet[ XLSX.CellRef( 15, colNum ) ] == "YES" ) )
     return
 
 end  # readPlotInfoFromFile( mpSim, sheet, colNum, state )
@@ -629,8 +803,7 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
     fluxOutCounts::Vector{Int}, toShow::Vector{String} )::Void
 
     yMin = 0.0
-    counts = hcat( personnelCounts, vcat( NaN, fluxInCounts ),
-        vcat( NaN, fluxOutCounts[ :, 1 ] ) )
+    counts = hcat( personnelCounts, fluxInCounts, fluxOutCounts )
     counts = hcat( counts, counts[ :, 2 ] - counts[ :, 3 ] )
 
     if "net flux" ∈ toShow
@@ -645,7 +818,7 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
 
     plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ yMin, yMax ] + 0.025 * ( yMax - yMin ) * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 800, 600 ),
+        xlabel = "Sim time in y", size = ( 960, 540 ),
         title = "Evolution of personnel" *
             ( state == "active" ? "" : " in state '$state'" ) )
     validPlots = [ "personnel", "flux in", "flux out", "net flux" ]
@@ -664,142 +837,102 @@ end  # plotSimResults( state, timeGrid, personnelCounts, fluxInCounts,
      #   fluxOutCounts, toShow )
 
 
-function plotBreakdown( state::String, timeGrid::Vector{Float64},
-    totals::Vector{Int}, counts::Array{Int,2}, labels::Vector{String},
-    countType::Symbol, plotStyle::Symbol )::Void
+function plotBreakdown( state::String, counts::DataFrames.DataFrame,
+    countType::Symbol, plotStyle::Symbol, timeFactor::Float64 )::Void
 
     if plotStyle === :normal
-        plotBreakdownNormal( state, timeGrid, totals, counts, labels,
-            countType )
+        plotBreakdownNormal( state, counts, countType, timeFactor )
     else
-        plotBreakdownStacked( state, timeGrid, totals, counts, labels,
-            countType, plotStyle === :percentage )
+        plotBreakdownStacked( state, counts, countType,
+            plotStyle === :percentage, timeFactor )
     end  # if plotStyle === :normal
 
-end  # plotBreakdown( state, timeGrid, fluxCounts, countType, plotStyle )
+end  # plotBreakdown( state, counts, countType, plotStyle, timeFactor )
 
 
-function plotBreakdownNormal( state::String, timeGrid::Vector{Float64},
-    totals::Vector{Int}, counts::Array{Int, 2}, labels::Vector{String},
-    countType::Symbol )::Void
+function plotBreakdownNormal( state::String, counts::DataFrames.DataFrame,
+    countType::Symbol, timeFactor::Float64 )::Void
 
-    yMin = 0
-    yMax = maximum( totals )
+    yMax = maximum( counts[ end ] )
+    isFlux = countType !== :pers
+    timeGrid = ( isFlux ? counts[ 2 ] : counts[ 1 ] ) ./ timeFactor
 
+    # Create graph title.
     title = "Breakdown of "
     title *= countType === :pers ? "personnel counts" :
         ( countType === :in ? "in" : "out" ) * " flux"
     title *= " of "
     title *= state == "active" ? "total population" : "state '$state'"
 
-    plt = Plots.plot( timeGrid, totals, lw = 3, label = "Total " *
+    # Create graph labels.
+    labels = string.( names( counts )[ ( isFlux ? 3 : 2 ):(end - 1) ] )
+
+    if isFlux
+        map!( label -> split( label, countType === :in ? " to " :
+            " from ")[ 1 ], labels, labels )
+    end  # if isFlux
+
+    plt = Plots.plot( timeGrid, counts[ end ], lw = 3, label = "Total " *
         ( countType === :pers ? "count" :
         ( countType === :in ? "in" : "out" ) * " flux" ),
         xlim = [ 0, maximum( timeGrid ) * 1.01 ],
-        ylim = [ yMin, yMax ] + 0.025 * ( yMax - yMin ) * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 800, 600 ), title = title  )
+        ylim = [ 0, yMax ] + 0.025 * yMax * [ -1, 1 ],
+        xlabel = "Sim time in y", size = ( 960, 540 ), title = title  )
 
     for ii in eachindex( labels )
-        plt = plot!( timeGrid, counts[ :, ii ], lw = 2,
-            label = labels[ ii ] )
+        jj = ii + ( isFlux ? 2 : 1 )
+        plt = plot!( timeGrid, counts[ jj ], lw = 2, label = labels[ ii ] )
     end  # for ii in eachindex( fluxLabels )
 
     gui( plt )
     return
 
-end  # plotBreakdownNormal( state, timeGrid, counts, labels, countType )
+end  # plotBreakdownNormal( state, counts, countType, timeFactor )
 
 
-function plotBreakdownStacked( state::String, timeGrid::Vector{Float64},
-    totals::Vector{Int}, counts::Array{Int, 2}, labels::Vector{String},
-    countType::Symbol, isPercent::Bool )::Void
+function plotBreakdownStacked( state::String, counts::DataFrames.DataFrame,
+    countType::Symbol, isPercent::Bool, timeFactor::Float64 )::Void
 
-    tmpTimeGrid = timeGrid
-    tmpCounts = Array{Float64}( cumsum( counts, 2 ) )
-    yMax = maximum( totals )
+    yMax = maximum( counts[ end ] )
+    isFlux = countType !== :pers
+    timeGrid = ( isFlux ? counts[ 2 ] : counts[ 1 ] ) ./ timeFactor
+
+    # Retrieve cumulative sums to build plots.
+    tmpCounts = cumsum( Array( counts[ ( isFlux ? 3 : 2 ):(end-1) ] ), 2 )
 
     if isPercent
-        foreach( ii -> tmpCounts[ ii, : ] /= totals[ ii ] / 100.0,
+        foreach( ii -> tmpCounts[ ii, : ] /= counts[ ii, end ] / 100.0,
             eachindex( timeGrid ) )
         yMax = 100.0
-        #=
-        # XXX: Plotting function throws an error when asked to plot a value
-        #   sandwiched between two NaNs. This needs to be taken care of first.
-        xDel = timeGrid[ 1 ] / 20.0
-        nTimes = length( timeGrid )
-
-        zeroInds = find( fluxCounts[ :, 1 ] .== 0 )
-        dists = zeroInds[ 2:end ] - zeroInds[ 1:(end - 1) ]
-        problemInds = zeroInds[ find( dists .== 2 ) + 1 ]
-
-        if fluxCounts[ end, 1 ] == 0
-            tmpCounts = vcat( tmpCounts, tmpCounts[ end, : ] )
-            insert!( tmpTimeGrid, nTimes, tmpTimeGrid - xDel )
-        end  # if fluxCounts[ end, 1 ] == 0
-
-        reverse!( problemInds )
-
-        if fluxCounts[ 2, 1 ] == 0
-            push!( problemInds, 2 )
-        end  # if fluxCounts[ 2, 1 ] == 0
-
-        for ii in problemInds
-            tmpCounts = vcat( tmpCounts[ 1:(ii - 1), : ],
-                tmpCounts[ ii - 1, : ], tmpCounts[ ii:end, : ] )
-            insert!( tmpTimeGrid, ii, tmpTimeGrid[ ii - 1 ] + xDel )
-            tmpTimeGrid[ ii - 1 ] -= xDel
-        end  # for ii in problemInds
-        =#
     end  # if isPercent
 
     plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ 0.0, yMax ] + 0.025 * yMax * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 800, 600 ),
+        xlabel = "Sim time in y", size = ( 960, 540 ),
         title = ( countType === :pers ? "Personnel " :
             ( countType === :in ? "In" : "Out" ) * " flux " ) *
             ( isPercent ? "percentage " : "" ) * "breakdown of " *
             ( state == "active" ? "total population" : "state '$state'" ) )
 
-    nTypes = length( labels )
-    xDel = timeGrid[ 1 ] / 20.0
-
-    #=
-    # Define plotblocks.
-    numInds = find( cnt -> !isnan( cnt ), tmpCounts[ :, 1 ] )
-    gapInds = find( numInds[ 2:end ] - numInds[ 1:( end - 1 ) ] .!= 1 )
-    endInds = vcat( numInds[ gapInds ], numInds[ end ] )
-    startInds = vcat( numInds[ 1 ], numInds[ gapInds + 1 ] )
-    println( hcat( startInds, endInds ) )
-
-    for ii in nTypes:-1:1, jj in eachindex( startInds )
-        indR = startInds[ jj ]:endInds[ jj ]
-        tPoints = timeGrid[ indR ]
-        toPlot = tmpCounts[ indR, ii ]
-        fRange = ii == 1 ? 0 : tmpCounts[ indR, ii - 1 ]
-
-        if length( indR ) == 1
-            tPoints = vcat( tPoints - xDel, tPoints + xDel )
-            toPlot = vcat( toPlot, toPlot )
-            fRange = vcat( fRange, fRange )
-        end  # if length( indR ) == 1
-
-        plt = plot!( tPoints, toPlot, lw = 2, fillalpha = 0.5, linealpha = 1.0,
-            label = fluxLabels[ ii + 1 ], fillrange = fRange )
-    end  # for ii in nTypes:-1:1, ...
-    =#
-
+    # For the percentage counts, set all undefined entries to 0 (Excel-like
+    #   behaviour for stacked percentage plots if the total is 0).
     tmpCounts[ isnan.( tmpCounts ) ] = 0
 
-    for ii in nTypes:-1:1
-        tPoints = timeGrid
-        toPlot = tmpCounts[ :, ii ]
-        fRange = ii == 1 ? 0 : tmpCounts[ :, ii - 1 ]
+    # Create graph labels.
+    labels = string.( names( counts )[ ( isFlux ? 3 : 2 ):(end-1) ] )
 
-        plt = plot!( tPoints, toPlot, lw = 2, fillalpha = 0.5, linealpha = 1.0,
-            label = labels[ ii ], fillrange = fRange )
-    end
+    if isFlux
+        map!( label -> split( label, countType === :in ? " to " :
+            " from ")[ 1 ], labels, labels )
+    end  # if isFlux
+
+    for ii in length( labels ):-1:1
+        plt = plot!( timeGrid, tmpCounts[ :, ii ], lw = 2, fillalpha = 0.5,
+            linealpha = 1.0, label = labels[ ii ],
+            fillrange = ii == 1 ? 0 : tmpCounts[ :, ii - 1 ] )
+    end  # for ii in length( labels ):-1:1
 
     gui( plt )
     return
 
-end
+end  # plotBreakdownStacked( state, counts, countType, isPercent, timeFactor )
