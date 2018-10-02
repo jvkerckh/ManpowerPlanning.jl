@@ -120,6 +120,7 @@ function readGeneralParsFromSim( mpSim::ManpowerSimulation,
     dbCommits = Int( mpSim.simLength / mpSim.commitFrequency )
     command = "INSERT INTO config
         (parName, parType, intPar, realPar, strPar) VALUES
+        ('Config file', 'General', NULL, NULL, '$(mpSim.parFileName)'),
         ('DB name', 'General', NULL, NULL, '$(mpSim.dbName)'),
         ('Catalogue name', 'General', NULL, NULL, '$(mpSim.catFileName)'),
         ('Sim name', 'General', NULL, NULL, '$(mpSim.simName)'),

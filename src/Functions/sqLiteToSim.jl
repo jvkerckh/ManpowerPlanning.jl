@@ -98,6 +98,10 @@ function readGeneralParsFromDatabase( configDB::SQLite.DB,
         WHERE parType IS 'General'"
     generalPars = SQLite.query( configDB, queryCmd )
 
+    # Config file name.
+    index = findfirst( generalPars[ :parName ], "Config file" )
+    mpSim.parFileName = generalPars[ :strPar ][ index ]
+
     # Database name.
     index = findfirst( generalPars[ :parName ], "DB name" )
     mpSim.dbName = generalPars[ :strPar ][ index ]

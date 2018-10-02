@@ -1754,6 +1754,17 @@ function countTransitionFlux( mpSim::ManpowerSimulation, stateName::String,
     map!( entry -> isa( entry, Missings.Missing ) ? "external" : entry,
         transRecord[ Symbol( countCol ) ], transRecord[ Symbol( countCol ) ] )
     nameList = unique( transRecord[ Symbol( countCol ) ] )
+
+    # Ensure that "fired", "attrition", "retirement" are part of the names for
+    #   an out flux report, with breakdown by transition.
+    if !isInFlux && isByTransition
+        for transName in [ "fired", "attrition", "retirement" ]
+            if transName ∉ nameList
+                push!( nameList, transName )
+            end  # if transName ∉ nameList
+        end  # for transName in ...
+    end  # if !isInFlux && isByTransition
+
     nNames = length( nameList )
     fluxResult = zeros( Int, length( timeGrid ), nNames + 1 )
     foreach( name -> tmpFluxResult[ name ] = zeros( timeGrid ), nameList )

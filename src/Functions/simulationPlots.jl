@@ -486,27 +486,37 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
 
     # Initialise directed graph.
     nStates = length( graphStates )
-    graph = MetaDiGraph( DiGraph( nStates ) )
-    isInitCreated = false
+    graph = MetaDiGraph( DiGraph( nStates + 2 ) )
+    inNodeIndex = nStates + 1
+    outNodeIndex = nStates + 2
+    set_prop!( graph, nStates + 1, :state, "In" )
+    set_prop!( graph, nStates + 2, :state, "Out" )
 
     # Add node labels and transitions for initial states.
     for ii in eachindex( tmpStates )
         set_prop!( graph, ii, :state, tmpStates[ ii ] )
+        state = mpSim.stateList[ tmpStates[ ii ] ]
 
-        if any( state -> state.name == tmpStates[ ii ],
-            keys( mpSim.initStateList ) )
-            if !isInitCreated
-                add_vertex!( graph )
-                push!( graphStates, "External" )
-                nStates += 1
-                set_prop!( graph, nStates, :state, "External" )
-                isInitCreated = true
-            end  # if !isInitCreated
-
-            add_edge!( graph, nStates, ii )
-            set_prop!( graph, nStates, ii, :trans, "Recruitment" )
+        # Add recruitment edge for initial state.
+        if haskey( mpSim.initStateList, state )
+            add_edge!( graph, inNodeIndex, ii )
+            set_prop!( graph, inNodeIndex, ii, :trans, "recruitment" )
         end  # if any( state -> state.name == tmpStates[ ii ], ...
+
+        # Add retirement edge for states with defined retirement scheme.
+        retScheme = mpSim.retirementScheme
+
+        if ( isa( retScheme, Retirement ) &&
+            ( ( retScheme.maxCareerLength != 0.0 ) ||
+                ( retScheme.retireAge != 0.0 ) ) ) ||
+            ( state.stateRetAge != 0.0 )
+            add_edge!( graph, ii, outNodeIndex )
+            set_prop!( graph, ii, outNodeIndex, :trans, "retirement" )
+        end  # if ( isa( retScheme, Retirement ) && ...
     end  # for ii in eachindex( tmpStates )
+
+    push!( graphStates, "In", "Out" )
+    nStates += 2
 
     # Add all other transitions.
     for state in keys( stateList )
@@ -533,6 +543,12 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
                 add_edge!( graph, startStateIndex, endStateIndex )
                 set_prop!( graph, startStateIndex, endStateIndex, :trans,
                     trans.name )
+
+                if trans.isFiredOnFail
+                    add_edge!( graph, startStateIndex, outNodeIndex )
+                    set_prop!( graph, startStateIndex, outNodeIndex, :trans,
+                        "fired\n(failed $(trans.name))" )
+                end  # if trans.isFiredOnFail
             end  # for trans in stateList[ state ]
         else
             startStateIndex = findfirst( tmpState -> tmpState == state.name,
@@ -627,6 +643,11 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
         if isNode
             elementShape[ "type" ] = elementLabelText ∈ states ? "ellipse" :
                 "roundrectangle"
+            elementGeometry = ElementNode( "y:Geometry" )
+            elementGeometry[ "height" ] = nodeList[ nNodes ] ∈ [ inNodeIndex,
+                outNodeIndex ] ? 80.0 : 40.0
+            elementGeometry[ "width" ] = elementGeometry[ "height" ]
+            link!( elementForm, elementGeometry )
         else
             elementShape[ "source" ] = "none"
             elementShape[ "target" ] = "standard"
@@ -643,6 +664,41 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
     return
 
 end  # plotTransitionMap( mpSim, states, fileName )
+
+
+"""
+```
+plotTransitionMap( mpSim::ManpowerSimulation,
+                   fileName::String )
+```
+This function plots a transition map of the manpower simulation `mpSim` with the
+nodes requested in the Excel sheet `State Map` of the file with name `fileName`.
+If the file name doesn't end in `.xlsx`, it will be added automatically.
+
+This function returns `nothing`.
+"""
+function plotTransitionMap( mpSim::ManpowerSimulation, fileName::String )::Void
+
+    tmpFileName = endswith( fileName, ".xlsx" ) ? fileName : fileName * ".xlsx"
+
+    if !ispath( tmpFileName )
+        warn( "'$tmpFileName' is not a valid file. Can't create network plot." )
+        return
+    end  # if !ispath( tmpFileName )
+
+    XLSX.openxlsx( tmpFileName ) do xf
+        # Check if file has the proper sheet.
+        if !XLSX.hassheet( xf, "State Map" )
+            warn( "File does not have a sheet 'State Map'. Can't create network plot." )
+            return
+        end  # if XLSX.hassheet( xf, "State Map" )
+
+        plotTransitionMap( mpSim, xf[ "State Map"] )
+    end  # XLSX.openxlsx( tmpFileName ) do xf
+
+    return
+
+end  # plotTransitionMap( mpSim::ManpowerSimulation, fileName::String )
 
 
 """

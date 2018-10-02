@@ -143,6 +143,23 @@ function addState!( mpSim::ManpowerSimulation, state::State,
 end  # addState!( mpSim )
 
 
+export removeState!
+function removeState!( mpSim::ManpowerSimulation, stateName::String )::Void
+
+    # Nothing to remove if state doesn't exist.
+    if !haskey( mpSim.stateList, stateName )
+        return
+    end  # if !haskey( mpSim.stateList, stateName )
+
+    state = mpSim.stateList[ stateName ]
+    isInitial = state.isInitial
+    delete!( isInitial ? mpSim.initStateList : mpSim.otherStateList, state )
+    delete!( mpSim.stateList, stateName )
+    return
+
+end  # removeState!( mpSim, stateName )
+
+
 # This function clears the list of possible personnel states.
 # This function does nothing if the simulation is already running.
 export clearStates!
@@ -205,7 +222,23 @@ function addRecruitmentScheme!( mpSim::ManpowerSimulation,
     recScheme::Recruitment )
 
     if now( mpSim ) == 0
-        push!( mpSim.recruitmentSchemes, recScheme )
+        targetState = recScheme.recState
+
+        # Don't do anything if the recruitment state isn't defined.
+        if ( targetState != "" ) && !haskey( mpSim.stateList, targetState )
+        else
+            # Switch the recruitment state (if any) to an initial state if it
+            #   isn't an initial state already.
+            if ( targetState != "" ) &&
+                !haskey( mpSim.initStateList, mpSim.stateList[ targetState ] )
+                state = mpSim.stateList[ targetState ]
+                removeState!( mpSim, targetState )
+                state.isInitial = true
+                addState!( mpSim, state, true )
+            end  # if ( targetState != "" ) && ...
+
+            push!( mpSim.recruitmentSchemes, recScheme )
+        end  # if ( targetState != "" ) &&
     end  # if now( mpSim ) == 0
 
     return
