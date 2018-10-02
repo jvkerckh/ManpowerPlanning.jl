@@ -16,7 +16,7 @@ end  # for reqType in requiredTypes
 
 
 if !isdefined( :retirementReasons )
-    const retirementReasons = [ "retired", "resigned", "fired" ]
+    const retirementReasons = [ "retirement", "attrition", "fired" ]
 end # if !isdefined( :retirementReasons )
 
 
@@ -263,7 +263,8 @@ end  # function retirePersons( mpSim, ids, reason )
 # This function computes the person's expected retirement time and returns it.
 export computeExpectedRetirementTime
 function computeExpectedRetirementTime( mpSim::ManpowerSimulation,
-    retScheme::Retirement, ageAtRecruitment::T1, timeEntered::T2 ) where T1 <: Real where T2 <: Real
+    retScheme::Retirement, ageAtRecruitment::T1, stateRetAge::T2,
+    timeEntered::T3 ) where T1 <: Real where T2 <: Real where T3 <: Real
 
     # No need to continue processing if there's no retirement scheme.
     if retScheme === nothing
@@ -274,8 +275,9 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation,
     timeInSystem = now( mpSim ) - timeEntered
 
     # Compute the time left until retirement.
-    timeToRetireAge = retScheme.retireAge > 0.0 ? retScheme.retireAge -
-        ageAtRecruitment - timeInSystem : +Inf
+    retireAge = stateRetAge > 0.0 ? stateRetAge : retScheme.retireAge
+    timeToRetireAge = retireAge > 0.0 ? retireAge - ageAtRecruitment -
+        timeInSystem : +Inf
     timeToCareerEnd = retScheme.maxCareerLength > 0.0 ?
         retScheme.maxCareerLength - timeInSystem : +Inf
     timeToRetire = min( timeToRetireAge, timeToCareerEnd )
@@ -309,7 +311,7 @@ end  # computeExpectedRetirementTime( mpSim, ageAtRecruitment, timeEntered )
     timeOfNextRetirement += retScheme.retireOffset
     priority = mpSim.phasePriorities[ :retirement ]
     queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
-        WHERE status NOT IN ('fired', 'resigned', 'retired')
+        WHERE status NOT IN ('fired', 'attrition', 'retirement')
             AND expectedRetirementTime <= "
 
     while timeOfNextRetirement <= mpSim.simLength
@@ -324,7 +326,7 @@ end  # computeExpectedRetirementTime( mpSim, ageAtRecruitment, timeEntered )
         idsToRetire = Vector{String}( idsToRetire )
 
         if !isempty( idsToRetire )
-            retirePersons( mpSim, idsToRetire, "retired" )
+            retirePersons( mpSim, idsToRetire, "retirement" )
         end  # if !isempty( idsToRetire )
 
         timeOfNextRetirement += retScheme.retireFreq

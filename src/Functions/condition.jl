@@ -34,7 +34,7 @@ function processCondition( attr::String, rel::String, val::T ) where T <: Union{
         return newCond, false
     end  # if isa( relOp, Void )
 
-    attrName = replace( strip( attr ), " ", "_" )
+    attrName = strip( attr )
     attrName = lowercase( attrName ) ∈ timeAttrs ? lowercase( attrName ) :
         attrName
 

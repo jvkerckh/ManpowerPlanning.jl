@@ -402,19 +402,25 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
         initValsFixed[ attr.name ] = attr.isFixed
     end  # for attr in mpSim.initAttrList
 
+    initPersStates = []
+
     if isa( recState, State )
+        # When recruiting for a specific state, set the required attributes, and
+        #   put entity in that state.
         for attr in keys( recState.requirements )
             initVals[ attr ] = recState.requirements[ attr ][ 1 ]
             initValsFixed[ attr ] = false
         end  # for attr in keys( recState.requirements )
-    end  # if isa( recState, State )
 
-    # Identify all initial states the person belongs to and add entry info to
-    #   each of those states.
-    initPersStates = collect( Iterators.filter(
-        state -> isPersonnelOfState( initVals, state ),
-        keys( mpSim.initStateList ) ) )
-        # XXX Iterators.filter is needed to avoid deprecation warnings.
+        initPersStates = [ recState ]
+    else
+        # Otherwise, identify all initial states the person belongs to and add
+        #   entry info to each of those states.
+        initPersStates = collect( Iterators.filter(
+            state -> isPersonnelOfState( initVals, state ),
+            keys( mpSim.initStateList ) ) )
+            # XXX Iterators.filter is needed to avoid deprecation warnings.
+    end  # if isa( recState, State )
 
     # Check if each person can be assigned to exactly one state.
     if mpSim.isWellDefined
@@ -432,9 +438,12 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
         state.isLockedForTransition[ id ] = false
     end  # for state in initPersStates
 
+    stateRetAge = isempty( initPersStates ) ? 0 :
+        initPersStates[ 1 ].stateRetAge
+
     stateNames = map( state -> state.name, initPersStates )
     timeOfRetirement = computeExpectedRetirementTime( mpSim,
-        mpSim.retirementScheme, ageAtRecruitment, now( mpSim ) )
+        mpSim.retirementScheme, ageAtRecruitment, stateRetAge, now( mpSim ) )
     attrScheme = determineAttritionScheme( initPersStates, mpSim )
     timeOfAttr = generateTimeOfAttrition( attrScheme, now( mpSim ) )
 
@@ -443,17 +452,17 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
         ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
             expectedRetirementTime, expectedAttritionTime, attritionScheme"
 
-    if !isempty( mpSim.initAttrList )
-        command *= join( map( attr -> ", " * attr.name, mpSim.initAttrList ) )
-    end  # if !isempty( mpSim.initAttrList )
+    if !isempty( initVals )
+        command *= ", '$(join( keys( initVals ), "', '" ))'"
+    end  # if !isempty( initVals )
 
     command *= ") VALUES
         ('$id', 'active', $(now( mpSim )), $ageAtRecruitment, $timeOfRetirement,
             $timeOfAttr, '$(attrScheme.name)'"
 
-    if !isempty( mpSim.initAttrList )
-        command *= ", '$(join( map( attr -> initVals[ attr.name ], mpSim.initAttrList ), "', '" ))'"
-    end
+    if !isempty( initVals )
+        command *= ", '$(join( map( attrName -> initVals[ attrName ], keys( initVals ) ), "', '" ))'"
+    end # if !isempty( initVals )
 
     command *= ")"
     SQLite.execute!( mpSim.simDB, command )
@@ -464,11 +473,11 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
         ('$id', 'status', $(now( mpSim )), 'active')"
 
     # Additional variable attributes.
-    for attr in mpSim.initAttrList
-        if !initValsFixed[ attr.name ]
-            command *= ", ('$id', '$(attr.name)', $(now( mpSim )), '$(initVals[ attr.name ])')"
-        end  # !initValsFixed[ attr ]
-    end
+    for attrName in keys( initVals )
+        if !initValsFixed[ attrName ]
+            command *= ", ('$id', '$attrName', $(now( mpSim )), '$(initVals[ attrName ])')"
+        end  # !initValsFixed[ attrName ]
+    end  # for attrName in keys( initVals )
 
     SQLite.execute!( mpSim.simDB, command )
 

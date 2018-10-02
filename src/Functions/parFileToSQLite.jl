@@ -65,7 +65,6 @@ end  # readParFileToDatabase( fileName, dbName )
 # Non-exported methods.
 # ==============================================================================
 
-#=
 """
 ```
 
@@ -82,10 +81,10 @@ function createConfigTable( configName::String, configDB::SQLite.DB )::Void
     command = "CREATE TABLE $configName(
         parName VARCHAR( 32 ),
         parType VARCHAR( 32 ),
-        intPar1 MEDIUMINT,
-        realPar1 FLOAT,
-        boolPar1 VARCHAR( 5 ),
-        strPar1 TEXT
+        intPar MEDIUMINT,
+        realPar FLOAT,
+        boolPar VARCHAR( 5 ),
+        strPar TEXT
     )"
     SQLite.execute!( configDB, command )
 
@@ -93,6 +92,7 @@ function createConfigTable( configName::String, configDB::SQLite.DB )::Void
 
 end
 
+#=
 """
 ```
 validateParFile( wb::Workbook )
@@ -139,7 +139,7 @@ function readGeneralParsFromFile( wb::Workbook, configDB::SQLite.DB,
     dbName = dbName === nothing ? "" : string( dbName )
     dbName *= ( dbName == "" ) || endswith( dbName, ".sqlite" ) ? "" : ".sqlite"
     command = "INSERT INTO $configName
-        (parName, parType, strPar1) VALUES
+        (parName, parType, strPar) VALUES
         ('dbName', 'General', '$dbName')"
     SQLite.execute!( configDB, command )
 
@@ -147,25 +147,25 @@ function readGeneralParsFromFile( wb::Workbook, configDB::SQLite.DB,
     simName = sheet[ "B", 4 ]
     simName = simName === nothing ? "" : string( simName )
     command = "INSERT INTO $configName
-        (parName, parType, strPar1) VALUES
+        (parName, parType, strPar) VALUES
         ('simName', 'General', '$simName')"
     SQLite.execute!( configDB, command )
 
     # Personnel cap.
     command = "INSERT INTO $configName
-        (parName, parType, intPar1) VALUES
+        (parName, parType, intPar) VALUES
         ('persCap', 'General', '$(sheet[ "B", 5 ])')"
     SQLite.execute!( configDB, command )
 
     # Simulation length.
     command = "INSERT INTO $configName
-        (parName, parType, realPar1) VALUES
+        (parName, parType, realPar) VALUES
         ('simLength', 'General', '$(sheet[ "B", 7 ])')"
     SQLite.execute!( configDB, command )
 
     # Database commits.
     command = "INSERT INTO $configName
-        (parName, parType, intPar1) VALUES
+        (parName, parType, intPar) VALUES
         ('dbCommits', 'General', '$(sheet[ "B", 8 ])')"
     SQLite.execute!( configDB, command )
 
@@ -223,7 +223,7 @@ function saveAttrToDatabase( attr::PersonnelAttribute, configDB::SQLite.DB,
     valueList = join( map( val -> "$val,$(attr.values[ val ])",
         keys( attr.values ) ), ";" )
     command = "INSERT INTO $configName
-        (parName, parType, boolPar1, strPar1) VALUES
+        (parName, parType, boolPar, strPar) VALUES
         ('$(attr.name)', 'Attribute', '$(attr.isFixed)', '$valueList')"
     SQLite.execute!( configDB, command )
 
@@ -290,7 +290,7 @@ function saveStateToDatabase( state::State, attrName::String,
     end  # for attr in keys( state.requirements )
 
     command = "INSERT INTO $configName
-        (parName, parType, intPar1, boolPar1, strPar1) VALUES
+        (parName, parType, intPar, boolPar, strPar) VALUES
         ('$(state.name)', 'State', $(state.stateTarget), '$(state.isInitial)',
             '$attrName;[$(join( valueList, "," ))]')"
     SQLite.execute!( configDB, command )
@@ -382,7 +382,7 @@ function saveTransitionToDatabase( trans::Transition, startName::String,
     valueList *= "];$(trans.maxAttempts);$(trans.maxFlux);"
     valueList *= "[$(join( trans.probabilityList, "," ))]"
     command = "INSERT INTO $configName
-        (parName, parType, boolPar1, strPar1) VALUES
+        (parName, parType, boolPar, strPar) VALUES
         ('$(trans.name)', 'Transition', '$(trans.isFiredOnFail)', '$valueList')"
     SQLite.execute!( configDB, command )
 
@@ -455,7 +455,7 @@ function saveRecruitmentToDatabase( recScheme::Recruitment, configDB::SQLite.DB,
     valueList *= "]"
 
     command = "INSERT INTO $configName
-        (parName, parType, boolPar1, strPar1) VALUES
+        (parName, parType, boolPar, strPar) VALUES
         ('$(recScheme.name)', 'Recruitment', '$isAdaptive', '$valueList')"
     SQLite.execute!( configDB, command )
 
@@ -524,7 +524,7 @@ function saveAttritionToDatabase( attrScheme::Attrition, configDB::SQLite.DB,
     attrCurve = join( map( ii -> "$(attrCurvePoints[ ii ]):$(attrScheme.attrRates[ ii ])",
         eachindex( attrCurvePoints ) ), "," )
     command = "INSERT INTO $configName
-        (parName, parType, strPar1) VALUES
+        (parName, parType, strPar) VALUES
         ('$attrName', 'Attrition', '$attrPeriod;[$attrCurve]')"
     SQLite.execute!( configDB, command )
 
@@ -560,7 +560,7 @@ function readRetirementFromFile( wb::Workbook, configDB::SQLite.DB,
     isEither = sheet[ "B", 7 ] == "EITHER"
 
     command = "INSERT INTO $configName
-        (parName, parType, boolPar1, strPar1) VALUES
+        (parName, parType, boolPar, strPar) VALUES
         ('Retirement', 'Retirement', '$isEither',
             '$maxTenure,$maxAge,$(sheet[ "B", 3 ]),$(sheet[ "B", 4 ])')"
     SQLite.execute!( configDB, command )

@@ -39,9 +39,8 @@ end  # setKey!( mpSim, id )
 
 
 include( joinpath( dirname( Base.source_path() ), "parFileProcessing.jl" ) )
-include( joinpath( dirname( Base.source_path() ), "parFileToSQLite.jl" ) )
 include( joinpath( dirname( Base.source_path() ), "sqLiteToSim.jl" ) )
-include( joinpath( dirname( Base.source_path() ), "simToSQLite.jl" ) )
+include( joinpath( dirname( Base.source_path() ), "configToSQLite.jl" ) )
 
 
 # This function sets the cap on the number of personnel in the simulation. Note
@@ -302,11 +301,11 @@ function resetSimulation( mpSim::ManpowerSimulation )
         attritionScheme varchar(64)"
 
     if !( isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList ) )
-        command *= ',' * join( map( attr -> attr.name * " varcar(64)",
-            vcat( mpSim.initAttrList, mpSim.otherAttrList ) ), ", " )
+        command *= ",\n" * join( map( attr -> "'" * attr.name * "' varcar(64)",
+            vcat( mpSim.initAttrList, mpSim.otherAttrList ) ), ",\n" )
     end  # if !( isempty( mpSim.initAttrList ) &&
 
-    command *= ", status varchar(16) )"
+    command *= ",\nstatus varchar(16) )"
     SQLite.execute!( mpSim.simDB, command )
 
     command = "CREATE TABLE $(mpSim.historyDBname)(
@@ -338,7 +337,7 @@ function resetSimulation( mpSim::ManpowerSimulation )
     end  # for state in keys( merge(
 
     # And wipe all existing simulation reports.
-    empty!( mpSim.simReports )
+    # empty!( mpSim.simReports )
 
     mpSim.isVirgin = true
 
@@ -584,6 +583,7 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         readSnapshot( mpSim )
     end  # if mpSim.isVirgin
 
+    saveSimConfigToDatabase( mpSim )
     toTime = 0.0
     oldSimTime = now( mpSim )
     mpSim.attrExecTimeElapsed = Dates.Millisecond( 0 )
@@ -603,16 +603,21 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         run( mpSim.sim )
     end  # if toTime > 0.0
 
+    configCmd = "UPDATE config
+        SET realPar = $(mpSim.simLength)
+        WHERE parName IS 'Sim time'"
+    SQLite.execute!( mpSim.simDB, configCmd )
     mpSim.simTimeElapsed += now() - startTime
     println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
 
     # Final commit.
     SQLite.execute!( mpSim.simDB, "COMMIT" )
 
+    return
     # Wipe the simulation reports if the simulation time has advanced.
-    if oldSimTime < now( mpSim )
-        empty!( mpSim.simReports )
-    end  # if oldSimTime < now( mpSim )
+    # if oldSimTime < now( mpSim )
+    #     empty!( mpSim.simReports )
+    # end  # if oldSimTime < now( mpSim )
 
 end  # run( mpSim, toTime )
 

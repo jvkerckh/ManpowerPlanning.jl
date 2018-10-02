@@ -17,6 +17,7 @@ export setName!,
        clearRequirements!,
        setInitial!,
        setStateTarget!,
+       setStateRetirementAge!,
        setStateAttritionScheme!
 
 
@@ -52,13 +53,11 @@ This function returns `nothing`.
 """
 function addRequirement!( state::State, attribute::String, value::String )::Void
 
-    tmpAttr = replace( attribute, " ", "_" )
-
-    if haskey( state.requirements, tmpAttr )
+    if haskey( state.requirements, attribute )
         warn( "State already has a requirement on attribute '$attribute'." )
     end  # if haskey( state.requirements, tmpAttr )
 
-    state.requirements[ tmpAttr ] = [ value ]
+    state.requirements[ attribute ] = [ value ]
     return
 
 end  # addRequirement!( state, attribute, value )
@@ -80,13 +79,11 @@ This function returns `nothing`.
 function addRequirement!( state::State, attribute::String,
     values::Vector{String} )::Void
 
-    tmpAttr = replace( attribute, " ", "_" )
-
-    if haskey( state.requirements, tmpAttr )
+    if haskey( state.requirements, attribute )
         warn( "State already has a requirement on attribute '$attribute'." )
     end  # if haskey( state.requirements, tmpAttr )
 
-    state.requirements[ tmpAttr ] = values
+    state.requirements[ attribute ] = values
     return
 
 end  # addRequirement!( state, attribute, values )
@@ -104,7 +101,7 @@ This function returns `nothing`.
 """
 function removeRequirement!( state::State, attribute::String )::Void
 
-    delete!( state.requirements, replace( attribute, " ", "_" ) )
+    delete!( state.requirements, attribute )
     return
 
 end  # removeRequirement!( state, attribute )
@@ -202,6 +199,29 @@ function setStateAttritionScheme!( state::State, attrRate::Float64,
 
 end  # setStateAttritionScheme!( state, attrScheme )
 
+
+"""
+```
+setStateRetirementAge!( state::State,
+                        retAge::T )
+    where T <: Real
+```
+This function sets the retirement age for personnel in the state `state` to
+`retAge`. If the age is set to 0, the default retirement scheme is used instead.
+
+This function returns `nothing`.
+"""
+function setStateRetirementAge!( state::State, retAge::T )::Void where T <: Real
+
+    if retAge < 0
+        warn( "Retirement age must be > 0. Not making change." )
+        return
+    end  # if retAge < 0
+
+    state.stateRetAge = retAge
+    return
+
+end  # setStateRetirementAge( state::State, retAge::T )
 
 
 """

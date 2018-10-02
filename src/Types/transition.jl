@@ -50,7 +50,7 @@ type Transition
     endState::State
     freq::Float64
     offset::Float64
-    minTime::Float64
+    # minTime::Float64
     extraConditions::Vector{Condition}
     extraChanges::Vector{PersonnelAttribute}
     probabilityList::Vector{Float64}
@@ -87,7 +87,7 @@ type Transition
         newTrans.endState = endState
         newTrans.freq = freq
         newTrans.offset = offset % freq + ( offset < 0.0 ? freq : 0.0 )
-        newTrans.minTime = minTime
+        # newTrans.minTime = minTime
         newTrans.extraConditions = Vector{Condition}()
         newTrans.extraChanges = Vector{PersonnelAttribute}()
         newTrans.probabilityList = [ 1.0 ]

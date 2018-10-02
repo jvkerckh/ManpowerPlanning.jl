@@ -29,25 +29,71 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
     tmpFilename = fName * ( endswith( fName, ".xlsx" ) ? "" : ".xlsx" )
 
     XLSX.openxlsx( tmpFilename ) do xf
-        if !XLSX.hassheet( xf, "Output plots" )
+        if !XLSX.hassheet( xf, "Output plots (pop)" )
             warn( "Excel file doesn't have sheet 'Output plots'. Can't create plots." )
             return
-        end  # if !hassheet( xf, "Outpot plots" )
+        end  # if !hassheet( xf, "Outpot plots (pop)" )
 
-        sheet = xf[ "Output plots" ]
+        # Get the general info.
+        plotSheet = xf[ "Output plots (pop)" ]
+        showPlots = plotSheet[ "B3" ] == "YES"
+        reportFileName = plotSheet[ "B4" ] == "YES" ? plotSheet[ "B5" ] : ""
+        reportFileName = isa( reportFileName, Missings.Missing ) ? "" :
+            reportFileName
+        reportFileName = reportFileName == "" ? "" :
+            joinpath( mpSim.parFileName[ 1:(end-5) ], reportFileName )
 
-        if sheet[ "B5" ] == "YES"
-            readPlotInfoFromFile( mpSim, sheet, 2, "active" )
-        end  # if sheet[ "B5" ] == "YES"
+        if !showPlots && ( reportFileName == "" )
+            return
+        end  # if !showPlots && ...
 
-        nExtraPlots = sheet[ "D3" ]
+        nPlots = plotSheet[ "B8" ]
+        plotList = Dict{Tuple{Float64, Bool},
+            Vector{Tuple{String, Vector{Bool}}}}()
+        plotFlags = Vector{Bool}( 7 )
 
-        for colNum in (1:nExtraPlots) + 3
-            state = sheet[ XLSX.CellRef( 5, colNum ) ]
-            state = isa( state, Missings.Missing ) || ( state == "" ) ?
-                "active" : state
-            readPlotInfoFromFile( mpSim, sheet, colNum, state )
-        end
+        # Get all requested transitions and time resolutions.
+        for ii in 1:nPlots
+            jj = ii + 11
+            stateName = plotSheet[ "A$jj" ]
+            stateName = isa( stateName, Missings.Missing ) ? "active" :
+                stateName
+            timeKey = ( plotSheet[ "B$jj" ], plotSheet[ "H$jj" ] == "YES" )
+
+            if !haskey( plotList, timeKey )
+                plotList[ timeKey ] = Vector{String}()
+            end  # if !haskey( plotList, timeKey )
+
+            plotFlags[ 1:4 ] = plotSheet[ "C$jj:F$jj" ] .== "YES"
+            plotFlags[ 5:7 ] = plotSheet[ "I$jj:K$jj" ] .== "YES"
+
+            push!( plotList[ timeKey ], ( stateName, plotFlags ) )
+        end  # for ii in 1:nPlots
+
+        overWrite = true
+        toShow = [ "personnel", "flux in", "flux out", "net flux" ]
+
+        if showPlots
+            for timeKey in keys( plotList ), plotInfo in plotList[ timeKey ]
+                stateName, plotFlags = plotInfo
+                plotSimulationResults( mpSim, timeKey[ 1 ],
+                    toShow[ plotFlags[ 1:4 ] ]..., state = stateName,
+                    timeFactor = 12, isByTransition = timeKey[ 2 ],
+                    showBreakdowns = ( plotFlags[ 5 ], plotFlags[ 6 ],
+                        plotFlags[ 7 ] ) )
+            end  # for timeKey in keys( plotList )
+        end  # if showPlots
+
+        if reportFileName != ""
+            for timeKey in keys( plotList )
+                stateList = map( plotInfo -> plotInfo[ 1 ],
+                    plotList[ timeKey ] )
+                generateExcelReport( mpSim, timeKey[ 1 ], timeKey[ 2 ],
+                    stateList..., fileName = reportFileName,
+                    overWrite = overWrite, timeFactor = 12 )
+                overWrite = false
+            end  # for timeKey in keys( plotList )
+        end  # if reportFileName != ""
     end  # XLSX.openxlsx( tmpFilename ) do xf
 
     return
@@ -57,8 +103,8 @@ end  # showPlotsFromFile( mpSim, fName )
 
 """
 ```
-showPlotsFromFile( mpSim::ManpowerSimulation,
-                   fName::String )
+showFluxPlotsFromFile( mpSim::ManpowerSimulation,
+                       fName::String )
 ```
 This function generates all the flux plots for manpower simulation `mpSim` that
 are requested in the tab `Output plots (trans)` of the Excel file with name
@@ -94,6 +140,13 @@ function showFluxPlotsFromFile( mpSim::ManpowerSimulation,
         reportFileName = plotSheet[ "B4" ] == "YES" ? plotSheet[ "B5" ] : ""
         reportFileName = isa( reportFileName, Missings.Missing ) ? "" :
             reportFileName
+        reportFileName = reportFileName == "" ? "" :
+            joinpath( mpSim.parFileName[ 1:(end-5) ], reportFileName )
+
+        if !showPlots && ( reportFileName == "" )
+            return
+        end  # if !showPlots && ...
+
         nPlots = plotSheet[ "B8" ]
         plotList = Dict{Float64, Vector{Union{String, Tuple{String, String}}}}()
 
@@ -105,22 +158,30 @@ function showFluxPlotsFromFile( mpSim::ManpowerSimulation,
 
             # Add time resolution to list.
             if !haskey( plotList, timeRes )
-                plotList[ timeRes ] = Vector{Union{String, Tuple{String, String}}}()
+                plotList[ timeRes ] = Vector{Union{String,
+                    Tuple{String, String}, Tuple{String, String, String}}}()
             end  # if !haskey( plotList, timeRes )
 
+            # Get source/target states.
+            sourceName = plotSheet[ "C$jj" ]
+            targetName = plotSheet[ "D$jj" ]
+            sourceName = isa( sourceName, Missings.Missing ) ? "" :
+                string( sourceName )
+            targetName = isa( targetName, Missings.Missing ) ? "" :
+                string( targetName )
+
             if isST
-                sourceName = plotSheet[ "C$jj" ]
-                targetName = plotSheet[ "D$jj" ]
-                sourceName = isa( sourceName, Missings.Missing ) ? "" :
-                    string( sourceName )
-                targetName = isa( targetName, Missings.Missing ) ? "" :
-                    string( targetName )
                 push!( plotList[ timeRes ], ( sourceName, targetName ) )
             else
                 transName = plotSheet[ "B$jj" ]
 
                 if isa( transName, String )
-                    push!( plotList[ timeRes ], transName )
+                    if ( sourceName == "" ) && ( targetName == "" )
+                        push!( plotList[ timeRes ], transName )
+                    else
+                        push!( plotList[ timeRes ],
+                            ( transName, sourceName, targetName ) )
+                    end  # if ( sourceName == "" ) &&
                 end  # if isa( transName, String )
             end  # if isST
         end  # for ii in 1:nPlots
@@ -320,7 +381,7 @@ end  # plotSimulationResults( mpSim, timeRes, toShow...; state,
 ```
 plotFluxResults( mpSim::ManpowerSimulation,
                  timeRes::T1,
-                 transList::Union{String, Tuple{String, String}}...;
+                 transList::Union{String, Tuple{String, String}, Tuple{String, String, String}}...;
                  fileName::String = "",
                  overWrite = true,
                  timeFactor::T2 = 12.0 )
@@ -329,40 +390,41 @@ plotFluxResults( mpSim::ManpowerSimulation,
 This function creates a report on fluxes in the manpower simulation `mpSim` on a
 grid with time resolution `timeRes`, showing all the transitions
 (transition types) listed in `transList`. These transitions can be entered by
-transition name (as `String`) or as source/target state pairs (as
-`Union{String, Tuple{String, String}}`). Non existing transitions are ignored,
-names of recruitment schemes are accepted, the outflows `retired`,
-`resigned`, and `fired` are accepted, and the empty state or state `external` is
-accepted to describe in and out transitions. The results are then plotted in
-separate plots. If the parameter `fileName` is not blank, the results are then
-saved in the Excel file with that name, with the extension `".xlsx"` added if
-necessary. If the flag `overWrite` is `true`, a new Excel file is created.
-Otherwise, the report is added to the Excel file. Times are compressed by a
-factor `timeFactor`.
+transition name (as `String`), as source/target state pairs (as
+`Union{String, Tuple{String, String}}`), or as transition/source/target tuples.
+Non existing transitions are ignored, names of recruitment schemes are accepted,
+the outflows `retirement`, `attrition`, and `fired` are accepted, and the empty
+state or state `external` is accepted to describe in and out transitions. The
+results are then plotted in separate plots. If the parameter `fileName` is not
+blank, the results are then saved in the Excel file with that name, with the
+extension `".xlsx"` added if necessary. If the flag `overWrite` is `true`, a new
+Excel file is created. Otherwise, the report is added to the Excel file. Times
+are compressed by a factor `timeFactor`.
 
 This function returns `nothing`.
 """
 function plotFluxResults( mpSim::ManpowerSimulation, timeRes::T1,
-    transList::Union{String, Tuple{String, String}}...;
+    transList::Union{String, Tuple{String, String},
+        Tuple{String, String, String}}...;
     fileName::String = "", overWrite = true, timeFactor::T2 = 12.0 ) where T1 <: Real where T2 <: Real
 
     # Issue warning if time resolution is negative.
     if timeRes <= 0
         warn( "Negative time resolution for grid. Resolution must be > 0.0" )
-        return resultReport
+        return
     end
 
     # Issue warning when trying to generate report of a simultation that hasn't
     #   started.
     if now( mpSim ) == 0
         warn( "Simulation hasn't started yet. Cannot generate report." )
-        return resultReport
+        return
     end  # if now( mpSim ) == 0
 
     # Issue warninig when trying to apply a negative time compression factor.
     if timeFactor <= 0.0
         warn( "Time compression factor must be greater than 0. Cannot generate report." )
-        return resultReport
+        return
     end  # if timeFactor <= 0.0
 
     tStart = now()
@@ -787,7 +849,8 @@ function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
         if ii == 1
             plt = Plots.plot( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
                 size = ( 960, 540 ), xlim = [ 0, timeSteps[ end ] ],
-                ylim = [ yMin, yMax ] + 0.01 * ( yMax - yMin ) * [ -1, 1 ] )
+                ylim = [ yMin, yMax ] + 0.01 * ( yMax - yMin ) * [ -1, 1 ],
+                title = "Evolution of whole population with resolution $(timeRes / timeFactor)" )
         else
             plt = plot!( tmpTimes, yCoords, label = toShow[ ii ], lw = 2 )
         end  # if ii == 1
@@ -820,7 +883,8 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
         ylim = [ yMin, yMax ] + 0.025 * ( yMax - yMin ) * [ -1, 1 ],
         xlabel = "Sim time in y", size = ( 960, 540 ),
         title = "Evolution of personnel" *
-            ( state == "active" ? "" : " in state '$state'" ) )
+            ( state == "active" ? "" : " in state '$state'" ) *
+            " with resolution $(timeGrid[ 2 ] - timeGrid[ 1 ])" )
     validPlots = [ "personnel", "flux in", "flux out", "net flux" ]
 
     for ii in eachindex( validPlots )
@@ -863,6 +927,7 @@ function plotBreakdownNormal( state::String, counts::DataFrames.DataFrame,
         ( countType === :in ? "in" : "out" ) * " flux"
     title *= " of "
     title *= state == "active" ? "total population" : "state '$state'"
+    title *= " with resolution $(timeGrid[ 2 ] - timeGrid[ 1 ])"
 
     # Create graph labels.
     labels = string.( names( counts )[ ( isFlux ? 3 : 2 ):(end - 1) ] )
@@ -912,7 +977,8 @@ function plotBreakdownStacked( state::String, counts::DataFrames.DataFrame,
         title = ( countType === :pers ? "Personnel " :
             ( countType === :in ? "In" : "Out" ) * " flux " ) *
             ( isPercent ? "percentage " : "" ) * "breakdown of " *
-            ( state == "active" ? "total population" : "state '$state'" ) )
+            ( state == "active" ? "total population" : "state '$state'" ) *
+            " with resolution $(timeGrid[ 2 ] - timeGrid[ 1 ])" )
 
     # For the percentage counts, set all undefined entries to 0 (Excel-like
     #   behaviour for stacked percentage plots if the total is 0).

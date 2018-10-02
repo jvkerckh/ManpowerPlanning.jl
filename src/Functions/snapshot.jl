@@ -224,7 +224,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         persCmd = map( ii -> "(" * join( contents[ ii, : ], ", " ) *
             ", 'active')", 1:nEffectiveEntries )
         persCmd = "INSERT INTO $(mpSim.personnelDBname)
-            ($(join( colNames, ", " )), expectedAttritionTime, attritionScheme, status)
+            ('$(join( colNames, "', '" ))', expectedAttritionTime, attritionScheme, status)
             VALUES $(join( persCmd, ", " ))"
         SQLite.execute!( mpSim.simDB, persCmd )
 
@@ -286,8 +286,6 @@ function verifyAttributes( colsToImport::Dict{Int, String},
     # Import only columns which have been defined as attributes.
     attrNameList = map( attr -> attr.name,
         vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
-    foreach( ii -> colsToImport[ ii ] = replace( colsToImport[ ii ], " ", "_" ),
-        keys( colsToImport ) )
     colsNotToImport = Vector{Int}()
 
     for ii in keys( colsToImport )

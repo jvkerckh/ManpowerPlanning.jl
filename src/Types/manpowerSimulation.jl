@@ -110,7 +110,7 @@ type ManpowerSimulation
     simStartDate::Date
 
     # The generated reports of the simulation.
-    simReports::Dict{Float64, SimulationReport}
+    # simReports::Dict{Float64, SimulationReport}
 
 
     function ManpowerSimulation( ; dbName::String = "simDB",
@@ -180,7 +180,7 @@ type ManpowerSimulation
             :attrition => 50 )
         newMPsim.simLength = 1.0
         newMPsim.simStartDate = Date( now() )
-        newMPsim.simReports = Dict{Float64, SimulationReport}()
+        # newMPsim.simReports = Dict{Float64, SimulationReport}()
         return newMPsim
 
     end  # ManpowerSimulation( ; dbName, simName )

@@ -793,7 +793,7 @@ end  # generateFluxOutReport( mpSim, stateName, timeRes, isBreakdownByTarget )
 ```
 generateFluxReport( mpSim::ManpowerSimulation,
                     timeRes::T,
-                    transList::Union{String, Tuple{String, String}}... )
+                    transList::Union{String, Tuple{String, String}, Tuple{String, String, String}}... )
     where T <: Real
 ```
 This function creates a report on fluxes in the manpower simulation `mpSim` on a
@@ -801,9 +801,9 @@ grid with time resolution `timeRes`, showing all the transitions
 (transition types) listed in `transList`. These transitions can be entered by
 transition name (as `String`) or as source/target state pairs (as
 `Union{String, Tuple{String, String}}`). Non existing transitions are ignored,
-names of recruitment schemes are accepted, the outflows `retired`,
-`resigned`, and `fired` are accepted, and the empty state or state `external` is
-accepted to describe in and out transitions.
+names of recruitment schemes are accepted, the outflows `retirement`,
+`attrition`, and `fired` are accepted, and the empty state or state `external`
+is accepted to describe in and out transitions.
 
 This function returns a `Dataframe`, where the columns `:timeStart` and
 `:timeEnd` hold the start and end times of each interval, and the other columns
@@ -811,7 +811,8 @@ the flux, per transition, for each time interval `timeStart < t <= timeEnd`
 except for the first row; that one counts the flux occurring at time `t = 0.0`.
 """
 function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
-    transList::Union{String, Tuple{String, String}}... )::DataFrame where T <: Real
+    transList::Union{String, Tuple{String, String},
+        Tuple{String, String, String}}... )::DataFrame where T <: Real
 
     resultReport = DataFrame( Array{Float64}( 0, 2 ),
         [ :timeStart, :timeEnd ] )
@@ -832,12 +833,12 @@ function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
     # Build list of real transitions.
     tmpTransList = Vector{String}()
     tmpPairList = Vector{Tuple{String, String}}()
+    tmpTripleList = Vector{Tuple{String, String, String}}()
 
     for transName in transList
-        if isa( transName, String ) &&
-            validateTransition( mpSim, transName )
+        if isa( transName, String ) && validateTransition( mpSim, transName )
             push!( tmpTransList, transName )
-        elseif !isa( transName, String )
+        elseif isa( transName, Tuple{String, String} )
             startState, endState = transName
             startState = lowercase( startState ) == "external" ? "" : (
                 lowercase( startState ) == "active" ? "active" : startState )
@@ -847,23 +848,37 @@ function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
             if validateTransition( mpSim, startState, endState )
                 push!( tmpPairList, ( startState, endState ) )
             end  # if validateTransition( mpSim, startState, endState )
+        elseif isa( transName, Tuple{String, String, String} )
+            trName, startState, endState = transName
+            startState = lowercase( startState ) == "external" ? "" : (
+                lowercase( startState ) == "active" ? "active" : startState )
+            endState = lowercase( endState ) == "external" ? "" : (
+                lowercase( endState ) == "active" ? "active" : endState )
+
+            if validateTransition( mpSim, trName ) &&
+                validateTransition( mpSim, startState, endState )
+                push!( tmpTripleList, ( trName, startState, endState ) )
+            end  # if validateTransition( mpSim, startState, endState )
         end  # if isa( transName, String ) && ...
     end  # for transName in transList
 
     tmpTransList = unique( tmpTransList )
     tmpPairList = unique( tmpPairList )
+    tmpTripleList = unique( tmpTripleList )
 
     # Generate the time grid.
     timeGrid = generateTimeGrid( mpSim, timeRes )
     nTimes = length( timeGrid )
     nTrans = length( tmpTransList )
     nPairs = length( tmpPairList )
+    nTriples = length( tmpTripleList )
 
     # Generate the results.
-    resultData = zeros( nTimes, nTrans + nPairs + 2 )
+    resultData = zeros( nTimes, nTrans + nPairs + nTriples + 2 )
     resultData[ :, 1 ] = vcat( 0.0, timeGrid[ 1:(end-1) ] )
     resultData[ :, 2 ] = timeGrid
     nameList = Vector{String}( nPairs )
+    nameList2 = Vector{String}( nTriples )
 
     # Add the transitions by name.
     for ii in eachindex( tmpTransList )
@@ -890,8 +905,27 @@ function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
             timeGrid )
     end  # for jj in eachindex( tmpTransList )
 
+    for ii in eachindex( tmpTripleList )
+        transName, startState, endState = tmpTripleList[ ii ]
+
+        if startState == ""
+            nameList2[ ii ] = "$transName: External to " *
+                ( endState == "active" ? "System" : endState )
+        elseif endState == ""
+            nameList2[ ii ] = "$transName: " *
+                ( startState == "active" ? "System" : startState ) *
+                " to External"
+        else
+            nameList2[ ii ] = "$transName: $startState to $endState"
+        end  # if startState == ""
+
+        resultData[ :, ii + nTrans + nPairs + 2 ] =
+            countTransitionFlux( mpSim, transName, startState, endState,
+            timeGrid )
+    end  # for ii in eachIndex( tmpTripleList )
+
     resultReport = DataFrame( resultData, vcat( :timeStart, :timeEnd,
-        Symbol.( tmpTransList ), Symbol.( nameList ) ) )
+        Symbol.( tmpTransList ), Symbol.( nameList ), Symbol.( nameList2 ) ) )
 
     return resultReport
 
@@ -1248,6 +1282,89 @@ end  # generateExcelReport( mpSim, timeRes, ageRes )
 
 """
 ```
+generateExcelReport( mpSim::ManpowerSimulation,
+                     timeRes::T1,
+                     isByTransition::Bool,
+                     stateList::String...;
+                     fileName::String = "testReport",
+                     overWrite::Bool = true,
+                     timeFactor::T2 = 12.0 )
+    where T <: Real
+```
+This function creates a report on desired populations in the manpower simulation
+`mpSim` on a grid with time resolution `timeRes`, showing all the populations of
+the states listed in `transList`. If the flag `isByTransition` is `true`, the
+fluxes in and out of these states are broken down by transition, otherwise by
+source/target state. Non existing states are ignored, and the state `active`,
+indicating the entire population, is accepted. The report is then saved in the
+Excel file `fileName`, with the extension `.xlsx` added if necessary. If the
+flag `overWrite` is `true`, a new Excel file is created. Otherwise, the report
+is added to the Excel file. Times are compressed by a factor `timeFactor`.
+
+The report will always include the information for the entire population.
+
+This function returns `nothing`.
+"""
+function generateExcelReport( mpSim::ManpowerSimulation, timeRes::T1,
+    isByTransition::Bool, stateList::String...; fileName::String = "testReport",
+    overWrite::Bool = true, timeFactor::T2 = 12.0 )::Void where T1 <: Real where T2 <: Real
+
+    tStart = now()
+    tElapsed = [ 0.0, 0.0 ]
+    tmpFileName = endswith( fileName, ".xlsx" ) ? fileName : fileName * ".xlsx"
+    tmpFileName = joinpath( mpSim.parFileName[ 1:(end-5) ], tmpFileName )
+
+    # Don't generate the Excel report if there's no count report available. This
+    #   means that either the time resolution ⩽ 0 or that the simulation hasn't
+    #   started yet.
+    fluxInCounts = generateFluxReport( mpSim, timeRes, true, isByTransition,
+        "active" )
+
+    if size( fluxInCounts ) == ( 0, 2 )
+        return
+    end  # if length( fluxInCounts ) == 2
+
+    tmpStates = Iterators.filter( stateName -> haskey( mpSim.stateList,
+        stateName ), stateList )
+    tmpStates = unique( tmpStates )
+    tElapsedOther = zeros( Float64, length( tmpStates ), 2 )
+
+    XLSX.openxlsx( tmpFileName, mode = overWrite ? "w" : "rw" ) do xf
+        fluxOutCounts = generateFluxReport( mpSim, timeRes, false,
+            isByTransition, "active" )
+        persCounts = generateCountReport( mpSim, "active", fluxInCounts,
+            fluxOutCounts )
+        tElapsed[ 1 ] = ( now() - tStart ).value / 1000
+        tElapsed[ 2 ] = dumpCountData( mpSim, "active", persCounts,
+            fluxInCounts, fluxOutCounts, timeRes, xf, isByTransition, overWrite,
+            timeFactor, tElapsed[ 1 ] )
+
+        for ii in eachindex( tmpStates )
+            tStart = now()
+            fluxInCounts = generateFluxReport( mpSim, timeRes, true,
+                isByTransition, tmpStates[ ii ] )
+            fluxOutCounts = generateFluxReport( mpSim, timeRes, false,
+                isByTransition, tmpStates[ ii ] )
+            persCounts = generateCountReport( mpSim, tmpStates[ ii ],
+                fluxInCounts, fluxOutCounts )
+            tElapsedOther[ ii, 1 ] = ( now() - tStart ).value / 1000
+            tElapsedOther[ ii, 2 ] = dumpCountData( mpSim, tmpStates[ ii ],
+                persCounts, fluxInCounts, fluxOutCounts, timeRes, xf,
+                isByTransition, false, timeFactor, tElapsedOther[ ii, 1 ] )
+        end  # for stateName in tmpStates
+    end  # XLSX.openxlsx( tmpFileName, mode = overWrite ? "w" : "rw" )
+
+    println( "Excel population count report generated. Elapsed time: ",
+        sum( tElapsed ) + sum( tElapsedOther ), " seconds." )
+
+    return
+
+end  # generateExcelReport( mpSim, timeRes, stateList; fileName, overWrite,
+     #   timeFactor )
+
+
+"""
+```
 generateExcelFluxReport( mpSim::ManpowerSimulation,
                          timeRes::T,
                          transList::Union{String, Tuple{String, String}}...;
@@ -1261,9 +1378,9 @@ grid with time resolution `timeRes`, showing all the transitions
 (transition types) listed in `transList`. These transitions can be entered by
 transition name (as `String`) or as source/target state pairs (as
 `Union{String, Tuple{String, String}}`). Non existing transitions are ignored,
-names of recruitment schemes are accepted, the outflows `retired`,
-`resigned`, and `fired` are accepted, and the empty state or state `external` is
-accepted to describe in and out transitions. The report is then saved in the
+names of recruitment schemes are accepted, the outflows `retirement`,
+`attrition`, and `fired` are accepted, and the empty state or state `external`
+is accepted to describe in and out transitions. The report is then saved in the
 Excel file `fileName`, with the extension `".xlsx"` added if necessary. If the
 flag `overWrite` is `true`, a new Excel file is created. Otherwise, the report
 is added to the Excel file. Times are compressed by a factor `timeFactor`.
@@ -1433,14 +1550,15 @@ validateTransition( mpSim::ManpowerSimulation,
 ```
 This function tests if the manpower simulation `mpSim` has a transition named
 `transName`, either as an in-transition (recruitment line), a through-
-transition, or an out-transition (`retired`, `resigned`, `fired`).
+transition, or an out-transition (`retirement`, `attrition`, `fired`).
 
 This function returns a `Bool`, the result of the test.
 """
 function validateTransition( mpSim::ManpowerSimulation,
     transName::String )::Bool
 
-    isOut = lowercase( transName ) ∈ [ "snapshot", "retired", "resigned", "fired" ]
+    isOut = lowercase( transName ) ∈ [ "snapshot", "retirement", "attrition",
+        "fired" ]
     isIn = transName ∈ map( recScheme -> recScheme.name,
         mpSim.recruitmentSchemes )
     isThrough = haskey( mpSim.transList, transName )
@@ -1555,6 +1673,47 @@ end  # countTransitionFlux( mpSim, startState, endState, timeGrid )
 """
 ```
 countTransitionFlux( mpSim::ManpowerSimulation,
+                     transName::String,
+                     startState::String,
+                     endState::String,
+                     timeGrid::Vector{Float64} )
+```
+This function counts the fluxes in the manpower simulation `mpSim` of the
+transition with name `transName` and going from `startState` to `endState` over
+the time grid `timeGrid`.
+
+The function returns a `Vector{Int}` with the flux counts for each time
+interval. The first entry of the vector is the flux that occurs at time 0.
+"""
+function countTransitionFlux( mpSim::ManpowerSimulation, transName::String,
+    startState::String, endState::String,
+    timeGrid::Vector{Float64} )::Vector{Int}
+
+    startState = startState == "" ? "NULL" : "'$startState'"
+    endState = endState == "" ? "NULL" : "'$endState'"
+
+    queryCmd = "SELECT DISTINCT $(mpSim.idKey), timeIndex FROM $(mpSim.transitionDBname)
+        WHERE transition IS '$transName' AND startState IS $startState AND endState IS $endState"
+    transTime = SQLite.query( mpSim.simDB, queryCmd )[ 2 ]
+    counts = zeros( timeGrid, Int )
+
+    if !isempty( transTime )
+        for jj in eachindex( timeGrid )
+            startTime = jj == 1 ? 0 : timeGrid[ jj - 1 ]
+            endTime = timeGrid[ jj ]
+            counts[ jj ] = sum( jj == 1 ? startTime .== transTime :
+                startTime .< transTime .<= endTime )
+        end  # for jj in eachindex( timeGrid )
+    end  # if !isempty( transTime )
+
+    return counts
+
+end  # countTransitionFlux( mpSim, transName, startState, endState, timeGrid )
+
+
+"""
+```
+countTransitionFlux( mpSim::ManpowerSimulation,
                      stateName::String,
                      timeGrid::Vector{Float64},
                      isInFlux::Bool,
@@ -1581,7 +1740,7 @@ function countTransitionFlux( mpSim::ManpowerSimulation, stateName::String,
         ( isInFlux ? "startState" : "endState" )
 
     queryCmd = "SELECT timeIndex, $countCol FROM $(mpSim.transitionDBname)
-        WHERE "
+        WHERE 0 <= timeIndex AND "
 
     if isInFlux
         queryCmd *= "startState IS NOT '$stateName' AND endState IS '$stateName'"
@@ -1625,6 +1784,126 @@ function countTransitionFlux( mpSim::ManpowerSimulation, stateName::String,
         fluxResult
 
 end  # countTransitionFlux( mpSim, stateName, timeGrid, byTransition )
+
+
+"""
+```
+dumpCountData( mpSim::ManpowerSimulation,
+               state::String,
+               countData::DataFrame,
+               fluxInData::DataFrame,
+               fluxOutData::DataFrame,
+               timeRes::T1,
+               xf::XLSX.XLSXFile,
+               isByTransition::Bool,
+               overWrite::Bool,
+               timeFactor::T2,
+               reportGenerationTime::Float64 )
+    where T1 <: Real where T2 <: Real
+```
+This function writes the population data in `countData`, `fluxInData`, and
+`fluxOutData` to the Excel file `fileName`, using the other parameters as
+guidance. If the flag `overWrite` is `true`, a new file is created, otherwise a
+new sheet is added to the file.
+
+This function returns a `Float64`, the time (in seconds) it took to write the
+Excel report.
+"""
+function dumpCountData( mpSim::ManpowerSimulation, state::String,
+    countData::DataFrame, fluxInData::DataFrame, fluxOutData::DataFrame,
+    timeRes::T1, xf::XLSX.XLSXFile, isByTransition::Bool, overWrite::Bool,
+    timeFactor::T2, reportGenerationTime::Float64 )::Float64 where T1 <: Real where T2 <: Real
+
+    tStart = now()
+    tElapsed = 0.0
+    fSheet = xf[ 1 ]
+
+    if overWrite
+        XLSX.rename!( fSheet, "$state (res $timeRes)" )
+    else
+        fSheet = XLSX.addsheet!( xf, "$state (res $timeRes)" )
+    end  # if overWrite
+
+    # Sheet header
+    fSheet[ "A1" ] = "Simulation length"
+    fSheet[ "B1" ] = mpSim.simLength / timeFactor
+    fSheet[ "A2" ] = "Time resolution of report"
+    fSheet[ "B2" ] = timeRes / timeFactor
+    fSheet[ "A3" ] = "Report of state:"
+    fSheet[ "B3" ] = state == "active" ? "Whole population" : state
+    fSheet[ "A4" ] = "Flux breakdowns by "
+    fSheet[ "B4" ] = isByTransition ? "transition" : "source/state"
+    fSheet[ "A5" ] = "Data generation time"
+    fSheet[ "B5" ] = reportGenerationTime
+    fSheet[ "C5" ] = "seconds"
+    fSheet[ "A6" ] = "Excel generation time"
+    fSheet[ "C6" ] = "seconds"
+
+    # Table header
+    tmp = [ "Start time", "End time", "Pop at end time", "Flux into state",
+        "Flux out of state", "Net flux (in - out)" ]
+    foreach( ii -> fSheet[ XLSX.CellRef( 8, ii ) ] = tmp[ ii ],
+        eachindex( tmp ) )
+    fluxInNames = string.( names( fluxInData[ 3:(end-1) ] ) )
+    map!( fluxName -> split( fluxName, " to " )[ 1 ], fluxInNames,
+        fluxInNames )
+    fluxOutNames = string.( names( fluxOutData[ 3:(end-1) ] ) )
+    map!( fluxName -> split( fluxName, " from " )[ 1 ], fluxOutNames,
+        fluxOutNames )
+
+    inCol = 7
+    foreach( ii -> fSheet[ XLSX.CellRef( 8, inCol + ii ) ] =
+        fluxInNames[ ii ], eachindex( fluxInNames ) )
+
+    if isempty( fluxInNames )
+        fSheet[ "H8" ] = "No flux into state"
+    end  # if isempty( fluxInNames )
+
+    outCol = inCol + length( fluxInNames ) +
+        ( isempty( fluxInNames ) ? 2 : 1 )
+    foreach( ii -> fSheet[ XLSX.CellRef( 8, outCol + ii ) ] =
+        fluxOutNames[ ii ], eachindex( fluxOutNames ) )
+
+    if isempty( fluxOutNames )
+        fSheet[ XLSX.CellRef( 8, outCol + 1 ) ] = "No flux out of state"
+    end  # if isempty( fluxOutNames )
+
+    for ii in eachindex( countData[ 1 ] )
+        jj = 8 + ii
+        tmp = [ fluxInData[ ii, 1 ], fluxInData[ ii, 2 ],
+            countData[ ii, 2 ], fluxInData[ ii, end ],
+            fluxOutData[ ii, end ],
+            fluxInData[ ii, end ] - fluxOutData[ ii, end ] ]
+        foreach( kk -> fSheet[ XLSX.CellRef( jj, kk ) ] = tmp[ kk ],
+            eachindex( tmp ) )
+    end  # for ii in eachindex( countData[ 1 ] )
+
+    if !isempty( fluxInNames )
+        for ii in eachindex( fluxInData[ 1 ] )
+            jj = 8 + ii
+            tmp = Array( fluxInData[ ii, 3:(end-1) ] )
+            foreach( kk -> fSheet[ XLSX.CellRef( jj, kk + inCol ) ] =
+                tmp[ kk ], eachindex( tmp ) )
+        end  # for ii in eachindex( fluxInData[ 1 ] )
+    end  # if !isempty( fluxInData )
+
+    if !isempty( fluxOutNames )
+        for ii in eachindex( fluxOutData[ 1 ] )
+            jj = 8 + ii
+            tmp = Array( fluxOutData[ ii, 3:(end-1) ] )
+            foreach( kk -> fSheet[ XLSX.CellRef( jj, kk + outCol ) ] =
+                tmp[ kk ], eachindex( tmp ) )
+        end  # for ii in eachindex( fluxOutData[ 1 ] )
+    end  # if !isempty( fluxOutData )
+
+    tElapsed = ( now() - tStart ).value / 1000.0
+    fSheet[ "B6" ] = tElapsed
+
+    return tElapsed
+
+end  # dumpCountData( mpSim, state, countData, fluxInData, fluxOutData,
+     #   timeRes, xf, isByTransition, overWrite, timeFactor,
+     #   reportGenerationTime )
 
 
 """

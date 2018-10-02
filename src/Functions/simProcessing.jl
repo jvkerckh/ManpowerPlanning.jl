@@ -37,7 +37,7 @@ function getActiveAtTime( mpSim::ManpowerSimulation, timePoint::T,
     end  # if ( timePoint < 0 ) || ...
 
     tmpFields = unique( vcat( mpSim.idKey, fields ) )
-    queryCmd = "SELECT $(join( tmpFields, ", " ))
+    queryCmd = "SELECT '$(join( tmpFields, "', '" ))'
         FROM $(mpSim.personnelDBname)
         WHERE ( timeEntered <= $timePoint ) AND
             ( ( timeExited > $timePoint ) OR ( timeExited IS NULL ) )
@@ -70,7 +70,7 @@ function getActiveAtTime( mpSim::ManpowerSimulation, stateName::String,
     end  # if ( timePoint < 0 ) || ...
 
     tmpFields = unique( vcat( mpSim.idKey, fields ) )
-    queryCmd = "SELECT $(join( tmpFields, ", " ))
+    queryCmd = "SELECT '$(join( tmpFields, "', '" ))'
         FROM $(mpSim.personnelDBname)
         WHERE timeEntered < 0"
     dummyResult = SQLite.query( mpSim.simDB, queryCmd )
@@ -102,7 +102,7 @@ function getActiveAtTime( mpSim::ManpowerSimulation, stateName::String,
     end  # if isempty( activeIDs )
 
     # Get the requested fields of the active IDs.
-    queryCmd = "SELECT $(join( tmpFields, ", " ))
+    queryCmd = "SELECT '$(join( tmpFields, "', '" ))'
         FROM $(mpSim.personnelDBname)
         WHERE $(mpSim.idKey) IN ('$(join( activeIDs, "', '" ))')"
     return SQLite.query( mpSim.simDB, queryCmd )
@@ -332,7 +332,7 @@ function getOutFlux( mpSim::ManpowerSimulation, tBegin::T1, tEnd::T2,
     end  # if ( tEnd <= 0 ) || ...
 
     tmpFields = unique( vcat( mpSim.idKey, fields ) )
-    queryCmd = "SELECT $(join( tmpFields, ", " ))
+    queryCmd = "SELECT '$(join( tmpFields, "', '" ))'
         FROM $(mpSim.personnelDBname)
         WHERE ( $tBegin < timeExited ) AND ( timeExited <= $tEnd ) AND
             ( timeEntered <= $tBegin )"
@@ -663,8 +663,8 @@ function generateReport( mpSim::ManpowerSimulation, timeDelta::T,
         sheet[ "C", 6 + ii ] = nFluxIn[ 2 ][ ii - 1 ]
         sheet[ "D", 6 + ii ] = nFluxOut[ 2 ][ ii - 1 ]
         sheet[ "E", 6 + ii ] = sheet[ "C", 6 + ii ] - sheet[ "D", 6 + ii ]
-        sheet[ "F", 6 + ii ] = haskey( nFluxOut[ 3 ], "retired" ) ? nFluxOut[ 3 ][ "retired" ][ ii - 1 ] : 0
-        sheet[ "G", 6 + ii ] = haskey( nFluxOut[ 3 ], "resigned" ) ? nFluxOut[ 3 ][ "resigned" ][ ii - 1 ] : 0
+        sheet[ "F", 6 + ii ] = haskey( nFluxOut[ 3 ], "retirement" ) ? nFluxOut[ 3 ][ "retirement" ][ ii - 1 ] : 0
+        sheet[ "G", 6 + ii ] = haskey( nFluxOut[ 3 ], "attrition" ) ? nFluxOut[ 3 ][ "attrition" ][ ii - 1 ] : 0
     end  # for ii in 2:n
 
     # if n == length( nFluxIn[ 1 ] )

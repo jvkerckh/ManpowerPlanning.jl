@@ -19,11 +19,12 @@ export setName,
        clearConditions!,
        addAttributeChange!,
        clearAttributeChanges!,
-       setMinTime,
+       # setMinTime,
        setTransProbabilities,
        setMaxAttempts,
        setTimeBetweenAttempts,
-       setFireAfterFail
+       setFireAfterFail,
+       setMaxFlux
 
 
 dummyState = State( "Dummy" )
@@ -182,6 +183,7 @@ function clearAttributeChanges!( trans::Transition )::Void
 end  # clearAttributeChanges!( trans )
 
 
+#=
 """
 ```
 setMinTime( trans::Transition,
@@ -204,6 +206,7 @@ function setMinTime( trans::Transition, minTime::T )::Void where T <: Real
     return
 
 end  # setMinTime( trans, minTime )
+=#
 
 
 """
@@ -344,7 +347,6 @@ function Base.show( io::IO, trans::Transition )
 
     print( io, "    Transition $(trans.name): '$(trans.startState.name)' to '$(trans.endState.name)'" )
     print( io, "\n      Occurs with period $(trans.freq) (offset $(trans.offset))" )
-    print( io, "\n      Minimum time in start state: $(trans.minTime)" )
 
     if !isempty( trans.extraConditions )
         print( io, "\n      Extra conditions: $(trans.extraConditions)" )
@@ -477,12 +479,12 @@ function initiateTransitionProcesses( mpSim::ManpowerSimulation )::Void
 
     for state in keys( mpSim.initStateList ),
         trans in mpSim.initStateList[ state ]
-        @process transitionNewProcess( mpSim.sim, trans, mpSim )
+        @process transitionProcess( mpSim.sim, trans, mpSim )
     end  # for state in keys( mpSim.initStateList ), ...
 
     for state in keys( mpSim.otherStateList ),
         trans in mpSim.otherStateList[ state ]
-        @process transitionNewProcess( mpSim.sim, trans, mpSim )
+        @process transitionProcess( mpSim.sim, trans, mpSim )
     end  # for state in keys( mpSim.otherStateList ), ...
 
     return
@@ -490,7 +492,7 @@ function initiateTransitionProcesses( mpSim::ManpowerSimulation )::Void
 end  # initiateTransitionProcesses( mpSim )
 
 
-@resumable function transitionNewProcess( sim::Simulation, trans::Transition,
+@resumable function transitionProcess( sim::Simulation, trans::Transition,
     mpSim::ManpowerSimulation )
 
     processTime = Dates.Millisecond( 0 )
@@ -513,8 +515,8 @@ end  # initiateTransitionProcesses( mpSim )
         # Identify all persons who're in the start state long enough and are not
         #   already going to transition to another state.
         eligibleIDs = getEligibleIDs( trans, nAttempts, maxAttempts, mpSim )
-        updateAttemptsAndIDs!( nAttempts, maxAttempts, eligibleIDs )
         checkedIDs = checkExtraConditions( trans, eligibleIDs, mpSim )
+        updateAttemptsAndIDs!( nAttempts, maxAttempts, checkedIDs )
         transIDs = determineTransitionIDs( trans, checkedIDs, nAttempts )
 
         # Halt execution until the transition candidates for all transitions at
@@ -525,14 +527,14 @@ end  # initiateTransitionProcesses( mpSim )
         executeTransitions( trans, transIDs, mpSim )
         newStateList = updateStates( trans, transIDs, nAttempts, mpSim )
         updateTimeToAttrition( newStateList, mpSim )
-        firePersonnel( trans, eligibleIDs, transIDs, nAttempts, maxAttempts,
+        firePersonnel( trans, checkedIDs, transIDs, nAttempts, maxAttempts,
             mpSim )
     end  # while timeOfCheck <= mpSim.simLength
 
     processTime += now() - tStart
     println( "Transition process for '$(trans.name)' took $(processTime.value / 1000) seconds." )
 
-end  # transitionNewProcess( sim, trans, mpSim )
+end  # transitionProcess( sim, trans, mpSim )
 
 
 function getEligibleIDs( trans::Transition, nAttempts::Dict{String, Int},
@@ -684,14 +686,14 @@ function executeTransitions( trans::Transition, transIDs::Vector{String},
             push!( changedAttrs, attr )
             push!( newAttrValues,
                 trans.endState.requirements[ attr ][ 1 ] )
-            push!( persChangesCmd, "$attr = '$(newAttrValues[ end ])'" )
+            push!( persChangesCmd, "'$attr' = '$(newAttrValues[ end ])'" )
         end  # for attr in keys( trans.endState.requirements )
 
         # Extra attribute changes.
         for attr in trans.extraChanges
             push!( changedAttrs, attr.name )
             push!( newAttrValues, collect( keys( attr.values ) )[ 1 ] )
-            push!( persChangesCmd, "$(attr.name) = '$(newAttrValues[ end ])'" )
+            push!( persChangesCmd, "'$(attr.name)' = '$(newAttrValues[ end ])'" )
         end  # for attr in trans.extraChanges
 
         persChangesCmd = "UPDATE $(mpSim.personnelDBname)
@@ -735,9 +737,13 @@ function updateStates( trans::Transition, transIDs::Vector{String},
     end  # if isempty( transIDs )
 
     stateUpdates = Vector{String}( length( transIDs ) )
+    queryCmd = "SELECT $(mpSim.idKey), ageAtRecruitment, timeEntered
+        FROM $(mpSim.personnelDBname)
+        WHERE $(mpSim.idKey) in ('$(join( transIDs, "', '" ))')"
+    importantTimes = SQLite.query( mpSim.simDB, queryCmd )
 
     for ii in eachindex( transIDs )
-        pid = transIDs[ ii ]
+        pid = importantTimes[ ii, 1 ]
         newStateList[ pid ] = [ trans.endState ]
         delete!( trans.startState.inStateSince, pid )
         delete!( trans.startState.isLockedForTransition, pid )
@@ -745,6 +751,13 @@ function updateStates( trans::Transition, transIDs::Vector{String},
         trans.endState.inStateSince[ pid ] = now( mpSim )
         trans.endState.isLockedForTransition[ pid ] = false
         stateUpdates[ ii ] = "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')"
+        newRetirementTime = computeExpectedRetirementTime( mpSim,
+            mpSim.retirementScheme, importantTimes[ ii, 2 ],
+            trans.endState.stateRetAge, importantTimes[ ii, 3 ] )
+        retireUpdate = "UPDATE $(mpSim.personnelDBname)
+            SET expectedRetirementTime = $newRetirementTime
+            WHERE $(mpSim.idKey) IS '$pid'"
+        SQLite.execute!( mpSim.simDB, retireUpdate )
     end  # for id in transIDs
 
     transChangesCmd = "INSERT INTO $(mpSim.transitionDBname)
@@ -860,15 +873,15 @@ function updateStates( trans::Transition, transIDs::Vector{String},
 end  # function updateStates( trans, transIDs, nAttempts, mpSim )
 
 
-function firePersonnel( trans::Transition, eligibleIDs::Vector{String},
+function firePersonnel( trans::Transition, checkedIDs::Vector{String},
     transIDs::Vector{String}, nAttempts::Dict{String, Int}, maxAttempts::Int,
     mpSim::ManpowerSimulation )::Void
 
     # Fire the personnel members who haven't succesfully made the transition
     #   after the maximum number of attempts.
-    if trans.isFiredOnFail && ( maxAttempts >= 0 ) && !isempty( eligibleIDs )
+    if trans.isFiredOnFail && ( maxAttempts >= 0 ) && !isempty( checkedIDs )
         fireIDs = filter( id -> ( id ∉ transIDs ) &&
-            ( nAttempts[ id ] == maxAttempts ), eligibleIDs )
+            ( nAttempts[ id ] == maxAttempts ), checkedIDs )
 
         if !isempty( fireIDs )
             foreach( id -> delete!( nAttempts, id ), fireIDs )
@@ -878,5 +891,5 @@ function firePersonnel( trans::Transition, eligibleIDs::Vector{String},
 
     return
 
-end  # firePersonnel( trans, eligibleIDs, transIDs, nAttempts, maxAttempts,
+end  # firePersonnel( trans, checkedIDs, transIDs, nAttempts, maxAttempts,
      #   mpSim )

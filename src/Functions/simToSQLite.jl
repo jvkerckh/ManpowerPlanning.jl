@@ -82,34 +82,34 @@ function readGeneralParsFromSim( mpSim::ManpowerSimulation,
 
     # Name of the simulation database file.
     command = "INSERT INTO config
-        (parName, parType, strPar1) VALUES
+        (parName, parType, strPar) VALUES
         ('dbName', 'General', '$(mpSim.dbName)')"
     SQLite.execute!( configDB, command )
 
     # Name of the simulation.
     simName = replace( mpSim.personnelDBname, "Personnel_", "", 1 )
     command = "INSERT INTO config
-        (parName, parType, strPar1) VALUES
+        (parName, parType, strPar) VALUES
         ('simName', 'General', '$simName')"
     SQLite.execute!( configDB, command )
 
     # Personnel cap.
     command = "INSERT INTO config
-        (parName, parType, intPar1) VALUES
+        (parName, parType, intPar) VALUES
         ('dbName', 'General', '$(mpSim.personnelTarget)')"
     SQLite.execute!( configDB, command )
 
     # Simulation length.
     simLength = mpSim.simLength / 12
     command = "INSERT INTO config
-        (parName, parType, realPar1) VALUES
+        (parName, parType, realPar) VALUES
         ('dbName', 'General', '$simLength')"
     SQLite.execute!( configDB, command )
 
     # Database commits.
     dbCommits = Int( mpSim.simLength / mpSim.commitFrequency )
     command = "INSERT INTO config
-        (parName, parType, intPar1) VALUES
+        (parName, parType, intPar) VALUES
         ('dbName', 'General', '$dbCommits')"
     SQLite.execute!( configDB, command )
 
@@ -273,7 +273,7 @@ function readRetirementFromSim( mpSim::ManpowerSimulation,
     retScheme = mpSim.retirementScheme
 
     command = "INSERT INTO $configName
-        (parName, parType, boolPar1, strPar1) VALUES
+        (parName, parType, boolPar, strPar) VALUES
         ('Retirement', 'Retirement', '$(retScheme.isEither)',
             '$(retScheme.maxCareerLength),$(retScheme.retireAge),$(retScheme.retireFreq),$(retScheme.retireOffset)')"
     SQLite.execute!( configDB, command )

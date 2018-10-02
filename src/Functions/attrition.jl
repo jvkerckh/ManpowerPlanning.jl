@@ -63,10 +63,10 @@ function setAttritionPeriod( attrScheme::Attrition, period::T ) where T <: Real
         return
     end  # if period <= 0.0
 
-    if attrScheme.attrRates == [ 0.0 ]
-        warn( "Attrition rate is a flat 0.0, changing the period has no effect." )
-        # return
-    end  # if attrScheme.attrRates == [ 0.0 ]
+    # if attrScheme.attrRates == [ 0.0 ]
+    #     warn( "Attrition rate is a flat 0.0, changing the period has no effect." )
+    #     return
+    # end  # if attrScheme.attrRates == [ 0.0 ]
 
     attrScheme.attrPeriod = period
     computeDistPars( attrScheme )
@@ -202,7 +202,7 @@ constant 0 instead. The first eligible node has its term set to 0.
 function setAttritionCurve( attrScheme::Attrition,
     curve::Dict{Float64, Float64} )
 
-    terms = keys( curve )
+    terms = collect( keys( curve ) )
     rates = map( term -> curve[ term ], terms )
     setAttritionCurve( attrScheme, hcat( terms, collect( rates ) ) )
 
@@ -475,7 +475,7 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
     timeOfRateChange = 0
     queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)
         WHERE ( $(mpSim.idKey) IS '$id' ) AND
-            ( status NOT IN ('fired', 'retired') )"
+            ( status NOT IN ('fired', 'retirement') )"
 
     while checkForAttrition
         # Update attrition rate and time of next rate change if necessary.
@@ -527,7 +527,7 @@ SimJulia.Simulation component of the manpower simulation, and is required by the
                 result = SQLite.query( mpSim.simDB, queryCmd )
 
                 if size( result ) == ( 1, 1 )
-                    retirePerson( mpSim, id, "resigned" )
+                    retirePerson( mpSim, id, "attrition" )
                 end  # if size( result ) == ( 1, 1 )
 
                 checkForAttrition = false
@@ -581,7 +581,7 @@ end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
     priority = mpSim.phasePriorities[ :attrCheck ]
     queryCmd = "SELECT $(mpSim.idKey), expectedAttritionTime
         FROM $(mpSim.personnelDBname)
-        WHERE status NOT IN ('retired', 'resigned', 'fired')
+        WHERE status NOT IN ('retirement', 'attrition', 'fired')
             AND expectedAttritionTime <= "
 
     while now( sim ) < mpSim.simLength
@@ -629,9 +629,10 @@ end  # checkAttritionProcess( sim, mpSim )
 
     # Only perform the attrition if the person is still active and the time of
     #   attrition hasn't changed.
-    if ( persRecord[ :status ][ 1 ] ∉ [ "resigned", "retired", "fired" ] ) &&
+    if ( persRecord[ :status ][ 1 ] ∉
+        [ "attrition", "retirement", "fired" ] ) &&
         ( persRecord[ :expectedAttritionTime ][ 1 ] == timeOfAttrition )
-        retirePerson( mpSim, id, "resigned" )
+        retirePerson( mpSim, id, "attrition" )
     end  # if ( persRecord[ :status ][ 1 ] ∉ ...
 
     mpSim.attrExecTimeElapsed += now() - tStart

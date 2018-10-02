@@ -78,8 +78,9 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         readRetirementPars( mpSim, sheet )
     end  # XLSX.openxlsx( fileName ) do xf
 
-    # Make sure the databases are okay.
-    resetSimulation( mpSim )
+    # Make sure the databases are okay, and save configuration to database.
+    initialise( mpSim )
+    saveSimConfigToDatabase( mpSim )
 
     return
 
@@ -106,12 +107,14 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
     simName = sheet[ "B5" ]
     mpSim.personnelDBname = "Personnel_" * simName
     mpSim.historyDBname = "History_" * simName
+    mpSim.transitionDBname = "Transitions_" * simName
 
     # Check if databases are present and issue a warning if so.
     tmpTableList = SQLite.tables( mpSim.simDB )[ :name ]
 
     if ( mpSim.personnelDBname ∈ tmpTableList ) ||
             ( mpSim.historyDBname ∈ tmpTableList )
+            ( mpSim.transitionDBname ∈ tmpTableList )
         warn( "Results for a simulation called \"$(mpSim.simName)\" already in database. These will be overwritten." )
     end  # if mpSim.personnelDBname ∈ tmpTableList
 
@@ -265,3 +268,6 @@ function readRetirementPars( mpSim::ManpowerSimulation,
     return
 
 end  # readRetirementPars( mpSim, sheet )
+
+
+include( "simplifiedParFileProcessing.jl" )
