@@ -1388,7 +1388,8 @@ is added to the Excel file. Times are compressed by a factor `timeFactor`.
 This function returns `nothing`.
 """
 function generateExcelFluxReport( mpSim::ManpowerSimulation, timeRes::T1,
-    transList::Union{String, Tuple{String, String}}...;
+    transList::Union{String, Tuple{String, String},
+        Tuple{String, String, String}}...;
     fileName::String = "testFluxReport", overWrite::Bool = true,
     timeFactor::T2 = 12.0 )::Void where T1 <: Real where T2 <: Real
 

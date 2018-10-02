@@ -148,7 +148,8 @@ function showFluxPlotsFromFile( mpSim::ManpowerSimulation,
         end  # if !showPlots && ...
 
         nPlots = plotSheet[ "B8" ]
-        plotList = Dict{Float64, Vector{Union{String, Tuple{String, String}}}}()
+        plotList = Dict{Float64, Vector{Union{String, Tuple{String, String},
+            Tuple{String, String, String}}}}()
 
         # Get all requested transitions and time resolutions.
         for ii in 1:nPlots
