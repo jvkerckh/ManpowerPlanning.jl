@@ -1830,6 +1830,10 @@ function dumpCountData( mpSim::ManpowerSimulation, state::String,
     tElapsed = 0.0
     fSheet = xf[ 1 ]
 
+    # Time adjustment.
+    fluxInData[ :, 1 ] /= 12
+    fluxInData[ :, 2 ] /= 12
+
     if overWrite
         XLSX.rename!( fSheet, "$state (res $timeRes)" )
     else
