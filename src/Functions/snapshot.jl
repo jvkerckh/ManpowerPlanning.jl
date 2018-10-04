@@ -142,9 +142,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
 
         # Determine retirement ages/times.
         push!( colNames, "expectedRetirementTime" )
-        contents = hcat( contents, map( ii -> computeExpectedRetirementTime(
-            mpSim, mpSim.retirementScheme, contents[ ii, ageColIndex ],
-            contents[ ii, recColIndex ] ), 1:nEffectiveEntries ) )
+        contents = hcat( contents, zeros( Float64, nEffectiveEntries ) )
 
         # Retrieve time of last transition.
         lastTransTime = - 12.0 .* ones( nEntries )
@@ -155,7 +153,6 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
                 XLSX.getdata( dataSheet )[ 2:end, stateCol ] ) ./
                 ( 365.0 / 12.0 )
         end  # if 0 < stateCol <= nCols
-
 
         # Discover states of personnel members.
         attrList = filter( attrName -> attrName ∉ systemAttrs, colNames )
@@ -192,6 +189,13 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
                     warn( "Person read that can be assigned to multiple states. Please check system configuration for consistency." )
                 end  # if isempty( initPersStates )
             end  # if mpSim.isWellDefined
+
+            # Determine person's expected retirement age.
+            stateRetAge = isempty( persStates ) ? 0 :
+                mpSim.stateList[ persStates[ 1 ] ].stateRetAge
+            contents[ ii, end ] = computeExpectedRetirementTime(
+                mpSim, mpSim.retirementScheme, contents[ ii, ageColIndex ],
+                stateRetAge, contents[ ii, recColIndex ] )
 
             # Add person to state list.
             for stateName in persStates

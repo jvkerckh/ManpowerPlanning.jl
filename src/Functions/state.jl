@@ -144,14 +144,15 @@ end  # setInitial!( state, isInitial )
 """
 ```
 setStateTarget!( state::State,
-                 target::Int )
+                 target::T )
+    where T <: Integer
 ```
 This function sets the target number of personnel members in state `state` to
 `target`. If the number is less than zero, it means there's no target.
 
 This function returns `nothing`.
 """
-function setStateTarget!( state::State, target::Int )::Void
+function setStateTarget!( state::State, target::T )::Void where T <: Integer
 
     state.stateTarget = target < 0 ? -1 : target
     return

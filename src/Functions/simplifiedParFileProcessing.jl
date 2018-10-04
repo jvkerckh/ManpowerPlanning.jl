@@ -345,7 +345,7 @@ function readAllTransitions( mpSim::ManpowerSimulation,
         condVal = pSheet[ "J$jj" ]
 
         if !isa( condVal, Missings.Missing )
-            cond = processCondition( "time_in_state", ">=", condVal )
+            cond = processCondition( "time in state", ">=", condVal )
             addCondition!( newTrans, cond[ 1 ] )
         end  # if !isa( pSheet[ "J$jj" ], Missings.Missing )
 

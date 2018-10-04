@@ -551,7 +551,7 @@ function getEligibleIDs( trans::Transition, nAttempts::Dict{String, Int},
             ( nAttempts[ id ] < maxAttempts ), eligibleIDs )
     end  # if maxAttempts > 0
 
-    for cond in filter( cond -> cond.attr == "time_in_state",
+    for cond in filter( cond -> cond.attr == "time in state",
         trans.extraConditions )
         filter!( id -> cond.rel( now( mpSim ) -
             trans.startState.inStateSince[ id ], cond.val ), eligibleIDs )
@@ -595,7 +595,7 @@ function checkExtraConditions( trans::Transition, eligibleIDs::Vector{String},
         eligibleIDsState = SQLite.query( mpSim.simDB, queryCmd )
         isIDokay = isa.( eligibleIDs, String )
 
-        for cond in filter( cond -> cond.attr != "time_in_state",
+        for cond in filter( cond -> cond.attr != "time in state",
             trans.extraConditions )
             isIDokay = isIDokay .& map( ii -> cond.rel(
                 eligibleIDsState[ Symbol( cond.attr ) ][ ii ], cond.val ),

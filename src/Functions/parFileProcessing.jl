@@ -99,6 +99,7 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
         sheet[ "B4" ] * ".sqlite" )
     println( "Database file \"$tmpDBname\" ",
         isfile( tmpDBname ) ? "exists" : "does not exist", "." )
+    mpSim.dbName = tmpDBname
     mpSim.simDB = SQLite.DB( tmpDBname )
 
     # This line ensures that foreign key logic works.

@@ -616,7 +616,6 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         readSnapshot( mpSim )
     end  # if mpSim.isVirgin
 
-    saveSimConfigToDatabase( mpSim )
     toTime = 0.0
     oldSimTime = now( mpSim )
     mpSim.attrExecTimeElapsed = Dates.Millisecond( 0 )
@@ -636,15 +635,11 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         run( mpSim.sim )
     end  # if toTime > 0.0
 
-    configCmd = "UPDATE config
-        SET realPar = $(mpSim.simLength)
-        WHERE parName IS 'Sim time'"
-    SQLite.execute!( mpSim.simDB, configCmd )
-    mpSim.simTimeElapsed += now() - startTime
-    println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
-
     # Final commit.
     SQLite.execute!( mpSim.simDB, "COMMIT" )
+    saveSimConfigToDatabase( mpSim )
+    mpSim.simTimeElapsed += now() - startTime
+    println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
 
     return
     # Wipe the simulation reports if the simulation time has advanced.

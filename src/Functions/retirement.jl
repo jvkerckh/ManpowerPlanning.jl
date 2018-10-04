@@ -266,11 +266,6 @@ function computeExpectedRetirementTime( mpSim::ManpowerSimulation,
     retScheme::Retirement, ageAtRecruitment::T1, stateRetAge::T2,
     timeEntered::T3 ) where T1 <: Real where T2 <: Real where T3 <: Real
 
-    # No need to continue processing if there's no retirement scheme.
-    if retScheme === nothing
-        return +Inf
-    end  # if retScheme === nothing
-
     # Compute how long the person is in the system already. Usually 0.0.
     timeInSystem = now( mpSim ) - timeEntered
 

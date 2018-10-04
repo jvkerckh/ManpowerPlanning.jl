@@ -1,7 +1,7 @@
 # This file holds the definition of the functions pertaining to the Condition
 #   type.
 
-# The functions of the Transition type require the State type.
+# The functions of the Transition type require no other types.
 requiredTypes = [ "condition" ]
 
 for reqType in requiredTypes
@@ -19,7 +19,7 @@ end  # for reqType in requiredTypes
 
 relationFunctions = Dict( "IS" => ==, "IS NOT" => !=, "IN" => ∈, "NOT IN" => ∉,
     ">" => >, ">=" => >=, "<" => <, "<=" => <= )
-timeAttrs = [ "age", "tenure", "time_in_state" ]
+timeAttrs = [ "age", "tenure", "time in state" ]
 
 
 function processCondition( attr::String, rel::String, val::T ) where T <: Union{Real, String}

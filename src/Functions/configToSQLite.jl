@@ -46,7 +46,7 @@ function saveSimConfigToDatabase( mpSim::ManpowerSimulation, dbName::String,
     command = "BEGIN TRANSACTION"
     SQLite.execute!( configDB, command )
 
-    try
+    # try
         readGeneralParsFromSim( mpSim, configDB, configName )
         readAttributesFromSim( mpSim, configDB, configName )
         readAttritionFromSim( mpSim, configDB, configName )
@@ -54,11 +54,11 @@ function saveSimConfigToDatabase( mpSim::ManpowerSimulation, dbName::String,
         readTransitionsFromSim( mpSim, configDB, configName )
         readRecruitmentFromSim( mpSim, configDB, configName )
         readRetirementFromSim( mpSim, configDB, configName )
-    catch errType
-        command = "COMMIT"
-        SQLite.execute!( configDB, command )
-        error( errType )
-    end
+    # catch errType
+    #     command = "COMMIT"
+    #     SQLite.execute!( configDB, command )
+    #     error( errType )
+    # end
 
     command = "COMMIT"
     SQLite.execute!( configDB, command )
@@ -140,6 +140,11 @@ end  # readGeneralParsFromSim( mpSim, configDB, configName )
 function readAttributesFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
 
+    # Don't read anything if there aren't any attributes defined.
+    if isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList )
+        return
+    end  # if isempty( mpSim.initAttrList ) && ...
+
     # Read every single attribute.
     attrInserts = map( attr -> saveAttributeToDatabase( attr ),
         vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
@@ -189,6 +194,11 @@ end  # saveAttritionToDatabase( attrScheme )
 
 function readStatesFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
+
+    # Don't read anything if there aren't any states defined.
+    if isempty( mpSim.stateList )
+        return
+    end  # if isempty( mpSim.stateList )
 
     # Read every single state.
     stateInserts = map( state -> saveStateToDatabase( mpSim.stateList[ state ],
@@ -240,6 +250,10 @@ function readTransitionsFromSim( mpSim::ManpowerSimulation,
         end  # for trans in stateList[ state ]
     end  # for state in keys( stateList )
 
+    # Don't do anything if there aren't any transitions defined.
+    if isempty( transInserts )
+    end  # if isempty( transInserts )
+
     command = "INSERT INTO $configName
         (parName, parType, boolPar, strPar) VALUES
         $(join( transInserts, ", " ))"
@@ -287,6 +301,11 @@ end  # saveTransitionToDatabase( trans::Transition )
 
 function readRecruitmentFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
+
+    # Don't do anything if there aren't any recruitment schemes defined.
+    if isempty( mpSim.recruitmentSchemes )
+        return
+    end  # if isempty( mpSim.recruitmentSchemes )
 
     # Read every single recruitment scheme.
     recInserts = map( recScheme -> saveRecruitmentToDatabase( recScheme ),
