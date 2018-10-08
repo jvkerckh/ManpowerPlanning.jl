@@ -96,6 +96,11 @@ end  # readParFileToDatabase( fileName, dbName )
 # Non-exported methods.
 # ==============================================================================
 
+relationEntries = Dict{Function, String}( Base.:(==) => "IS",
+    Base.:(!=) => "IS NOT", Base.:∈ => "IN", Base.:∉ => "NOT IN",
+    Base.:> => ">", Base.:(>=) => ">=", Base.:< => "<", Base.:(<=) => "<=" )
+
+
 function createConfigTable( configName::String, configDB::SQLite.DB )::Void
 
     SQLite.drop!( configDB, configName, ifexists = true )
@@ -273,7 +278,8 @@ function saveTransitionToDatabase( trans::Transition )::String
 
     for ii in eachindex( trans.extraConditions )
         cond = trans.extraConditions[ ii ]
-        condList[ ii ] = "$(cond.attr):$(cond.rel):"
+        condRel = relationEntries[ cond.rel ]
+        condList[ ii ] = "$(cond.attr):$condRel:"
 
         if isa( cond.val, Vector )
             condList[ ii ] *= join( cond.val, "//" )

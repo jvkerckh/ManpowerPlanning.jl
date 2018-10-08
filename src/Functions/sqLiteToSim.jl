@@ -8,12 +8,14 @@ export configureSimFromDatabase
 ```
 configureSimFromDatabase( mpSim::ManpowerSimulation,
                           dbName::String,
+                          overWriteResults:Bool = true;
                           configName::String = "config" )
 ```
 This function configures the manpower simulation `mpSim` form the configuration
 table with name `configName` in the SQLite database with filename `dbName`. If
-the database is missing the appropriate extension, `.sqlite`, it will be
-appended to the name.
+the flag `overWriteResults` is set to `true`, the results of the previous
+simulation, if any, will be wiped. If the database is missing the appropriate
+extension, `.sqlite`, it will be appended to the name.
 
 The function returns a `Bool`, indicating whether the configuration was
 succesful or if the database was corrupted.
@@ -328,6 +330,12 @@ function readStatesFromDatabase( configDB::SQLite.DB,
                 mpSim.defaultAttritionScheme :
                 mpSim.attritionSchemes[ schemeName ]
             setStateAttritionScheme!( newState, attrScheme )
+        elseif stateAttr[ 1 ] == "Attrition"
+            # This one is necessary because generated attrition schemes start
+            #   with "Attrition:".
+            schemeName = join( stateAttr, ":" )
+            attrScheme = mpSim.attritionSchemes[ schemeName ]
+            setStateAttritionScheme!( newState, attrScheme )
         else
             setStateAttritionScheme!( newState,
                 parse( Float64, stateAttr[ 2 ] ),
@@ -383,9 +391,16 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
             for cond in conds
                 condParts = split( cond, ":" )
                 condVal = tryparse( Float64, condParts[ 3 ] )
-                newCond = ManpowerPlanning.processCondition( String( strip( condParts[ 1 ] ) ),
-                    String( strip( condParts[ 2 ] ) ), condVal.hasvalue ?
-                    condVal.value / 12.0 : String( strip( condParts[ 3 ] ) ) )
+
+                if condVal.hasvalue
+                    condVal = condVal.value / 12.0
+                else
+                    condVal = replace( strip( String( condParts[ 3 ] ) ), "//",
+                        "," )
+                end  # if condVal.hasvalue
+
+                newCond = processCondition( strip( String( condParts[ 1 ] ) ),
+                    strip( String( condParts[ 2 ] ) ), condVal )
                 addCondition!( newTrans, newCond[ 1 ] )
             end  # for cond in conds
         end  # if transPars[ 5 ] != "[]"

@@ -666,6 +666,8 @@ function runSimFromFile( fName::String )
     mpSim = ManpowerSimulation( fName )
     println( "Simulation initialised." )
 
+    isRunRequested = true
+
     XLSX.openxlsx( fName ) do xf
         # Make network plot if requested.
         if XLSX.hassheet( xf, "State Map" )
@@ -683,12 +685,13 @@ function runSimFromFile( fName::String )
 
         # Run only if flag is okay.
         sheet = xf[ "General" ]
-
-        if sheet[ "B11" ] == "NO"
-            println( "No simulation run requested." )
-            return
-        end  # if sheet[ "B11" ] == "NO"
+        isRunRequested = sheet[ "B14" ] == "YES"
     end  # XLSX.openxlsx( fName ) do xf
+
+    if !isRunRequested
+        println( "No simulation run requested." )
+        return
+    end  # if !isRunRequested
 
     println( "Running simulation." )
     tStart = now()

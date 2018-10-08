@@ -17,8 +17,8 @@ end  # for reqType in requiredTypes
 # ==============================================================================
 
 
-relationFunctions = Dict( "IS" => ==, "IS NOT" => !=, "IN" => ∈, "NOT IN" => ∉,
-    ">" => >, ">=" => >=, "<" => <, "<=" => <= )
+relationFunctions = Dict{String, Function}( "IS" => ==, "IS NOT" => !=,
+    "IN" => ∈, "NOT IN" => ∉, ">" => >, ">=" => >=, "<" => <, "<=" => <= )
 timeAttrs = [ "age", "tenure", "time in state" ]
 
 

@@ -16,15 +16,20 @@ initDB::Bool = false )`
 This function initalises the simulation `mpSim` from the Excel file with name
 `fileName`. If the flag `initDB` is set to `true`, the database will be properly
 initialised as well.
+
+This function returns a `Bool`, indicating whether the simulation has been
+succesfully initialised or not.
 """
 function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
-    initDB::Bool = true )::Void
+    initDB::Bool = true )::Bool
 
     # Do nothing if the file isn't an Excel file.
     if !endswith( fileName, ".xlsx" )
-        warn( "File is not an Excel file. Not making any changes." )
-        return
+        warn( "File is not an Excel file. Not making any changes. Simulation setting should not be relied upon." )
+        return false
     end  # if !endswith( fileName, ".xlsx" )
+
+    configSource = "Excel"
 
     XLSX.openxlsx( fileName ) do xf
         # Check if the file has the required sheets.
@@ -43,9 +48,13 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         sheet = xf[ "General" ]
 
         # Read database parameters.
-        if initDB
-            readDBpars( mpSim, sheet )
-        end  # if initDB
+        configSource = readDBpars( mpSim, sheet )
+
+        # Don't read Excel parameters if the source of the configuration is a
+        #   database.
+        if configSource != "Excel"
+            return
+        end  # if !isDBnew
 
         # Read general parameters.
         readGeneralPars( mpSim, sheet )
@@ -79,15 +88,48 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     end  # XLSX.openxlsx( fileName ) do xf
 
     # Make sure the databases are okay, and save configuration to database.
-    initialise( mpSim )
-    saveSimConfigToDatabase( mpSim )
+    if configSource != "sameDB"
+        initialise( mpSim )
+        saveSimConfigToDatabase( mpSim )
+    end  # if isDBuninitialised
 
-    return
+    return true
 
 end  # initialiseFromExcel( mpSim, fileName )
 
 
-function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
+function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::String
+
+    isConfigFromDB = sheet[ "B11" ] == "YES"
+    configDBname = dirname( Base.source_path() )
+    tmpDBname = joinpath( mpSim.parFileName[ 1:(end-5) ], sheet[ "B4" ] )
+    tmpDBname *= endswith( tmpDBname, ".sqlite" ) ? "" : ".sqlite"
+
+    if isConfigFromDB
+        tmpConfigName = sheet[ "B12" ]
+
+        if isa( tmpConfigName, Missings.Missing )
+            warn( "No database entered to get configuration from. Configuring simulation from Excel sheet." )
+            isConfigFromDB = false
+        else
+            configDBname = joinpath( configDBname, tmpConfigName )
+            configDBname *= endswith( configDBname, ".sqlite" ) ? "" : ".sqlite"
+
+            if ispath( configDBname )
+                isRerun = ( configDBname == tmpDBname ) &&
+                    ( sheet[ "B14" ] == "YES" )
+                configureSimFromDatabase( mpSim, configDBname, isRerun )
+
+                # Don't make any further changes if the database is the same.
+                if configDBname == tmpDBname
+                    return "sameDB"
+                end  # if configDBname == tmpDBname
+            else
+                warn( "Database '$configDBname' does not exist. Configuring simulation from Excel sheet." )
+                isConfigFromDB = false
+            end  # if ispath( configDBname )
+        end  # if isa( tmpDBname, Missings.Missing )
+    end  # if isConfigFromDB
 
     # This block creates the database file if necessary and opens a link to it.
     try
@@ -95,8 +137,6 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
     catch
     end
 
-    tmpDBname = joinpath( mpSim.parFileName[ 1:(end-5) ],
-        sheet[ "B4" ] * ".sqlite" )
     println( "Database file \"$tmpDBname\" ",
         isfile( tmpDBname ) ? "exists" : "does not exist", "." )
     mpSim.dbName = tmpDBname
@@ -119,7 +159,7 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::Void
         warn( "Results for a simulation called \"$(mpSim.simName)\" already in database. These will be overwritten." )
     end  # if mpSim.personnelDBname ∈ tmpTableList
 
-    return
+    return isConfigFromDB ? "otherDB" : "Excel"
 
 end  # readDBpars( mpSim, sheet )
 
