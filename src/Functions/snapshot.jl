@@ -196,26 +196,27 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
             contents[ ii, end ] = computeExpectedRetirementTime(
                 mpSim, mpSim.retirementScheme, contents[ ii, ageColIndex ],
                 stateRetAge, contents[ ii, recColIndex ] )
+            attrScheme = mpSim.defaultAttritionScheme
+            transTime = lastTransTime[ ii ]
+            timeOfAttr = transTime
 
             # Add person to state list.
             for stateName in persStates
                 state = mpSim.stateList[ stateName ]
-                transTime = lastTransTime[ ii ]
                 state.inStateSince[ id ] = transTime
                 state.isLockedForTransition[ id ] = false
                 attrScheme = state.attrScheme
-                timeOfAttr = transTime
-
-                while isa( timeOfAttr, Real ) && ( timeOfAttr <= 0.0 )
-                    timeOfAttr = generateTimeOfAttrition( attrScheme,
-                        transTime )
-                end  # while isa( timeOfAttr, Real )
-
-                attritionSchemes[ ii ] = attrScheme.name
-                attritionTimes[ ii ] = timeOfAttr
                 push!( transCmd,
                     "('$id', $transTime, 'snapshot', '$stateName')" )
             end  # for state in persStates
+
+            while isa( timeOfAttr, Real ) && ( timeOfAttr <= 0.0 )
+                timeOfAttr = generateTimeOfAttrition( attrScheme,
+                    transTime )
+            end  # while isa( timeOfAttr, Real )
+
+            attritionSchemes[ ii ] = attrScheme.name
+            attritionTimes[ ii ] = timeOfAttr
         end  # for ii in 1:nEffectiveEntries
 
         map!( dataPoint -> isa( dataPoint, String ) ? "'" * dataPoint * "'" :

@@ -3,7 +3,10 @@
 *.jl.mem
 *.sqlite*
 *.xlsx#
-testReport.xlsx
+*testReport*.xlsx
+*testFluxReport*.xlsx
+*.graphml
+*.pdf
 .cache*
 dependency graphs/*
 unit tests/*

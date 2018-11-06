@@ -51,6 +51,8 @@ function saveSimConfigToDatabase( mpSim::ManpowerSimulation, dbName::String,
         readAttributesFromSim( mpSim, configDB, configName )
         readAttritionFromSim( mpSim, configDB, configName )
         readStatesFromSim( mpSim, configDB, configName )
+        readCompoundStatesFromSim( mpSim, configDB, configName )
+        readTransTypesFromSim( mpSim, configDB, configName )
         readTransitionsFromSim( mpSim, configDB, configName )
         readRecruitmentFromSim( mpSim, configDB, configName )
         readRetirementFromSim( mpSim, configDB, configName )
@@ -222,7 +224,7 @@ function saveStateToDatabase( state::State, mpSim::ManpowerSimulation )::String
     reqList = collect( keys( state.requirements ) )
     map!( attr -> "$attr:$(join( state.requirements[ attr ], "//" ))", reqList,
         reqList )
-    stateEntry = "('$(state.name)', 'State', $(state.stateTarget),"
+    stateEntry = "('$(state.name)', 'State', $(state.stateTarget), "
     stateEntry *= "$(state.stateRetAge), '$(state.isInitial)', '["
     stateEntry *= join( reqList, "," ) * "];"
 
@@ -242,6 +244,76 @@ function saveStateToDatabase( state::State, mpSim::ManpowerSimulation )::String
 end  # saveStateToDatabase( state, attrName, configDB, configName )
 
 
+function readCompoundStatesFromSim( mpSim::ManpowerSimulation,
+    configDB::SQLite.DB, configName::String )::Void
+
+    # Don't read anything if there aren't any compound states defined.
+    if isempty( mpSim.compoundStates ) && isempty( mpSim.compoundStateList )
+        return
+    end  # if isempty( mpSim.stateList )
+
+    # Read every single compound state.
+    compStateInserts = vcat( map( compState -> saveCompStateToDatabase(
+        mpSim.compoundStates[ compState ], mpSim ),
+        keys( mpSim.compoundStates ) ), map(
+        compState -> saveCompStateToDatabase(
+        mpSim.compoundStateList[ compState ], mpSim ),
+        keys( mpSim.compoundStateList ) ) )
+    command = "INSERT INTO $configName
+        (parName, parType, intPar, boolPar, strPar) VALUES
+        $(join( compStateInserts, ", " ))"
+    SQLite.execute!( configDB, command )
+    return
+
+end  # readCompoundStatesFromSim( mpSim, configDB, configName )
+
+
+function saveCompStateToDatabase( state::State,
+    mpSim::ManpowerSimulation )::String
+
+    reqList = collect( keys( state.requirements ) )
+    map!( attr -> "$attr:$(state.requirements[ attr ][ 1 ])", reqList, reqList )
+    stateEntry = "('$(state.name)', 'Compound state', $(state.stateTarget), "
+    stateEntry *= "'false', '" * join( reqList, ";" ) * "')"
+    return stateEntry
+
+end  # saveCompStateToDatabase( state, mpSim )
+
+
+function saveCompStateToDatabase( compState::CompoundState,
+    mpSim::ManpowerSimulation )::String
+
+    stateEntry = "('$(compState.name)', 'Compound state', "
+    stateEntry *= "$(compState.stateTarget), 'false', '"
+    stateEntry *= join( compState.stateList, ";" ) * "')"
+    return stateEntry
+
+end  # saveCompStateToDatabase( state, mpSim )
+
+
+
+function readTransTypesFromSim( mpSim::ManpowerSimulation,
+    configDB::SQLite.DB, configName::String )::Void
+
+    # Don't do anything if there aren't any transition types defined.
+    if isempty( mpSim.transList )
+        return
+    end  # if isempty( transInserts )
+
+    transTypeInserts = map( keys( mpSim.transList ) ) do trans
+        return "('$trans', 'Transition type', $(mpSim.transList[ trans ]))"
+    end  # map( keys( transList ) ) do
+
+    command = "INSERT INTO $configName
+        (parName, parType, intPar) VALUES
+        $(join( transTypeInserts, ", " ))"
+    SQLite.execute!( configDB, command )
+
+    return
+
+end  # readTransTypesFromSim( mpSim, configDB, configName )
+
+
 function readTransitionsFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
 
@@ -257,21 +329,22 @@ function readTransitionsFromSim( mpSim::ManpowerSimulation,
 
     # Don't do anything if there aren't any transitions defined.
     if isempty( transInserts )
+        return
     end  # if isempty( transInserts )
 
     command = "INSERT INTO $configName
-        (parName, parType, boolPar, strPar) VALUES
+        (parName, parType, strPar) VALUES
         $(join( transInserts, ", " ))"
     SQLite.execute!( configDB, command )
 
     return
 
-end  # readStatesFromSim( mpSim, configDB, configName )
+end  # readTransitionsFromSim( mpSim, configDB, configName )
 
 
 function saveTransitionToDatabase( trans::Transition )::String
 
-    transEntry = "('$(trans.name)', 'Transition', '$(trans.isFiredOnFail)', '"
+    transEntry = "('$(trans.name)', 'Transition', '"
     transEntry *= "$(trans.startState.name);$(trans.endState.name);"
     transEntry *= "$(trans.freq);$(trans.offset);["
     condList = Vector{String}( length( trans.extraConditions ) )
@@ -298,8 +371,8 @@ function saveTransitionToDatabase( trans::Transition )::String
 
     transEntry *= join( changeList, "," ) * "];["
     transEntry *= join( trans.probabilityList, "," ) * "];"
-    transEntry *= "$(trans.maxAttempts);$(trans.maxFlux)"
-    transEntry *= "')"
+    transEntry *= "$(trans.maxAttempts);$(trans.isFiredOnFail);"
+    transEntry *= "$(trans.maxFlux);$(trans.hasPriority)')"
     return transEntry
 
 end  # saveTransitionToDatabase( trans::Transition )

@@ -5,12 +5,12 @@
 #   Distributions.
 
 # The ManpowerSimulation type requires all the other types.
-requiredTypes = [ "prerequisite",
+requiredTypes = [ "prerequisite", "attrition", "state", "compoundState",
     "prerequisiteGroup", "recruitment", "retirement", "simulationReport" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -70,8 +70,15 @@ type ManpowerSimulation
     otherStateList::Dict{State, Vector{Transition}}
     stateList::Dict{String, State}
 
-    # The transitions.
-    transList::Dict{String, Transition}
+    # The compound states. The first is for the compound states from catalogue,
+    #   so they can be properly processed at runtime and inserted into the
+    #   the second list (which retains the component states of each compound
+    #   state).
+    compoundStates::Dict{String, State}
+    compoundStateList::Dict{String, CompoundState}
+
+    # The names of the transitions.
+    transList::Dict{String, Int}
 
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
@@ -101,7 +108,7 @@ type ManpowerSimulation
     attrExecTimeElapsed::Dates.Millisecond
 
     # The priorities of the various simulation phases.
-    phasePriorities::Dict{Symbol, Int8}
+    phasePriorities::Dict{Symbol, Int}
 
     # The length of the simulation.
     simLength::Float64
@@ -163,7 +170,9 @@ type ManpowerSimulation
         newMPsim.initStateList = Dict{State, Vector{Transition}}()
         newMPsim.otherStateList = Dict{State, Vector{Transition}}()
         newMPsim.stateList = Dict{String, State}()
-        newMPsim.transList = Dict{String, Transition}()
+        newMPsim.compoundStates = Dict{String, State}()
+        newMPsim.compoundStateList = Dict{String, CompoundState}()
+        newMPsim.transList = Dict{String, Int}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
         newMPsim.defaultAttritionScheme = Attrition( "default" )
         newMPsim.attritionSchemes = Dict{String, Attrition}()
@@ -173,9 +182,9 @@ type ManpowerSimulation
         newMPsim.sim = Simulation()
         newMPsim.simTimeElapsed = Dates.Millisecond( 0 )
         newMPsim.attrExecTimeElapsed = Dates.Millisecond( 0 )
-        newMPsim.phasePriorities = Dict( :attrCheck => 10,
-            :recruitment => 20,
-            :transition => 30,
+        newMPsim.phasePriorities = Dict( :attrCheck => typemin( Int ),
+            :recruitment => typemin( Int ) + 1,
+            # :transition => 30,
             :retirement => 40,
             :attrition => 50 )
         newMPsim.simLength = 1.0
@@ -188,10 +197,11 @@ type ManpowerSimulation
     function ManpowerSimulation( configFileName::String )
 
         newMPsim = ManpowerSimulation()
-        newMPsim.parFileName = joinpath( dirname( Base.source_path() ),
-            configFileName )
+        tmpPath = Base.source_path()
+        tmpPath = tmpPath isa Void ? "" : dirname( tmpPath )
+        newMPsim.parFileName = joinpath( tmpPath, configFileName )
         initialiseFromExcel( newMPsim, configFileName )
-        initialise( newMPsim )
+        # initialise( newMPsim )
         return newMPsim
 
     end  # ManpowerSimulation( configFileName )

@@ -50,10 +50,10 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
         nPlots = plotSheet[ "B8" ]
         plotList = Dict{Tuple{Float64, Bool},
             Vector{Tuple{String, Vector{Bool}}}}()
-        plotFlags = Vector{Bool}( 7 )
 
         # Get all requested transitions and time resolutions.
         for ii in 1:nPlots
+            plotFlags = Vector{Bool}( 7 )
             jj = ii + 11
             stateName = plotSheet[ "A$jj" ]
             stateName = isa( stateName, Missings.Missing ) ? "active" :
@@ -78,9 +78,8 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
                 stateName, plotFlags = plotInfo
                 plotSimulationResults( mpSim, timeKey[ 1 ],
                     toShow[ plotFlags[ 1:4 ] ]..., state = stateName,
-                    timeFactor = 12, isByTransition = timeKey[ 2 ],
-                    showBreakdowns = ( plotFlags[ 5 ], plotFlags[ 6 ],
-                        plotFlags[ 7 ] ) )
+                    timeFactor = 12, showBreakdowns = ( plotFlags[ 5 ],
+                        plotFlags[ 6 ], plotFlags[ 7 ] ) )
             end  # for timeKey in keys( plotList )
         end  # if showPlots
 
@@ -88,9 +87,9 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
             for timeKey in keys( plotList )
                 stateList = map( plotInfo -> plotInfo[ 1 ],
                     plotList[ timeKey ] )
-                generateExcelReport( mpSim, timeKey[ 1 ], timeKey[ 2 ],
-                    stateList..., fileName = reportFileName,
-                    overWrite = overWrite, timeFactor = 12 )
+                generateExcelReport( mpSim, timeKey[ 1 ], stateList...,
+                    fileName = reportFileName, overWrite = overWrite,
+                    timeFactor = 12 )
                 overWrite = false
             end  # for timeKey in keys( plotList )
         end  # if reportFileName != ""
@@ -289,7 +288,6 @@ plotSimulationResults( mpSim::ManpowerSimulation,
                        timeRes::T1,
                        toShow::String...;
                        state::String = "active",
-                       isByTransition::Bool = false,
                        showBreakdowns::Tuple{Bool, Bool, Bool} = ( false, false, false ),
                        timeFactor::T2 = 12 )::Void
     where T1 <: Real where T2 <: Real
@@ -303,8 +301,6 @@ the information in `toShow`. Only the values `"personnel"`, `"flux in"`,
 * The parameter `countBreakdownBy` indicates the attribute by which the
   (sub)population counts are broken down. If this is empty, or a non-existent
   attribute, no breakdown occurs.
-* The flag `isByTransition` indicates whether the in/out fluxes are broken down
-  by transition, or by target/source state.
 * The flags in the parameter `showBreakdowns` indicate which types of breakdown
   plots are shown. The first flag is for regular line plots, the second for
   stacked area plots, the third for stacked percentage area plots.
@@ -319,7 +315,7 @@ Remark that the percentage plots show a total of 0 at the times the investigated
 (sub)population is empty [similar to Excel].
 """
 function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
-    toShow::String...; state::String = "active", isByTransition::Bool = true,
+    toShow::String...; state::String = "active",
     showBreakdowns::Tuple{Bool, Bool, Bool} = ( false, false, false ),
     timeFactor::T2 = 12 )::Void where T1 <: Real where T2 <: Real
 
@@ -333,11 +329,10 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
     end  # if isempty( tmpShow )
 
     # Generate the reports for the requested state.
-    personnelCounts = generateCountReport( mpSim, timeRes, state )
-    fluxInCounts = generateFluxReport( mpSim, timeRes, true, isByTransition,
-        state )
-    fluxOutCounts = generateFluxReport( mpSim, timeRes, false, isByTransition,
-        state )
+    fluxInCounts = generateFluxReport( mpSim, timeRes, true, state )
+    fluxOutCounts = generateFluxReport( mpSim, timeRes, false, state )
+    personnelCounts = generateCountReport( mpSim, state, fluxInCounts,
+        fluxOutCounts )
     timeGrid = personnelCounts[ 1 ] ./ timeFactor
 
     # Make a plot of the totals.
@@ -374,7 +369,7 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
     return
 
 end  # plotSimulationResults( mpSim, timeRes, toShow...; state,
-     #   countBreakdownBy, isBreakdown, isByTransition, breakdownPlotStyle,
+     #   countBreakdownBy, isBreakdown, breakdownPlotStyle,
      #   timeFactor )
 
 
@@ -476,110 +471,8 @@ This function returns `nothing`.
 function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
     fileName::String = "" )::Void
 
-    # Filter out non-existing nodes.
-    stateList = merge( mpSim.initStateList, mpSim.otherStateList )
-    tmpStates = collect( Iterators.filter(
-        stateName -> any( state -> state.name == stateName, keys( stateList ) ),
-        states ) )
-    graphStates = tmpStates
-    graphTrans = Vector{String}()
-
-    # Initialise directed graph.
-    nStates = length( graphStates )
-    graph = MetaDiGraph( DiGraph( nStates + 2 ) )
-    inNodeIndex = nStates + 1
-    outNodeIndex = nStates + 2
-    set_prop!( graph, nStates + 1, :state, "In" )
-    set_prop!( graph, nStates + 2, :state, "Out" )
-
-    # Add node labels and transitions for initial states.
-    for ii in eachindex( tmpStates )
-        set_prop!( graph, ii, :state, tmpStates[ ii ] )
-        state = mpSim.stateList[ tmpStates[ ii ] ]
-
-        # Add recruitment edge for initial state.
-        if haskey( mpSim.initStateList, state )
-            add_edge!( graph, inNodeIndex, ii )
-            set_prop!( graph, inNodeIndex, ii, :trans, "recruitment" )
-        end  # if any( state -> state.name == tmpStates[ ii ], ...
-
-        # Add retirement edge for states with defined retirement scheme.
-        retScheme = mpSim.retirementScheme
-
-        if ( isa( retScheme, Retirement ) &&
-            ( ( retScheme.maxCareerLength != 0.0 ) ||
-                ( retScheme.retireAge != 0.0 ) ) ) ||
-            ( state.stateRetAge != 0.0 )
-            add_edge!( graph, ii, outNodeIndex )
-            set_prop!( graph, ii, outNodeIndex, :trans, "retirement" )
-        end  # if ( isa( retScheme, Retirement ) && ...
-    end  # for ii in eachindex( tmpStates )
-
-    push!( graphStates, "In", "Out" )
-    nStates += 2
-
-    # Add all other transitions.
-    for state in keys( stateList )
-        # Is the state in the original list?
-        if state.name ∈ tmpStates
-            # Find its index.
-            startStateIndex = findfirst( tmpState -> tmpState == state.name,
-                tmpStates )
-
-            # Add all transitions starting from there.
-            for trans in stateList[ state ]
-                endStateIndex = findfirst(
-                    tmpState -> tmpState == trans.endState.name, graphStates )
-
-                # If end state hasn't been put in the list, add it.
-                if endStateIndex == 0
-                    add_vertex!( graph )
-                    push!( graphStates, trans.endState.name )
-                    nStates += 1
-                    set_prop!( graph, nStates, :state, trans.endState.name )
-                    endStateIndex = nStates
-                end  # if endStateIndex == 0
-
-                add_edge!( graph, startStateIndex, endStateIndex )
-                set_prop!( graph, startStateIndex, endStateIndex, :trans,
-                    trans.name )
-
-                if trans.isFiredOnFail
-                    add_edge!( graph, startStateIndex, outNodeIndex )
-                    set_prop!( graph, startStateIndex, outNodeIndex, :trans,
-                        "fired\n(failed $(trans.name))" )
-                end  # if trans.isFiredOnFail
-            end  # for trans in stateList[ state ]
-        else
-            startStateIndex = findfirst( tmpState -> tmpState == state.name,
-                graphStates )
-            isStateCreated = startStateIndex > 0
-
-            for trans in stateList[ state ]
-                endStateIndex = findfirst(
-                    tmpState -> tmpState == trans.endState.name, tmpStates )
-                # Add the transition if the end state is in the list of original
-                #   states.
-                if endStateIndex > 0
-                    # Create the state if it isn't in the list.
-                    if !isStateCreated
-                        add_vertex!( graph )
-                        push!( graphStates, trans.startState.name )
-                        nStates += 1
-                        set_prop!( graph, nStates, :state,
-                            trans.startState.name )
-                        startStateIndex = nStates
-                        isstateCreated = true
-                    end  # if !isStateCreated
-
-                    add_edge!( graph, startStateIndex, endStateIndex )
-                    set_prop!( graph, startStateIndex, endStateIndex, :trans,
-                        trans.name )
-                end  # if trans.endState.name ∈ tmpStates
-            end  # for trans in stateList[ state ]
-        end  # if state.name ∈ graphStates
-    end  # for state in keys( stateList )
-
+    graph, inNodeIndex, outNodeIndex = buildTransitionNetwork( mpSim,
+        states... )
     display( gplot( graph,
         nodelabel = map( node -> get_prop( graph, node, :state ),
         vertices( graph ) ),
@@ -748,7 +641,6 @@ function readPlotInfoFromFile( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
         sheet[ XLSX.CellRef( 10, colNum ) ] == "YES" ]
     plotSimulationResults( mpSim, plotRes, toShow[ tmpToShow ]...;
         state = state, timeFactor = 12,
-        isByTransition = sheet[ XLSX.CellRef( 12, colNum ) ] == "YES",
         showBreakdowns = ( sheet[ XLSX.CellRef( 13, colNum ) ] == "YES",
             sheet[ XLSX.CellRef( 14, colNum ) ] == "YES",
             sheet[ XLSX.CellRef( 15, colNum ) ] == "YES" ) )

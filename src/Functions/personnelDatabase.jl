@@ -7,15 +7,13 @@ requiredTypes = [ "personnel", "personnelDatabase" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), "..", "Types",
-            reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
 
 # Load in the type aliases.
-include( joinpath( dirname( Base.source_path() ), "..", "Types",
-    "typeAliases.jl" ) )
+include( joinpath( typePath, "typeAliases.jl" ) )
 
 
 # This function tests if the database has the requested attribute.

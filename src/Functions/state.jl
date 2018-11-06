@@ -5,8 +5,7 @@ requiredTypes = [ "attrition", "state" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), "..", "Types",
-            reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -392,3 +391,61 @@ function isPersonnelOfState( persAttrs::Dict{String, Any}, state::State )::Bool
     return true
 
 end  # isPersonnelOfState( persAttrs, state )
+
+
+"""
+```
+orderStates( mpSim::ManpowerSimulation )
+```
+This function orders the states in the manpower simulation `mpSim` in such a
+manner that a lower ordered state does not have any transitions to a higher
+ordered state.
+
+This function returns a `Vector{String}`, the list of ordered states.
+"""
+function orderStates( mpSim::ManpowerSimulation )::Vector{String}
+
+    # Build a graph of the network.
+    graph = ManpowerPlanning.buildTransitionNetwork( mpSim,
+        keys( mpSim.stateList )... )[ 1 ]
+
+    # Initialises the lists.
+    sortedNodes = Vector{Int}()
+    unsortedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
+
+    # For each node, find the first state in the sorted node list for which a
+    #   transition state -> node exists. Insert the new node before the found
+    #   transition.
+    while !isempty( unsortedNodes )
+        node = unsortedNodes[ 1 ]
+
+        # Only insert the new node if it's the first one, or if it has any links
+        #   to already sorted states. Otherwise, put it at the end of the
+        #   unsorted node list.
+        if isempty( sortedNodes ) || any( jj -> has_edge( graph, node, jj ) ||
+                has_edge( graph, jj, node ), sortedNodes )
+            firstFailIndex = findfirst( jj -> has_edge( graph, jj, node ),
+                sortedNodes )
+            lastFailIndex = findlast( jj -> has_edge( graph, node, jj ),
+                sortedNodes )
+
+            if firstFailIndex == 0
+                # if lastFailIndex == 0
+                    push!( sortedNodes, node )
+                # else
+                #     insert!( sortedNodes, lastFailIndex + 1, node )
+                # end  # if lastFailIndex == 0
+            else
+                insert!( sortedNodes, firstFailIndex, node )
+            end  # if firstFailIndex == 0
+
+            deleteat!( unsortedNodes, 1 )
+        else
+            unsortedNodes = vcat( unsortedNodes[ 2:end ], unsortedNodes[ 1 ] )
+        end  # if isempty( sortedNodes ) || ...
+
+    end  # while !isempty( unsortedNodes )
+
+    return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
+
+end  # orderStates( mpSim::ManpowerSimulation )

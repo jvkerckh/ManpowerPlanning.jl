@@ -6,7 +6,7 @@ requiredTypes = [ "state" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -24,8 +24,6 @@ The type contains the following fields:
 * `freq::Float64`: the time between two checks in the transition's schedule.
 * `offset::Float64`: the offset of the transition's schedule with respect to the
   start of the simulation.
-* `minTime::Float64`: the minimum time a personnel member must hold the start
-  state before he's allowed to make the transition.
 * `extraConditions::Vector{Condition}`: the extra conditions that must be
   satisfied before the transition can take place.
 * `extraChanges::Vector{PersonnelAttribute}`: the extra changes to attributes
@@ -40,8 +38,15 @@ The type contains the following fields:
   if he fails to make the transition in the provided number of attempts.
 * `maxFlux::Int`: the maximum number of people that can undergo the transition
   at the same time.
-* `currentFlux::Int`: the number of people who already underwent the transition
-  at the current time point.
+* `hasPriority::Bool`: a flag indicating that this transition can override the
+  target population of the transition's target state. If the flag is `true`, it
+  means that if the max flux of the state is 15, and only 10 spots are available
+  in the target state, 15 people will undergo the transition nonetheless. If the
+  flag is `false`, 10 persons would.
+* `transPriority::Int`: the priority in the simulation on which the transition
+  gets executed. This priority will be 0 for transitions with the `hasPriority`
+  flag set to `true`, and < 0 otherwise. A priority == 1 means it needs to be
+  determined first.
 """
 type Transition
 
@@ -50,7 +55,6 @@ type Transition
     endState::State
     freq::Float64
     offset::Float64
-    # minTime::Float64
     extraConditions::Vector{Condition}
     extraChanges::Vector{PersonnelAttribute}
     probabilityList::Vector{Float64}
@@ -58,7 +62,8 @@ type Transition
     timeBetweenAttempts::Float64
     isFiredOnFail::Bool
     maxFlux::Int
-    currentFlux::Int
+    hasPriority::Bool
+    transPriority::Int
 
     # Basic constructor.
     function Transition( name::String, startState::State, endState::State;
@@ -87,7 +92,6 @@ type Transition
         newTrans.endState = endState
         newTrans.freq = freq
         newTrans.offset = offset % freq + ( offset < 0.0 ? freq : 0.0 )
-        # newTrans.minTime = minTime
         newTrans.extraConditions = Vector{Condition}()
         newTrans.extraChanges = Vector{PersonnelAttribute}()
         newTrans.probabilityList = [ 1.0 ]
@@ -95,7 +99,8 @@ type Transition
         newTrans.timeBetweenAttempts = 0.0
         newTrans.isFiredOnFail = isFiredOnFail
         newTrans.maxFlux = -1
-        newTrans.currentFlux = 0
+        newTrans.hasPriority = false
+        newTrans.transPriority = 1
         return newTrans
 
     end  # Transition( name, startState, endState; freq, offset, minTime )

@@ -9,8 +9,7 @@ requiredTypes = [ "manpowerSimulation",
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), "..", "Types",
-            reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -539,7 +538,7 @@ end  # recruitmentCycle( mpSim, recScheme )
     recScheme = mpSim.recruitmentSchemes[ schemeNr ]
     timeToWait = recScheme.recruitOffset
     priority = mpSim.phasePriorities[ :recruitment ]
-    priority += Int8( recScheme.isAdaptive ? 0 : 1 )
+    priority += recScheme.isAdaptive ? 0 : 1
 
     while now( sim ) + timeToWait <= mpSim.simLength
         processTime += now() - tStart

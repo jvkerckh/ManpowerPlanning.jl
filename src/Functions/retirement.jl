@@ -9,8 +9,7 @@ requiredTypes = [ "manpowerSimulation",
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), "..", "Types",
-            reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -301,8 +300,8 @@ end  # computeExpectedRetirementTime( mpSim, ageAtRecruitment, timeEntered )
 
     retScheme = mpSim.retirementScheme
     timeOfNextRetirement = now( sim ) - retScheme.retireOffset
-    timeOfNextRetirement = ceil( timeOfNextRetirement /
-        retScheme.retireFreq ) * retScheme.retireFreq
+    timeOfNextRetirement = floor( timeOfNextRetirement /
+        retScheme.retireFreq + 1 ) * retScheme.retireFreq
     timeOfNextRetirement += retScheme.retireOffset
     priority = mpSim.phasePriorities[ :retirement ]
     queryCmd = "SELECT $(mpSim.idKey) FROM $(mpSim.personnelDBname)

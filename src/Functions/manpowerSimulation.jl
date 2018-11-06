@@ -14,8 +14,7 @@ requiredTypes = [ "recruitment",
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), "..", "Types",
-            reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -38,9 +37,9 @@ function setKey( mpSim::ManpowerSimulation, id::Union{Symbol, String} = "id" )
 end  # setKey!( mpSim, id )
 
 
-include( joinpath( dirname( Base.source_path() ), "parFileProcessing.jl" ) )
-include( joinpath( dirname( Base.source_path() ), "sqLiteToSim.jl" ) )
-include( joinpath( dirname( Base.source_path() ), "configToSQLite.jl" ) )
+include( joinpath( funcPath, "parFileProcessing.jl" ) )
+include( joinpath( funcPath, "sqLiteToSim.jl" ) )
+include( joinpath( funcPath, "configToSQLite.jl" ) )
 
 
 # This function sets the cap on the number of personnel in the simulation. Note
@@ -151,6 +150,16 @@ function removeState!( mpSim::ManpowerSimulation, stateName::String )::Void
         return
     end  # if !haskey( mpSim.stateList, stateName )
 
+    # Clear the state from all compound states it's a part of.
+    for compStateName in keys( mpSim.compoundStateList )
+        compState = mpSim.compoundStateList[ compStateName ]
+        stateInd = findfirst( stateName .== compState.stateList )
+
+        if stateInd != 0
+            deleteat!( compState.stateList, stateInd )
+        end  # if stateInd != 0
+    end  # for compStateName in keys( mpSim.compoundStateList )
+
     state = mpSim.stateList[ stateName ]
     isInitial = state.isInitial
     delete!( isInitial ? mpSim.initStateList : mpSim.otherStateList, state )
@@ -166,6 +175,7 @@ export clearStates!
 function clearStates!( mpSim::ManpowerSimulation )
 
     if now( mpSim ) == 0
+        empty!( mpSim.compoundStateList )
         empty!( mpSim.initStateList )
         empty!( mpSim.otherStateList )
         empty!( mpSim.stateList )
@@ -175,6 +185,119 @@ function clearStates!( mpSim::ManpowerSimulation )
     return
 
 end  # clearStates!( mpSim, state, isInitial )
+
+
+export addCompoundState!,
+       removeCompoundState!,
+       clearCompoundStates!
+"""
+```
+addCompoundState!( mpSim::ManpowerSimulation,
+                   compState::CompoundState )
+```
+This function adds the compound state `compState` to the manpower simulation
+`mpSim`. Ensure that all the states comprising the compound exist in the
+simulation as non-existent states will be removed from the compound state's
+composition. If a compound state with the same name already exists in the
+simulation, it will be overwritten.
+
+This function returns `nothing`.
+"""
+function addCompoundState!( mpSim::ManpowerSimulation,
+    compState::CompoundState )::Void
+
+    # Filter out the states that aren't defined.
+    stateInd = map( stateName -> !haskey( mpSim.stateList, stateName ),
+        compState.stateList )
+    deleteat!( compState.stateList, stateInd )
+
+    if haskey( mpSim.compoundStateList, compState.name )
+        warn( "Compound state with name '$(compState.name)' already exists. Overwriting." )
+    end  # if haskey( mpSim.compoundStateList, compState.name )
+
+    mpSim.compoundStateList[ compState.name ] = compState
+    return
+
+end  # addCompoundState!( mpSim, compState )
+
+
+"""
+```
+addCompoundState!( mpSim::ManpowerSimulation,
+                   compName::String,
+                   target::T,
+                   stateList::String... )
+    where T <: Integer
+```
+This function adds the compound state with name `compName`, personnel target
+`target`, and composed of the states in `stateList` to the manpower simulation
+`mpSim`. Ensure that all the states comprising the compound exist in the
+simulation as non-existent states will be removed from the compound state's
+composition. If a compound state with the same name already exists in the
+simulation, it will be overwritten.
+
+This function returns `nothing`.
+"""
+function addCompoundState!( mpSim::ManpowerSimulation, compName::String,
+    target::T, stateList::String... )::Void where T <: Integer
+
+    newCompState = CompoundState( compName )
+    setStateTarget!( newCompState, target )
+    addStateToCompound!( newCompState, stateList... )
+    addCompoundState!( mpSim, newCompState )
+    return
+
+end  # addCompoundState!( mpSim, compName, target, stateList )
+
+
+"""
+```
+removeCompoundState!( mpSim::ManpowerSimulation,
+                      stateList::String... )
+```
+This function removes the compound states with names in `stateList` from the
+manpower simulation `mpSim`.
+
+This function returns `nothing`.
+"""
+function removeCompoundState!( mpSim::ManpowerSimulation,
+    stateList::String... )::Void
+
+    foreach( stateList ) do
+        delete!( mpSim.compoundStateList, stateName )
+        delete!( mpSim.compoundStates, stateName )
+    end  # foreach( stateList ) do
+
+    return
+
+end  # removeCompoundState!( mpSim, stateList )
+
+
+"""
+```
+clearCompoundStates!( mpSim::ManpowerSimulation )
+```
+This function removes all compound states from the manpower simulation `mpSim`.
+
+This function returns `nothing`.
+"""
+function clearCompoundStates!( mpSim::ManpowerSimulation )::Void
+
+    empty!( mpSim.compoundStates )
+    empty!( mpSim.compoundStateList )
+    return
+
+end  # clearCompoundStates!( mpSim )
+
+
+export setTransTypePriority!
+function setTransTypePriority!( mpSim::ManpowerSimulation, transName::String,
+    prio::Int )::Void
+
+    mpSim.transList[ transName ] = prio
+    return
+
+end  # setTransTypePriority!( mpSim, transName, prio )
 
 
 # This function adds a personnel state transition.
@@ -189,7 +312,9 @@ function addTransition!( mpSim::ManpowerSimulation, trans::Transition )
             push!( mpSim.otherStateList[ trans.startState ], trans )
         end  # if isStartInit
 
-        mpSim.transList[ trans.name ] = trans
+        if !haskey( mpSim.transList, trans.name )
+            mpSim.transList[ trans.name ] = 0
+        end  # if !haskey( mpSim.transList, trans.name )
     end  # if now( mpSim ) == 0
 
     return
@@ -213,6 +338,57 @@ function clearTransitions!( mpSim::ManpowerSimulation )
     return
 
 end  # clearTransitions!( mpSim )
+
+
+function processTransPriorities( mpSim::ManpowerSimulation )::Void
+
+    transNames = collect( keys( mpSim.transList ) )
+    prios = map( transName -> mpSim.transList[ transName ], transNames )
+    prios[ prios .<= 0 ] = maximum( prios ) + 1
+    orderIndex = sortperm( prios )
+    transNames = transNames[ orderIndex ]
+    foreach( ii -> mpSim.transList[ transNames[ ii ] ] = ii,
+        eachindex( transNames ) )
+    return
+
+end  # processTransPriorities( mpSim )
+
+
+function assignTransPriorities( mpSim::ManpowerSimulation )::Void
+
+    stateList = orderStates( mpSim )
+    nTypes = length( mpSim.transList )
+    transPrio = 1
+
+    for ii in eachindex( stateList )
+        state = mpSim.stateList[ stateList[ ii ] ]
+        isInitial = haskey( mpSim.initStateList, state )
+        transList = isInitial ? mpSim.initStateList[ state ] :
+            mpSim.otherStateList[ state ]
+        transPrios = similar( transList, Int )
+
+        for jj in eachindex( transList )
+            trans = transList[ jj ]
+            transPrios[ jj ] = trans.hasPriority ? 0 :
+                mpSim.transList[ trans.name ]
+        end  # for jj in eachindex( transList )
+
+        orderIndex = sortperm( transPrios )
+
+        for jj in eachindex( transList )
+            kk = orderIndex[ jj ]
+            trans = transList[ kk ]
+            trans.transPriority = trans.hasPriority ? 0 : transPrio
+
+            if !trans.hasPriority
+                transPrio += 1
+            end  # if !trans.hasPriority
+        end  # for jj in eachindex( transList )
+    end  # for state in stateList
+
+    return
+
+end
 
 
 # This function adds a recruitment scheme to the simulation.
@@ -298,7 +474,7 @@ export setPhasePriority
 function setPhasePriority( mpSim::ManpowerSimulation, phase::Symbol,
     priority::T ) where T <: Integer
 
-    if ( phase ∉ [ :recruitment, :retirement, :attrition, :transition ] ) &&
+    if ( phase ∉ [ :recruitment, :retirement, :attrition, :attrCheck ] ) &&
         ( phase ∉ mpSim.workingDbase.attrs )
         warn( "Unknown simulation phase, not setting priority." )
         return
@@ -461,7 +637,7 @@ end
 
 
 # This file holds the database commit process.
-include( joinpath( dirname( Base.source_path() ), "dbManagement.jl" ) )
+include( joinpath( funcPath, "dbManagement.jl" ) )
 
 
 export configureSimFromGraph
@@ -591,7 +767,7 @@ end  # configureSimFromGraph( mpSim::ManpowerSimulation, graphFile::String )
 
 
 # This file holds the functions to upload an initial population snapshot.
-include( joinpath( dirname( Base.source_path() ), "snapshot.jl" ) )
+include( joinpath( funcPath, "snapshot.jl" ) )
 
 
 # This function runs the manpower simulation if it has been properly
@@ -603,7 +779,7 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         error( "Simulation not properly initialised. Cannot run." )
     end  # if !mpSim.isInitialised
 
-    # Set up the recruitment processes.  XXX Best way?
+    # Set up the recruitment processes and read initial population snapshot.
     if mpSim.isVirgin
         # We cannot write this with a map statement. The @process macro messes
         #   that up.
@@ -619,6 +795,9 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     toTime = 0.0
     oldSimTime = now( mpSim )
     mpSim.attrExecTimeElapsed = Dates.Millisecond( 0 )
+
+    # Process the compound states read from the catalogue.
+    processCompoundStates( mpSim )
 
     # Start the database commits.
     SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
@@ -712,7 +891,7 @@ end  # runSimFromFile( fName )
 
 
 # These are the functions that process simulation results.
-include( joinpath( dirname( Base.source_path() ), "simProcessing.jl" ) )
+include( joinpath( funcPath, "simProcessing.jl" ) )
 
 
 function Base.show( io::IO, mpSim::ManpowerSimulation )

@@ -1,12 +1,6 @@
 # This file creates the Manpower module, holding all the types, definitions, and
 #   methods for the manpower planning project.
 
-# XXX Not sure if this file needs to be defined outside the module...
-# include( joinpath( dirname( Base.source_path() ), "Functions",
-#     "ExcelWrapper.jl" ) )
-# isExcelOkay = true
-
-
 module ManpowerPlanning
     using SimJulia
     using ResumableFunctions
@@ -32,6 +26,7 @@ module ManpowerPlanning
         "attrition",
         "personnelAttribute",
         "state",
+        "compoundState",
         "condition",
         "transition",
 #        "personnel",
@@ -44,15 +39,17 @@ module ManpowerPlanning
         "manpowerSimulation"
     ]
 
+    rootPath = Base.source_path()
+    rootPath = rootPath isa Void ? "" : dirname( rootPath )
+    funcPath = joinpath( rootPath, "Functions" )
+    typePath = joinpath( rootPath, "Types" )
+
     # The types
-    map( mpType -> include( joinpath( dirname( Base.source_path() ),
-        "Types", mpType * ".jl" ) ), types )
+    map( mpType -> include( joinpath( typePath, mpType * ".jl" ) ), types )
 
     # Some union type aliases
-    include( joinpath( dirname( Base.source_path() ), "Types",
-        "typeAliases.jl" ) )
+    include( joinpath( typePath, "typeAliases.jl" ) )
 
     # The functions
-    map( mpType -> include( joinpath( dirname( Base.source_path() ),
-        "Functions", mpType * ".jl" ) ), types )
+    map( mpType -> include( joinpath( funcPath, mpType * ".jl" ) ), types )
 end  # module ManpowerPlanning

@@ -26,7 +26,9 @@ function initialiseFromSimplifiedExcel( mpSim::ManpowerSimulation,
         return
     end  # if !ispath( tmpFileName )
 
-    mpSim.parFileName = joinpath( dirname( Base.source_path() ), tmpFileName )
+    tmpPath = Base.source_path()
+    tmpPath = tmpPath isa Void ? "" : dirname( tmpPath )
+    mpSim.parFileName = joinpath( tmpPath, tmpFileName )
 
     XLSX.openxlsx( tmpFileName ) do xf
         pSheet = xf[ 1 ]
@@ -66,21 +68,25 @@ This function returns `nothing`.
 function readStatesAndAttrs( mpSim::ManpowerSimulation,
     pSheet::XLSX.Worksheet )::Void
 
+    nRows, nCols = XLSX.size( XLSX.get_dimension( pSheet ) )
+
     # Find the node block.
     nodeRow = 1
 
-    while isa( pSheet[ "A$nodeRow" ], Missings.Missing ) ||
-        ( pSheet[ "A$nodeRow" ] != "Knopen" )
+    while ( nodeRow <= nRows ) &&
+        ( isa( pSheet[ "A$nodeRow" ], Missings.Missing ) ||
+        ( pSheet[ "A$nodeRow" ] != "Knopen" )   )
         nodeRow += 1
-    end  # while pSheet[ "A$nodeRow" ] != "Knopen"
+    end  # while ( nodeRow <= nRows ) && ...
 
     # Find node block header row.
     nodeRow += 1
 
-    while isa( pSheet[ "A$nodeRow" ], Missings.Missing ) ||
-        ( pSheet[ "A$nodeRow" ] != "Name" )
+    while ( nodeRow <= nRows ) &&
+        ( isa( pSheet[ "A$nodeRow" ], Missings.Missing ) ||
+        ( pSheet[ "A$nodeRow" ] != "Name" ) )
         nodeRow += 1
-    end  # while pSheet[ "A$nodeRow" ] != "Name"
+    end  # while ( nodeRow <= nRows ) && ...
 
     # Find number of columns in node block.
     nCols = 1
@@ -95,7 +101,7 @@ function readStatesAndAttrs( mpSim::ManpowerSimulation,
             popCol = nCols
         elseif pSheet[ cRef ] == "Real"
             targetCol = nCols
-        end  # if pSheet[ XLSX.CellRef( nodeRow, nCols ) ] == "Pop?"
+        end  # if pSheet[ cRef ] == "Pop?"
     end  # while isa( pSheet[ XLSX.CellRef( nodeRow, nCols + 1 ) ], String )
 
     nAttrs = nCols - popCol
@@ -177,21 +183,44 @@ This function returns `nothing`.
 function readAllTransitions( mpSim::ManpowerSimulation,
     pSheet::XLSX.Worksheet )::Void
 
+    nRows, nCols = XLSX.size( XLSX.get_dimension( pSheet ) )
+
+    # Find the transition types block.
+    transTypeRow = 1
+
+    while ( transTypeRow <= nRows ) &&
+        ( isa( pSheet[ "B$transTypeRow" ], Missings.Missing ) ||
+        ( pSheet[ "B$transTypeRow" ] != "Transitietypes" ) )
+        transTypeRow += 1
+    end  # while ( transTypeRow <= nRows ) && ...
+
+    # Read all transition types and their priority.
+    transTypeRow += 1
+
+    while isa( pSheet[ "B$transTypeRow" ], String )
+        prio = pSheet[ "C$transTypeRow" ]
+        setTransTypePriority!( mpSim, pSheet[ "B$transTypeRow" ],
+            isa( prio, Int ) ? prio : 0 )
+        transTypeRow += 1
+    end  # while isa( pSheet[ "B$transTypeRow" ], String )
+
     # Find the transition block.
     transRow = 1
 
-    while isa( pSheet[ "A$transRow" ], Missings.Missing ) ||
-        ( pSheet[ "A$transRow" ] != "Pijlen" )
+    while ( transRow <= nRows ) &&
+        ( isa( pSheet[ "A$transRow" ], Missings.Missing ) ||
+        ( pSheet[ "A$transRow" ] != "Pijlen" ) )
         transRow += 1
-    end  # while pSheet[ "A$transRow" ] != "Pijlen"
+    end  # while ( transRow <= nRows ) && ...
 
     # Find transition block header row.
     transRow += 1
 
-    while isa( pSheet[ "A$transRow" ], Missings.Missing ) ||
-        ( pSheet[ "A$transRow" ] != "From" )
+    while ( transRow <= nRows ) &&
+        ( isa( pSheet[ "A$transRow" ], Missings.Missing ) ||
+        ( pSheet[ "A$transRow" ] != "From" ) )
         transRow += 1
-    end  # while pSheet[ "A$transRow" ] != "Name"
+    end  # while ( transRow <= nRows ) && ...
 
     # Find number of columns in node block.
     nCols = 1
@@ -247,7 +276,15 @@ function readAllTransitions( mpSim::ManpowerSimulation,
             warn( "Transition $ii is a recruitment line with a negative flux. Setting flux to zero." )
         end  # if numToRecruit < 0
 
-        setRecruitmentFixed( newRecScheme, max( 0, numToRecruit ) )
+        numToRecruit = max( 0, numToRecruit )
+
+        if pSheet[ "N$jj" ] == "yes"
+            setRecruitmentFixed( newRecScheme, numToRecruit )
+        else
+            setRecruitmentLimits( newRecScheme, 0, numToRecruit )
+        end  # if pSheet[ "N$jj" ] == "yes"
+
+
         ageLimits = [ pSheet[ "K$jj" ], pSheet[ "L$jj" ] ] * 12.0
 
         if ageLimits[ 1 ] >= ageLimits[ 2 ]
@@ -349,6 +386,8 @@ function readAllTransitions( mpSim::ManpowerSimulation,
             addCondition!( newTrans, cond[ 1 ] )
         end  # if !isa( pSheet[ "J$jj" ], Missings.Missing )
 
+        setHasPriority( newTrans, isa( pSheet[ "N$jj" ], String ) &&
+            ( pSheet[ "N$jj" ] == "yes" ) )
         addTransition!( mpSim, newTrans )
     end  # for ii in throughList
 

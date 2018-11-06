@@ -6,8 +6,7 @@ requiredTypes = [ "state", "transition" ]
 
 for reqType in requiredTypes
     if !isdefined( Symbol( uppercase( string( reqType[ 1 ] ) ) * reqType[ 2:end ] ) )
-        include( joinpath( dirname( Base.source_path() ), "..", "Types",
-            reqType * ".jl" ) )
+        include( joinpath( typePath, reqType * ".jl" ) )
     end  # if !isdefined( Symbol( ...
 end  # for reqType in requiredTypes
 
@@ -19,12 +18,12 @@ export setName,
        clearConditions!,
        addAttributeChange!,
        clearAttributeChanges!,
-       # setMinTime,
        setTransProbabilities,
        setMaxAttempts,
        setTimeBetweenAttempts,
        setFireAfterFail,
-       setMaxFlux
+       setMaxFlux,
+       setHasPriority
 
 
 dummyState = State( "Dummy" )
@@ -183,32 +182,6 @@ function clearAttributeChanges!( trans::Transition )::Void
 end  # clearAttributeChanges!( trans )
 
 
-#=
-"""
-```
-setMinTime( trans::Transition,
-            minTime::T )
-```
-This function sets the minimum time a personnel member has to be in the start
-state of transition `trans` to `minTime`, before he can make that transition.
-
-This function returns `nothing`. If the minimum time is ⩽ 0.0, the function will
-issue a warning and not change the schedule.
-"""
-function setMinTime( trans::Transition, minTime::T )::Void where T <: Real
-
-    if minTime <= 0.0
-        warn( "Time that personnel member must have initial state must be > 0.0" )
-        return
-    end  # if minTime <= 0.0
-
-    trans.minTime = minTime
-    return
-
-end  # setMinTime( trans, minTime )
-=#
-
-
 """
 ```
 setTransProbabilities( trans::Transition,
@@ -343,6 +316,26 @@ function setMaxFlux( trans::Transition, maxFlux::T )::Void where T <: Integer
 end  # setMaxFlux( trans, maxFlux )
 
 
+"""
+```
+setHasPriority( trans::Transition,
+                hasPrio::Bool )
+```
+This function sets the `hasPriority` flag of the transition `trans` to
+`hasPrio`, where `true` means the transition can overrule the target state's
+population target.
+
+This function returns `nothing`.
+"""
+function setHasPriority( trans::Transition, hasPrio::Bool )::Void
+
+    trans.hasPriority = hasPrio
+    trans.transPriority = hasPrio ? 0 : 1
+    return
+
+end  # setHasPriority( trans, hasPrio )
+
+
 function Base.show( io::IO, trans::Transition )
 
     print( io, "    Transition $(trans.name): '$(trans.startState.name)' to '$(trans.endState.name)'" )
@@ -355,8 +348,6 @@ function Base.show( io::IO, trans::Transition )
     if !isempty( trans.extraChanges )
         print( io, "\n      Extra changes: $(trans.extraChanges)" )
     end
-
-    # XXX add extra conditions & changes
 
     if trans.maxAttempts == -1
         print( io, "\n      Infinite number of" )
@@ -374,10 +365,15 @@ function Base.show( io::IO, trans::Transition )
 
     if trans.maxFlux >= 0
         print( io, "\n      Max flux: $(trans.maxFlux)" )
+
+        if trans.hasPriority
+            print( io, " (overrides state pop. constraint)" )
+        end  # if trans.hasPriority
     end  # if trans.maxFlux >= 0
 
     print( io, "\n      Transition execution probabilities: " )
     print( io, join( trans.probabilityList .* 100, "%, " ) * '%' )
+    print( io, "\n      Transition at priority ", - trans.transPriority )
 
 end  # Base.show( io, trans )
 
@@ -428,7 +424,8 @@ function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
     maxFlux = sheet[ XLSX.CellRef( sLine, sCol ) ]
     setMaxFlux( newTrans, isa( maxFlux, Missings.Missing ) ? -1 :
         Int( maxFlux ) )
-    maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 1 ) ]
+    setHasPriority( newTrans, XLSX.CellRef( sLine, sCol + 1 ) == "NO" )
+    maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 2 ) ]
     setMaxAttempts( newTrans, isa( maxAttempts, Missings.Missing ) ? -1 :
         Int( maxAttempts ) )
 
@@ -436,11 +433,11 @@ function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
         setFireAfterFail( newTrans, false )
     else
         setFireAfterFail( newTrans,
-            sheet[ XLSX.CellRef( sLine, sCol + 2 ) ] == "YES" )
+            sheet[ XLSX.CellRef( sLine, sCol + 3 ) ] == "YES" )
     end  # if !isa( maxAttempts, Missings.Missing )
 
     # Read probability vector.
-    sCol += 3
+    sCol += 4
     nProbs = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
     probs = Vector{Float64}( nProbs )
 
@@ -477,6 +474,9 @@ end  # purgeRedundantExtraChanges( trans )
 
 function initiateTransitionProcesses( mpSim::ManpowerSimulation )::Void
 
+    processTransPriorities( mpSim )
+    assignTransPriorities( mpSim )
+
     for state in keys( mpSim.initStateList ),
         trans in mpSim.initStateList[ state ]
         @process transitionProcess( mpSim.sim, trans, mpSim )
@@ -500,8 +500,9 @@ end  # initiateTransitionProcesses( mpSim )
 
     # Initialize the schedule.
     timeOfCheck = now( sim ) - trans.offset
-    timeOfCheck = ceil( timeOfCheck / trans.freq ) * trans.freq + trans.offset
-    priority = mpSim.phasePriorities[ :transition ]
+    timeOfCheck = floor( timeOfCheck / trans.freq + 1.0 ) * trans.freq +
+        trans.offset
+    priority = - trans.transPriority
     maxAttempts = trans.maxAttempts == 0 ? length( trans.probabilityList ) :
         trans.maxAttempts
     nAttempts = Dict{String, Int}()
@@ -522,7 +523,7 @@ end  # initiateTransitionProcesses( mpSim )
         # Halt execution until the transition candidates for all transitions at
         #   the current time are determined.
         processTime += now() - tStart
-        # @yield( timeout( sim, 0, priority = priority - Int8( 1 ) ) )
+        # @yield( timeout( sim, 0, priority = priority - 1 ) )
         tStart = now()
         executeTransitions( trans, transIDs, mpSim )
         newStateList = updateStates( trans, transIDs, nAttempts, mpSim )
@@ -626,13 +627,15 @@ function determineTransitionIDs( trans::Transition, eligibleIDs::Vector{String},
             #   size of the probability list and the number of attempts by
             #   the ii-th eligible person.
 
-        # Check how many spots are available in the end state.
+        # Check how many spots are available in the end state, ONLY if the end
+        #   state differs from the start state.
         available = -1
 
-        if trans.endState.stateTarget >= 0
+        if ( trans.startState != trans.endState ) &&
+            ( trans.endState.stateTarget >= 0 )
             available = max( trans.endState.stateTarget -
                 length( trans.endState.inStateSince ), 0 )
-        end  # if trans.endState.stateTarget >= 0
+        end  # if ( trans.startState != trans.endState ) && ...
 
         # Determine the number of personnel members to undergo the transition.
         #   This is the minimum of the number of the max flux and the number of
@@ -766,110 +769,6 @@ function updateStates( trans::Transition, transIDs::Vector{String},
     SQLite.execute!( mpSim.simDB, transChangesCmd )
     return newStateList
 
-    #=
-    # Get current state of the personnel members undergoing the
-    #   transition.
-    queryCmd = "SELECT * FROM $(mpSim.personnelDBname)
-        WHERE $(mpSim.idKey) IN ('$(join( transIDs, "', '" ))')"
-    transIDsState = SQLite.query( mpSim.simDB, queryCmd )
-
-    isStartRetained = Vector{Bool}()
-    isEndReached = Vector{Bool}()
-    stateUpdates = Vector{String}()
-    newStateList = Dict{String, Vector{State}}()
-    foreach( id -> newStateList[ id ] = Vector{State}(), transIDs )
-
-    for state in keys( merge( mpSim.initStateList,
-        mpSim.otherStateList ) )
-        personsInState = transIDsState[ Symbol( mpSim.idKey ) ]
-
-        # Check which IDs are in the state.
-        if !isempty( state.requirements )
-            personsInState = personsInState[ map( ii -> all( attr ->
-                transIDsState[ Symbol( attr ) ][ ii ] ∈
-                    state.requirements[ attr ],
-                keys( state.requirements ) ),
-                eachindex( personsInState ) ) ]
-        end  # if !isempty( state.requirements )
-
-        # If the personnel member is in the start or the end state of
-        #   the transition, make a note.
-        if state === trans.startState
-            isStartRetained = map( id -> id ∈ personsInState, transIDs )
-        elseif state === trans.endState
-            isEndReached = map( id -> id ∈ personsInState, transIDs )
-        # For the other states, note the changes.
-        else
-            newIDsInState = filter( id -> ( id ∈ personsInState ) &&
-                !haskey( state.inStateSince, id ), transIDs )
-            droppedIDs = filter( id -> ( id ∉ personsInState ) &&
-                haskey( state.inStateSince, id ), transIDs )
-
-            # For newly achieved states, add an entry that the state is
-            #   reached form an unknown state.
-            if !isempty( newIDsInState )
-                suffix = "', $(now( mpSim )), '$(trans.name)', 'unknown', '$(state.name)')"
-                push!( stateUpdates, join( "('" .* newIDsInState .*
-                    suffix, ", " ) )
-
-                for id in newIDsInState
-                    state.inStateSince[ id ] = now( mpSim )
-                    state.isLockedForTransition[ id ] = false
-                end  # for id in newIDsInState
-            end  # if !isempty( newIDsInState )
-
-            # For dropped states, add an entry that the state
-            #   transitions to an unknown state.
-            if !isempty( droppedIDs )
-                suffix = "', $(now( mpSim )), '$(trans.name)', '$(state.name)', 'unknown')"
-                push!( stateUpdates, join( "('" .* droppedIDs .* suffix,
-                    ", " ) )
-
-                for id in droppedIDs
-                    delete!( state.inStateSince, id )
-                    delete!( state.isLockedForTransition, id )
-                end  # for id in droppedIDs
-            end  # if !isempty( droppedIDs )
-        end  # if state === trans.startState
-
-        # Add this state to the list for all persons in it.
-        foreach( id -> push!( newStateList[ id ], state ), personsInState )
-    end  # for state in keys( merge( ...
-
-    # Add transition entries for start and end states.
-    for jj in eachindex( transIDs )
-        pid = transIDs[ jj ]
-
-        if isEndReached[ jj ]
-            push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')" )
-            trans.endState.inStateSince[ pid ] = now( mpSim )
-            trans.endState.isLockedForTransition[ pid ] = false
-
-            if isStartRetained[ jj ]
-                push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', 'nuknown', '$(trans.endState.name)')" )
-            end
-        elseif !isStartRetained[ jj ]
-            push!( stateUpdates, "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', 'unknown')" )
-        end  # if isEndReached[ jj ]
-
-        if !isStartRetained[ jj ]
-            delete!( trans.startState.inStateSince, pid )
-            delete!( trans.startState.isLockedForTransition, pid )
-        end  # if !isStartRetained[ jj ]
-
-        # Retain success of transition and note ineligibility of
-        #   personnel member to undergo it again even if they stay in
-        #   the required start state.
-        nAttempts[ pid ] = 0
-    end  # for jj in eachindex( transIDs )
-
-    transChangesCmd = "INSERT INTO $(mpSim.transitionDBname)
-        ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
-        $(join( stateUpdates, ", " ))"
-    SQLite.execute!( mpSim.simDB, transChangesCmd )
-    return newStateList
-    =#
-
 end  # function updateStates( trans, transIDs, nAttempts, mpSim )
 
 
@@ -893,3 +792,115 @@ function firePersonnel( trans::Transition, checkedIDs::Vector{String},
 
 end  # firePersonnel( trans, checkedIDs, transIDs, nAttempts, maxAttempts,
      #   mpSim )
+
+
+function buildTransitionNetwork( mpSim::ManpowerSimulation,
+    states::String... )
+
+    # Filter out non-existing nodes.
+    stateList = merge( mpSim.initStateList, mpSim.otherStateList )
+    tmpStates = collect( Iterators.filter(
+        stateName -> any( state -> state.name == stateName, keys( stateList ) ),
+        states ) )
+    graphStates = tmpStates
+    graphTrans = Vector{String}()
+
+    # Initialise directed graph.
+    nStates = length( graphStates )
+    graph = MetaDiGraph( DiGraph( nStates + 2 ) )
+    inNodeIndex = nStates + 1
+    outNodeIndex = nStates + 2
+    set_prop!( graph, nStates + 1, :state, "In" )
+    set_prop!( graph, nStates + 2, :state, "Out" )
+
+    # Add node labels and transitions for initial states.
+    for ii in eachindex( tmpStates )
+        set_prop!( graph, ii, :state, tmpStates[ ii ] )
+        state = mpSim.stateList[ tmpStates[ ii ] ]
+
+        # Add recruitment edge for initial state.
+        if haskey( mpSim.initStateList, state )
+            add_edge!( graph, inNodeIndex, ii )
+            set_prop!( graph, inNodeIndex, ii, :trans, "recruitment" )
+        end  # if any( state -> state.name == tmpStates[ ii ], ...
+
+        # Add retirement edge for states with defined retirement scheme.
+        retScheme = mpSim.retirementScheme
+
+        if ( isa( retScheme, Retirement ) &&
+            ( ( retScheme.maxCareerLength != 0.0 ) ||
+                ( retScheme.retireAge != 0.0 ) ) ) ||
+            ( state.stateRetAge != 0.0 )
+            add_edge!( graph, ii, outNodeIndex )
+            set_prop!( graph, ii, outNodeIndex, :trans, "retirement" )
+        end  # if ( isa( retScheme, Retirement ) && ...
+    end  # for ii in eachindex( tmpStates )
+
+    push!( graphStates, "In", "Out" )
+    nStates += 2
+
+    # Add all other transitions.
+    for state in keys( stateList )
+        # Is the state in the original list?
+        if state.name ∈ tmpStates
+            # Find its index.
+            startStateIndex = findfirst( tmpState -> tmpState == state.name,
+                tmpStates )
+
+            # Add all transitions starting from there.
+            for trans in stateList[ state ]
+                endStateIndex = findfirst(
+                    tmpState -> tmpState == trans.endState.name, graphStates )
+
+                # If end state hasn't been put in the list, add it.
+                if endStateIndex == 0
+                    add_vertex!( graph )
+                    push!( graphStates, trans.endState.name )
+                    nStates += 1
+                    set_prop!( graph, nStates, :state, trans.endState.name )
+                    endStateIndex = nStates
+                end  # if endStateIndex == 0
+
+                add_edge!( graph, startStateIndex, endStateIndex )
+                set_prop!( graph, startStateIndex, endStateIndex, :trans,
+                    trans.name )
+
+                if trans.isFiredOnFail
+                    add_edge!( graph, startStateIndex, outNodeIndex )
+                    set_prop!( graph, startStateIndex, outNodeIndex, :trans,
+                        "fired\n(failed $(trans.name))" )
+                end  # if trans.isFiredOnFail
+            end  # for trans in stateList[ state ]
+        else
+            startStateIndex = findfirst( tmpState -> tmpState == state.name,
+                graphStates )
+            isStateCreated = startStateIndex > 0
+
+            for trans in stateList[ state ]
+                endStateIndex = findfirst(
+                    tmpState -> tmpState == trans.endState.name, tmpStates )
+                # Add the transition if the end state is in the list of original
+                #   states.
+                if endStateIndex > 0
+                    # Create the state if it isn't in the list.
+                    if !isStateCreated
+                        add_vertex!( graph )
+                        push!( graphStates, trans.startState.name )
+                        nStates += 1
+                        set_prop!( graph, nStates, :state,
+                            trans.startState.name )
+                        startStateIndex = nStates
+                        isstateCreated = true
+                    end  # if !isStateCreated
+
+                    add_edge!( graph, startStateIndex, endStateIndex )
+                    set_prop!( graph, startStateIndex, endStateIndex, :trans,
+                        trans.name )
+                end  # if trans.endState.name ∈ tmpStates
+            end  # for trans in stateList[ state ]
+        end  # if state.name ∈ graphStates
+    end  # for state in keys( stateList )
+
+    return graph, inNodeIndex, outNodeIndex
+
+end  # buildTransitionNetwork( mpSim, states )

@@ -44,6 +44,7 @@ function configureSimFromDatabase( mpSim::ManpowerSimulation, dbName::String,
         readAttributesFromDatabase( configDB, mpSim, configName )
         readAttritionFromDatabase( configDB, mpSim, configName )
         readStatesFromDatabase( configDB, mpSim, configName )
+        readTransTypesFromDatabase( configDB, mpSim, configName )
         readTransitionsFromDatabase( configDB, mpSim, configName )
         readRecruitmentFromDatabase( configDB, mpSim, configName )
         readRetirementFromDatabase( configDB, mpSim, configName )
@@ -350,6 +351,69 @@ function readStatesFromDatabase( configDB::SQLite.DB,
 end  # readStatesFromDatabase( configDB, mpSim, configName )
 
 
+function readCompoundstatesFromDatabase( configDB::SQLite.DB,
+    mpSim::ManpowerSimulation, configName::String )::Void
+
+    clearCompoundStates!( mpSim )
+    queryCmd = "SELECT * FROM $configName
+        WHERE parType IS 'Compound state'"
+    compStates = SQLite.query( configDB, queryCmd )
+    nCompStates = length( compStates[ :parName ] )
+
+    for ii in 1:nCompStates
+        isStateList = parse( Bool, compStates[ :boolPar ][ ii ] )
+        stateName = compStates[ :parName ][ ii ]
+        newCompState = isStateList ? CompoundState( stateName ) :
+            State( stateName )
+        setStateTarget!( newCompState, compStates[ :intPar ][ ii ] )
+        strParProc = String.( split( compStates[ :strPar ][ ii ], ";" ) )
+
+        if isStateList
+            addStateToCompound!( newCompState, strParProc... )
+            addCompoundState!( mpSim, newCompState )
+        else
+            strParProc = map( ii -> String.( split( strParProc[ ii ], ":" ) ),
+                eachindex( strParProc ) )
+            foreach( attrPair -> addRequirement!( newCompState, attrPair[ 1 ],
+                attrPair[ 2 ] ), strParProc )
+            mpSim.compoundStates[ stateName ] = newCompState
+        end  # if isStateList
+    end  # for ii in 1:nCompStates
+
+    return
+
+end  # readCompoundstatesFromDatabase( configDB, mpSim, configName )
+
+"""
+```
+readTransTypesFromDatabase( configDB::SQLite.DB,
+                            mpSim::ManpowerSimulation,
+                            configName::String )
+```
+This function reads the transition types from the SQLite database `configDB`,
+looking in the table with name `configName`, and uses these parameters to
+configure the manpower simulation `mpSim`.
+
+This function returns `nothing`. If information is missing, the function will
+issue warnings, or throw an error depending on the severity.
+"""
+function readTransTypesFromDatabase( configDB::SQLite.DB,
+    mpSim::ManpowerSimulation, configName::String )::Void
+
+    clearTransitions!( mpSim )
+    queryCmd = "SELECT * FROM $configName
+        WHERE parType IS 'Transition type'"
+    transTypes = SQLite.query( configDB, queryCmd )
+    nTypes = length( transTypes[ :parName ] )
+    foreach( 1:nTypes ) do ii
+        setTransTypePriority!( mpSim, transTypes[ :parName ][ ii ],
+            transTypes[ :intPar ][ ii ] )
+    end  # foreach( 1:nTypes ) do ii
+
+    return
+
+end  # readTransTypesFromDatabase( configDB, mpSim, configName )
+
 """
 ```
 readTransitionsFromDatabase( configDB::SQLite.DB,
@@ -366,7 +430,6 @@ issue warnings, or throw an error depending on the severity.
 function readTransitionsFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
-    clearTransitions!( mpSim )
     queryCmd = "SELECT * FROM $configName
         WHERE parType IS 'Transition'"
     transitions = SQLite.query( configDB, queryCmd )
@@ -379,8 +442,6 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
         newTrans = Transition( strip( transitions[ :parName ][ ii ] ),
             mpSim.stateList[ strip( transPars[ 1 ] ) ],
             mpSim.stateList[ strip( transPars[ 2 ] ) ] )
-        setFireAfterFail( newTrans, parse( Bool,
-            transitions[ :boolPar ][ ii ] ) )
         setSchedule( newTrans, parse( Float64, transPars[ 3 ] ),
             parse( Float64, transPars[ 4 ] ) )
 
@@ -421,7 +482,9 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
             split( transPars[ 7 ][ 2:(end - 1) ], "," ) )
         setTransProbabilities( newTrans, probList )
         setMaxAttempts( newTrans, parse( Int, transPars[ 8 ] ) )
-        setMaxFlux( newTrans, parse( Int, transPars[ 9 ] ) )
+        setFireAfterFail( newTrans, parse( Bool, transPars[ 9 ] ) )
+        setMaxFlux( newTrans, parse( Int, transPars[ 10 ] ) )
+        setHasPriority( newTrans, parse( Bool, transPars[ 11 ] ) )
         addTransition!( mpSim, newTrans )
     end  # for ii in 1:nTrans
 

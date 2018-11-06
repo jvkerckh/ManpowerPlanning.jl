@@ -72,11 +72,18 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             sheet = xf[ "States" ]
             catSheet = catXF[ "States" ]
             readStates( mpSim, sheet, catSheet )
-        end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
-        # Read transitions.
-        sheet = xf[ "Transitions" ]
-        readTransitions( mpSim, sheet )
+            # Read compound states.
+            sheet = xf[ "Compound States" ]
+            readCompoundStates( mpSim, sheet, catSheet )
+
+            # Read transition types.
+            catSheet = catXF[ "General" ]
+            nTypes = catSheet[ "B7" ]
+            sheet = xf[ "Transitions" ]
+            catSheet = catXF[ "Transition types" ]
+            readTransitions( mpSim, sheet, catSheet, nTypes )
+        end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
         # Read recruitment parameters.
         sheet = xf[ "Recruitment" ]
@@ -101,7 +108,8 @@ end  # initialiseFromExcel( mpSim, fileName )
 function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::String
 
     isConfigFromDB = sheet[ "B11" ] == "YES"
-    configDBname = dirname( Base.source_path() )
+    configDBname = Base.source_path()
+    configDBname = configDBname isa Void ? "" : dirname( configDBname )
     tmpDBname = joinpath( mpSim.parFileName[ 1:(end-5) ], sheet[ "B4" ] )
     tmpDBname *= endswith( tmpDBname, ".sqlite" ) ? "" : ".sqlite"
 
@@ -233,14 +241,14 @@ end  # readAttributes( mpSim, sheet, attrCat )
 
 
 function readStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
-    stateCat::XLSX.Worksheet )::Void
+    catSheet::XLSX.Worksheet )::Void
 
     nStates = sheet[ "B4" ]
     clearStates!( mpSim )
     # listOfStates = Vector{String}()
 
     for ii in 1:nStates
-        newState, attrPar = readState( sheet, stateCat, 6 + ii )
+        newState, attrPar = readState( sheet, catSheet, 6 + ii )
 
         if isa( attrPar, String )
             setStateAttritionScheme!( newState, attrPar, mpSim )
@@ -254,14 +262,48 @@ function readStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
 
     return
 
-end  # readStates( mpSim, s )
+end  # readStates( mpSim, sheet, catSheet )
+
+
+function readCompoundStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
+    catSheet::XLSX.Worksheet )::Void
+
+    nCompStates = sheet[ "B4" ]
+    clearCompoundStates!( mpSim )
+
+    for ii in 1:nCompStates
+        compState = readState( sheet, catSheet, ii + 6 )[ 1 ]
+        mpSim.compoundStates[ compState.name ] = compState
+    end  # for ii in 1:nCompStates
+
+    nCompStates = sheet[ "I4" ]
+
+    for ii in 1:nCompStates
+        compState = readCompoundState( sheet, ii + 6 )
+        addCompoundState!( mpSim, compState )
+    end  # or ii in 1:nCompStates
+
+    readHierarchy( sheet, mpSim )
+
+    return
+
+end  # readCompoundStates( mpSim, sheet, catSheet )
 
 
 function readTransitions( mpSim::ManpowerSimulation,
-    sheet::XLSX.Worksheet )::Void
+    sheet::XLSX.Worksheet, catSheet::XLSX.Worksheet, nTypes::Int )::Void
 
     nTransitions = Int( sheet[ "B4" ] )
     clearTransitions!( mpSim )
+
+    # Read the transition types first.
+    for sLine in ( 1:nTypes ) + 1
+        tType = catSheet[ "A$sLine" ]
+        tPrio = catSheet[ "B$sLine" ]
+        tPrio = isa( tPrio, Int ) ? tPrio : 0
+        mpSim.transList[ tType ] = tPrio
+    end  # for sLine in ( 1:nTypes ) + 1
+
     stateList = collect( keys( merge( mpSim.initStateList,
         mpSim.otherStateList ) ) )
 
