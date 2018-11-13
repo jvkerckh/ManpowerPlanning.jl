@@ -110,8 +110,14 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::String
     isConfigFromDB = sheet[ "B11" ] == "YES"
     configDBname = Base.source_path()
     configDBname = configDBname isa Void ? "" : dirname( configDBname )
-    tmpDBname = joinpath( mpSim.parFileName[ 1:(end-5) ], sheet[ "B4" ] )
-    tmpDBname *= endswith( tmpDBname, ".sqlite" ) ? "" : ".sqlite"
+    tmpDBname = sheet[ "B4" ]
+
+    if tmpDBname isa Missings.Missing
+        tmpDBname = ""
+    else
+        tmpDBname = joinpath( mpSim.parFileName[ 1:(end-5) ], sheet[ "B4" ] )
+        tmpDBname *= endswith( tmpDBname, ".sqlite" ) ? "" : ".sqlite"
+    end  # if tmpDBname isa Missings.Missing
 
     if isConfigFromDB
         tmpConfigName = sheet[ "B12" ]
