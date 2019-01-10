@@ -278,11 +278,11 @@ function readAllTransitions( mpSim::ManpowerSimulation,
 
         numToRecruit = max( 0, numToRecruit )
 
-        if pSheet[ "N$jj" ] == "yes"
+        if isa( pSheet[ "N$jj" ], Missings.Missing ) || ( pSheet[ "N$jj" ] != "no" )
             setRecruitmentFixed( newRecScheme, numToRecruit )
         else
             setRecruitmentLimits( newRecScheme, 0, numToRecruit )
-        end  # if pSheet[ "N$jj" ] == "yes"
+        end  # if isa( pSheet[ "N$jj" ], Missings.Missing ) || ...
 
 
         ageLimits = [ pSheet[ "K$jj" ], pSheet[ "L$jj" ] ] * 12.0
