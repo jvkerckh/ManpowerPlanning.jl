@@ -411,7 +411,53 @@ function orderStates( mpSim::ManpowerSimulation )::Vector{String}
 
     # Initialises the lists.
     sortedNodes = Vector{Int}()
+    connectedNodes = Vector{Int}()
+    unconnectedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
+
+    # For each node, find the first state in the sorted node list for which a
+    #   transition state -> node exists. Insert the new node before the found
+    #   transition.
+    while !isempty( unconnectedNodes ) || !isempty( connectedNodes )
+        # Grab the last node of those queued for insertion, or the last unsorted
+        #   node if the queue is empty.
+        node = pop!( isempty( connectedNodes ) ? unconnectedNodes :
+            connectedNodes )
+
+        # If there are unsorted nodes left, find all that link directly with the
+        #   currently considered node, and shift them to the sorting queue.
+        if !isempty( unconnectedNodes )
+            hasLink = has_edge.( graph, node, unconnectedNodes ) .|
+                has_edge.( graph, unconnectedNodes, node )
+            push!( connectedNodes, unconnectedNodes[ hasLink ]... )
+            unconnectedNodes = unconnectedNodes[ .!hasLink ]
+        end  # if !isempty( unconnectedNodes )
+
+        # Insert the node in the right place in the list of sorted nodes.
+        firstFailIndex = findfirst( jj -> has_edge( graph, jj, node ),
+            sortedNodes )
+
+        if firstFailIndex == 0
+                push!( sortedNodes, node )
+        else
+            insert!( sortedNodes, firstFailIndex, node )
+        end  # if firstFailIndex == 0
+    end  # while !isempty( unconnectedNodes ) || ...
+
+    return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
+
+end  # orderStates( mpSim::ManpowerSimulation )
+
+
+function orderStatesOld( mpSim::ManpowerSimulation )::Vector{String}
+
+    # Build a graph of the network.
+    graph = ManpowerPlanning.buildTransitionNetwork( mpSim,
+        keys( mpSim.stateList )... )[ 1 ]
+
+    # Initialises the lists.
+    sortedNodes = Vector{Int}()
     unsortedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
+    nChecks = 0
 
     # For each node, find the first state in the sorted node list for which a
     #   transition state -> node exists. Insert the new node before the found
@@ -430,18 +476,20 @@ function orderStates( mpSim::ManpowerSimulation )::Vector{String}
                 sortedNodes )
 
             if firstFailIndex == 0
-                # if lastFailIndex == 0
                     push!( sortedNodes, node )
-                # else
-                #     insert!( sortedNodes, lastFailIndex + 1, node )
-                # end  # if lastFailIndex == 0
             else
                 insert!( sortedNodes, firstFailIndex, node )
             end  # if firstFailIndex == 0
 
             deleteat!( unsortedNodes, 1 )
+            nChecks = 1
+        elseif nChecks == length( unsortedNodes )
+            push!( sortedNodes, node )
+            deleteat!( unsortedNodes, 1 )
+            nChecks = 1
         else
             unsortedNodes = vcat( unsortedNodes[ 2:end ], unsortedNodes[ 1 ] )
+            nChecks += 1
         end  # if isempty( sortedNodes ) || ...
 
     end  # while !isempty( unsortedNodes )
