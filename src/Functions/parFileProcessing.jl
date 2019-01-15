@@ -36,6 +36,7 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         sheets = [ "General",
                    "Attributes",
                    "States",
+                   "Compound States",
                    "Transitions",
                    "Recruitment",
                    "Retirement" ]
@@ -277,19 +278,19 @@ function readCompoundStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
     nCompStates = sheet[ "B4" ]
     clearCompoundStates!( mpSim )
 
+    readHierarchy( sheet, mpSim )
+
     for ii in 1:nCompStates
         compState = readState( sheet, catSheet, ii + 6 )[ 1 ]
-        mpSim.compoundStates[ compState.name ] = compState
+        mpSim.compoundStatesCat[ compState.name ] = compState
     end  # for ii in 1:nCompStates
 
     nCompStates = sheet[ "I4" ]
 
     for ii in 1:nCompStates
         compState = readCompoundState( sheet, ii + 6 )
-        addCompoundState!( mpSim, compState )
+        mpSim.compoundStatesCustom[ compState.name ] = compState
     end  # or ii in 1:nCompStates
-
-    readHierarchy( sheet, mpSim )
 
     return
 

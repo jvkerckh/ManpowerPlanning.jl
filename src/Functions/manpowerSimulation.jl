@@ -265,7 +265,8 @@ function removeCompoundState!( mpSim::ManpowerSimulation,
 
     foreach( stateList ) do
         delete!( mpSim.compoundStateList, stateName )
-        delete!( mpSim.compoundStates, stateName )
+        delete!( mpSim.compoundStateCustom, stateName )
+        delete!( mpSim.compoundStatesCat, stateName )
     end  # foreach( stateList ) do
 
     return
@@ -283,7 +284,8 @@ This function returns `nothing`.
 """
 function clearCompoundStates!( mpSim::ManpowerSimulation )::Void
 
-    empty!( mpSim.compoundStates )
+    empty!( mpSim.compoundStatesCat )
+    empty!( mpSim.compoundStatesCustom )
     empty!( mpSim.compoundStateList )
     return
 

@@ -24,7 +24,7 @@ branch.
 The type contains the following fields:
 * `name::String`: the name of the compound state.
 * `stateTarget::Int`: the target number of personnel members in this state.
-* `stateList::Vector{String}`: the names of the base states the compound state
+* `stateList::Vector{String}`: the names of the (base) states the compound state
   consists of. Remark that the simulation must ensure that all the component
   base states actually exist.
 """

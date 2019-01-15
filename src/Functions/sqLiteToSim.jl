@@ -39,11 +39,12 @@ function configureSimFromDatabase( mpSim::ManpowerSimulation, dbName::String,
     end  # if configName ∉ SQLite.tables( configDB )[ :name ]
 
     # Get the general parameters
-    try
+    # try
         readGeneralParsFromDatabase( configDB, mpSim, configName )
         readAttributesFromDatabase( configDB, mpSim, configName )
         readAttritionFromDatabase( configDB, mpSim, configName )
         readStatesFromDatabase( configDB, mpSim, configName )
+        readCompoundStatesFromDatabase( configDB, mpSim, configName )
         readTransTypesFromDatabase( configDB, mpSim, configName )
         readTransitionsFromDatabase( configDB, mpSim, configName )
         readRecruitmentFromDatabase( configDB, mpSim, configName )
@@ -65,11 +66,11 @@ function configureSimFromDatabase( mpSim::ManpowerSimulation, dbName::String,
 
         mpSim.isInitialised = true
         mpSim.isVirgin = now( mpSim ) == 0.0
-    catch
-        warn( "Configuration not properly read due to database corruption.\n" *
-        "Simulation is not well configured and should not be executed." )
-        return false
-    end  # try
+    # catch
+    #     warn( "Configuration not properly read due to database corruption.\n" *
+    #     "Simulation is not well configured and should not be executed." )
+    #     return false
+    # end  # try
 
     return true
 
@@ -250,7 +251,7 @@ function readAttritionFromDatabase( configDB::SQLite.DB,
         setAttritionPeriod( newAttrScheme, attrList[ :realPar ][ ii ] )
 
         # Read attrition curve.
-        attrCurve = split( attrList[ :strPar ][ ii ], ";" )
+        attrCurve = split( attrList[ :strPar ][ ii ], "," )
         attrCurveDict = Dict{Float64, Float64}()
 
         for attrPair in attrCurve
@@ -351,7 +352,7 @@ function readStatesFromDatabase( configDB::SQLite.DB,
 end  # readStatesFromDatabase( configDB, mpSim, configName )
 
 
-function readCompoundstatesFromDatabase( configDB::SQLite.DB,
+function readCompoundStatesFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearCompoundStates!( mpSim )
@@ -370,19 +371,19 @@ function readCompoundstatesFromDatabase( configDB::SQLite.DB,
 
         if isStateList
             addStateToCompound!( newCompState, strParProc... )
-            addCompoundState!( mpSim, newCompState )
+            mpSim.compoundStatesCustom[ stateName ] = newCompState
         else
             strParProc = map( ii -> String.( split( strParProc[ ii ], ":" ) ),
                 eachindex( strParProc ) )
             foreach( attrPair -> addRequirement!( newCompState, attrPair[ 1 ],
                 attrPair[ 2 ] ), strParProc )
-            mpSim.compoundStates[ stateName ] = newCompState
+            mpSim.compoundStatesCat[ stateName ] = newCompState
         end  # if isStateList
     end  # for ii in 1:nCompStates
 
     return
 
-end  # readCompoundstatesFromDatabase( configDB, mpSim, configName )
+end  # readCompoundStatesFromDatabase( configDB, mpSim, configName )
 
 """
 ```

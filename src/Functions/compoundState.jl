@@ -279,25 +279,98 @@ function processCompoundStates( mpSim::ManpowerSimulation )::Void
 
     stateList = collect( keys( mpSim.stateList ) )
 
-    for compStateName in keys( mpSim.compoundStates )
-        compState = mpSim.compoundStates[ compStateName ]
-        compStateReqs = compState.requirements
+    # Process the compound states based on catalogue.
+    for compStateName in keys( mpSim.compoundStatesCat )
+        compState = mpSim.compoundStatesCat[ compStateName ]
+        newCompState = processCompoundState( mpSim, compState )
+        addCompoundState!( mpSim, newCompState )
+    end  # for compState in mpSim.compoundStatesCat
 
-        isCompState = map( stateList ) do stateName
-            stateReqs = mpSim.stateList[ stateName ].requirements
-            return all( keys( compStateReqs ) ) do attrName
-                return haskey( stateReqs, attrName ) &&
-                    ( stateReqs[ attrName ] == compStateReqs[ attrName ] )
-            end  # all( keys( compStateReqs ) ) do attrName
-        end  # map( stateList ) do stateName
+    # Process the custom compound states.
+    XLSX.openxlsx( mpSim.catFileName ) do catXF
+        # Get list of catalogue states.
+        catStates = Vector{String}()
+        nCatStates = catXF[ "General" ][ "B6" ]
+        stateCat = catXF[ "States" ]
 
-        addCompoundState!( mpSim, compStateName, -1,
-            stateList[ isCompState ]... )
-    end  # for compState in mpSim.compoundStates
+        if nCatStates > 0
+            catStates = stateCat[ XLSX.CellRange( 2, 1, 1 + nCatStates, 1 ) ]
+        end  # if nCatStates > 0
+
+        for compStateName in keys( mpSim.compoundStatesCustom )
+            compState = mpSim.compoundStatesCustom[ compStateName ]
+            newCompState = CompoundState( compState.name )
+
+            for stateReq in compState.stateList
+                # Check if it's a base state.
+                if haskey( mpSim.stateList, stateReq )
+                    addStateToCompound!( newCompState, stateReq )
+                # Check if it's a processed catalogue state.
+                elseif haskey( mpSim.compoundStatesCat, stateReq )
+                    tmpCatState = mpSim.compoundStatesCat[ stateReq ]
+                    newTmpCompoundState = processCompoundState( mpSim,
+                    tmpCatState )
+                    addStateToCompound!( newCompState,
+                        newTmpCompoundState.stateList... )
+                # Check if it's in the catalogue.
+                elseif stateReq ∈ catStates
+                    # Retrieve the catalogue state.
+                    catLine = findfirst( catStates, stateReq ) + 1
+                    nReqs = stateCat[ string( "G", catLine ) ]
+                    tmpCatState = State( stateReq )
+
+                    for ii in 1:nReqs
+                        addRequirement!( tmpCatState,
+                            stateCat[ XLSX.CellRef( catLine, 6 + 2 * ii ) ],
+                            stateCat[ XLSX.CellRef( catLine, 7 + 2 * ii ) ] )
+                    end  # for ii in 1:nReqs
+
+                    # Add component states from catalogue state to compound
+                    #   state.
+                    newTmpCompoundState = processCompoundState( mpSim,
+                        tmpCatState )
+                    addStateToCompound!( newCompState,
+                        newTmpCompoundState.stateList... )
+                end  # if haskey( mpSim.stateList, stateReq )
+            end  # for stateReq in compState.stateList
+
+            addCompoundState!( mpSim, newCompState )
+        end  # for compState in mpSim.compoundStatesCustom
+    end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
     return
 
 end  # processCompoundStates( mpSim )
+
+
+"""
+```
+processCompoundState( mpSim::ManpowerSimulation, catState::State )
+```
+This function processes the catalogue state `catState` as a compound state in
+the manpower simulation `mpSim`.
+
+This function returns `nothing`.
+"""
+function processCompoundState( mpSim::ManpowerSimulation,
+    catState::State )::CompoundState
+
+    stateList = collect( keys( mpSim.stateList ) )
+    compStateReqs = catState.requirements
+
+    isCompState = map( stateList ) do stateName
+        stateReqs = mpSim.stateList[ stateName ].requirements
+        return all( keys( compStateReqs ) ) do attrName
+            return haskey( stateReqs, attrName ) &&
+                ( stateReqs[ attrName ] == compStateReqs[ attrName ] )
+        end  # all( keys( compStateReqs ) ) do attrName
+    end  # map( stateList ) do stateName
+
+    newCompState = CompoundState( catState.name )
+    addStateToCompound!( newCompState, stateList[ isCompState ]... )
+    return newCompState
+
+end  # processCompoundState( mpSim, catState )
 
 
 """
@@ -314,7 +387,12 @@ This function returns `nothing`.
 function readHierarchy( sheet::XLSX.Worksheet, mpSim::ManpowerSimulation )::Void
 
     nAttrs = sheet[ "F4" ]
-    attrList = sheet[ XLSX.CellRange( 7, 5, 6+ nAttrs, 5 ) ]
+
+    if nAttrs == 0
+        return
+    end  # if nAttrs == 0
+
+    attrList = sheet[ XLSX.CellRange( 7, 5, 6 + nAttrs, 5 ) ]
     generateHierarchy( mpSim, attrList... )
     return
 
@@ -413,8 +491,11 @@ function partitionByAttribute( stateList::Vector{String},
         # Generate compound state.
         if length( statePartition[ attrVal ] ) > 1
             if isPartitionProper
-                addCompoundState!( mpSim, isempty( tmpStateNames ) ? newName :
-                    tmpStateNames[ 1 ], -1, statePartition[ attrVal ]... )
+                newCompState = CompoundState( isempty( tmpStateNames ) ?
+                    newName : tmpStateNames[ 1 ] )
+                addStateToCompound!( newCompState,
+                    statePartition[ attrVal ]... )
+                mpSim.compoundStatesCustom[ newCompState.name ] = newCompState
             end  # if isPartitionProper
 
             if level < length( attrList )

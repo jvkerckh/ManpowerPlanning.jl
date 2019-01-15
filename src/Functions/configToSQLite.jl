@@ -248,17 +248,18 @@ function readCompoundStatesFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
 
     # Don't read anything if there aren't any compound states defined.
-    if isempty( mpSim.compoundStates ) && isempty( mpSim.compoundStateList )
+    if isempty( mpSim.compoundStatesCat ) &&
+        isempty( mpSim.compoundStatesCustom )
         return
     end  # if isempty( mpSim.stateList )
 
     # Read every single compound state.
     compStateInserts = vcat( map( compState -> saveCompStateToDatabase(
-        mpSim.compoundStates[ compState ], mpSim ),
-        keys( mpSim.compoundStates ) ), map(
+        mpSim.compoundStatesCat[ compState ], mpSim ),
+        keys( mpSim.compoundStatesCat ) ), map(
         compState -> saveCompStateToDatabase(
-        mpSim.compoundStateList[ compState ], mpSim ),
-        keys( mpSim.compoundStateList ) ) )
+        mpSim.compoundStatesCustom[ compState ], mpSim ),
+        keys( mpSim.compoundStatesCustom ) ) )
     command = "INSERT INTO $configName
         (parName, parType, intPar, boolPar, strPar) VALUES
         $(join( compStateInserts, ", " ))"
@@ -284,7 +285,7 @@ function saveCompStateToDatabase( compState::CompoundState,
     mpSim::ManpowerSimulation )::String
 
     stateEntry = "('$(compState.name)', 'Compound state', "
-    stateEntry *= "$(compState.stateTarget), 'false', '"
+    stateEntry *= "$(compState.stateTarget), 'true', '"
     stateEntry *= join( compState.stateList, ";" ) * "')"
     return stateEntry
 

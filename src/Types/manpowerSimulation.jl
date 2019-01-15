@@ -74,7 +74,8 @@ type ManpowerSimulation
     #   so they can be properly processed at runtime and inserted into the
     #   the second list (which retains the component states of each compound
     #   state).
-    compoundStates::Dict{String, State}
+    compoundStatesCat::Dict{String, State}
+    compoundStatesCustom::Dict{String, CompoundState}
     compoundStateList::Dict{String, CompoundState}
 
     # The names of the transitions.
@@ -170,7 +171,8 @@ type ManpowerSimulation
         newMPsim.initStateList = Dict{State, Vector{Transition}}()
         newMPsim.otherStateList = Dict{State, Vector{Transition}}()
         newMPsim.stateList = Dict{String, State}()
-        newMPsim.compoundStates = Dict{String, State}()
+        newMPsim.compoundStatesCat = Dict{String, State}()
+        newMPsim.compoundStatesCustom = Dict{String, CompoundState}()
         newMPsim.compoundStateList = Dict{String, CompoundState}()
         newMPsim.transList = Dict{String, Int}()
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
