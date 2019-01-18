@@ -799,7 +799,9 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     mpSim.attrExecTimeElapsed = Dates.Millisecond( 0 )
 
     # Process the compound states read from the catalogue.
-    processCompoundStates( mpSim )
+    if ispath( mpSim.catFileName )
+        processCompoundStates( mpSim )
+    end  # if ispath( mpSim.catFileName )
 
     # Start the database commits.
     SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
