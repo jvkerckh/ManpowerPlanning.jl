@@ -16,7 +16,7 @@ export setName!,
        addStateToCompound!,
        removeStateFromCompound!,
        clearStatesFromCompound!,
-       generateHierarchy
+       configureCompoundStates
 
 
 """
@@ -119,6 +119,145 @@ end  # clearStatesFromCompound!( compState )
 
 """
 ```
+configureCompoundStates( mpSim::ManpowerSimulation )
+```
+This function configures the compound states of the manpower simulation `mpSim`
+using the information provided in sheet `Compound States` of the Excel file
+which originally configured the simulation. If that configuration file doesn't
+exist, does not have the requested sheet, or if the simulation's catalogue file
+doesn't exist, the function will issue a warning and not make any changes.
+
+This function returns `nothing`.
+"""
+function configureCompoundStates( mpSim::ManpowerSimulation )::Void
+
+    return configureCompoundStates( mpSim, mpSim.parFileName )
+
+end  # configureCompoundStates( mpSim )
+
+"""
+```
+configureCompoundStates( mpSim::ManpowerSimulation,
+                         configFileName::String,
+                         configSheetName::String = "Compound States" )
+```
+This function configures the compound states of the manpower simulation `mpSim`
+using the information provided in sheet `configSheetName` of the Excel file
+`configFileName`. If the filename lacks the extension `.xlsx`, it will be added
+automatically. If the configuration file doesn't exist, does not have the
+requested sheet, or if the simulation's catalogue file doesn't exist, the
+function will issue a warning and not make any changes.
+
+This function returns `nothing`.
+"""
+function configureCompoundStates( mpSim::ManpowerSimulation,
+    configFileName::String, configSheetName::String = "Compound States" )::Void
+
+    tmpConfigName = endswith( configFileName, ".xlsx" ) ? configFileName :
+        configFileName * ".xlsx"
+
+    # Does the configuration file exist?
+    if !ispath( configFileName )
+        warn( "File '$tmpConfigName' does not exist. Not configuring compound states." )
+        return
+    end  # if !ispath( configFileName )
+
+    # Does the catalogue file (still) exist?
+    if !ispath( mpSim.catFileName )
+        warn( "Catalogue file '$(mpSim.catFileName)' does not exist. Not configuring compound states." )
+        return
+    end  # if !ispath( mpSim.catFileName )
+
+    XLSX.openxlsx( tmpConfigName ) do xf
+        # Does the configuration file have a sheet with the right name?
+        if !XLSX.hassheet( xf, configSheetName )
+            warn( "Configration file does not have a sheet $configSheetName. Not configuring compound states." )
+            return
+        end  # if !XLSX.hassheet( xf, configSheetName )
+
+        sheet = xf[ configSheetName ]
+
+        XLSX.openxlsx( mpSim.catFileName ) do catXF
+            catSheet = catXF[ "States" ]
+            readCompoundStates( mpSim, sheet, catSheet )
+        end  # XLSX.open( mpSim.catFileName ) do catXF
+    end  # XLSX.open( tmpConfigName ) do xf
+
+    processCompoundStates( mpSim )
+    return
+
+end  # configureCompoundStates( mpSim, configFileName, configSheetName )
+
+
+function Base.show( io::IO, compState::CompoundState )
+
+    print( io, "    Compound state: " * compState.name )
+
+    if isempty( compState.stateList )
+        print( io, "\n      No component states in compound state." )
+    else
+        print( io, "\n      Component states: " *
+            join( compState.stateList, ", " ) )
+    end  # if isempty( compState.stateList )
+
+    if compState.stateTarget >= 0
+        print( io, "\n      Personnel target: $(compState.stateTarget) personnel members" )
+    else
+        print( io, "\n      No personnel target for compound state." )
+    end  # if compState.stateTarget >= 0
+
+end  # show( io, compoundState )
+
+
+# ==============================================================================
+# Non-exported methods.
+# ==============================================================================
+
+"""
+```
+isPersonnelOfState( persAttrs::Dict{String, Any},
+                    compState::CompoundState,
+                    mpSim::ManpowerSimulation )
+```
+This function tests if the person with attributes in `persAttrs` belongs to any
+of the states making up the compound state `compStates`, where the base states
+are defined in the manpowre simulation `mpSim`.
+
+This function returns a `Bool`, the result of the test.
+"""
+function isPersonnelOfState( persAttrs::Dict{String, Any},
+    compState::CompoundState, mpSim::ManpowerSimulation )::Bool
+
+    return any( stateName -> isPersonnelOfState( persAttrs,
+        mpSim.stateList[ stateName ] ), compState.stateList )
+
+end  # isPersonnelOfState( persAttrs, compState, mpSim )
+
+
+"""
+```
+readCompoundState( sheet::XLSX.Worksheet,
+                   sLine::Int )
+```
+This function reads and processes the custom compound state defined in the Excel
+worksheet `sheet` on line `sLine`.
+
+This function returns a `CompoundState` object, the processed compound state.
+"""
+function readCompoundState( sheet::XLSX.Worksheet, sLine::Int )::CompoundState
+
+    newCompState = CompoundState( sheet[ "H$sLine" ] )
+    nStates = sheet[ "J$sLine" ]
+    stateList = sheet[ XLSX.CellRange( sLine, 11, sLine, 10 + nStates ) ]
+    addStateToCompound!( newCompState, stateList... )
+
+    return newCompState
+
+end  # readCompoundState( sheet::XLSX.worksheet, sLine::Int )::CompoundState
+
+
+"""
+```
 generateHierarchy( mpSim::ManpowerSimulation,
                    attrList::String... )
 ```
@@ -199,73 +338,6 @@ function generateHierarchy( mpSim::ManpowerSimulation, useCat::Bool,
 end  # generateHierarchy( mpSim, useCat, attrList )
 
 
-function Base.show( io::IO, compState::CompoundState )
-
-    print( io, "    Compound state: " * compState.name )
-
-    if isempty( compState.stateList )
-        print( io, "\n      No component states in compound state." )
-    else
-        print( io, "\n      Component states: " *
-            join( compState.stateList, ", " ) )
-    end  # if isempty( compState.stateList )
-
-    if compState.stateTarget >= 0
-        print( io, "\n      Personnel target: $(compState.stateTarget) personnel members" )
-    else
-        print( io, "\n      No personnel target for compound state." )
-    end  # if compState.stateTarget >= 0
-
-end  # show( io, compoundState )
-
-
-# ==============================================================================
-# Non-exported methods.
-# ==============================================================================
-
-"""
-```
-isPersonnelOfState( persAttrs::Dict{String, Any},
-                    compState::CompoundState,
-                    mpSim::ManpowerSimulation )
-```
-This function tests if the person with attributes in `persAttrs` belongs to any
-of the states making up the compound state `compStates`, where the base states
-are defined in the manpowre simulation `mpSim`.
-
-This function returns a `Bool`, the result of the test.
-"""
-function isPersonnelOfState( persAttrs::Dict{String, Any},
-    compState::CompoundState, mpSim::ManpowerSimulation )::Bool
-
-    return any( stateName -> isPersonnelOfState( persAttrs,
-        mpSim.stateList[ stateName ] ), compState.stateList )
-
-end  # isPersonnelOfState( persAttrs, compState, mpSim )
-
-
-"""
-```
-readCompoundState( sheet::XLSX.Worksheet,
-                   sLine::Int )
-```
-This function reads and processes the custom compound state defined in the Excel
-worksheet `sheet` on line `sLine`.
-
-This function returns a `CompoundState` object, the processed compound state.
-"""
-function readCompoundState( sheet::XLSX.Worksheet, sLine::Int )::CompoundState
-
-    newCompState = CompoundState( sheet[ "H$sLine" ] )
-    nStates = sheet[ "J$sLine" ]
-    stateList = sheet[ XLSX.CellRange( sLine, 11, sLine, 10 + nStates ) ]
-    addStateToCompound!( newCompState, stateList... )
-
-    return newCompState
-
-end  # readCompoundState( sheet::XLSX.worksheet, sLine::Int )::CompoundState
-
-
 """
 ```
 processCompoundStates( mpSim::ManpowerSimulation )
@@ -277,6 +349,7 @@ This function returns `nothing`.
 """
 function processCompoundStates( mpSim::ManpowerSimulation )::Void
 
+    empty!( mpSim.compoundStateList )
     stateList = collect( keys( mpSim.stateList ) )
 
     # Process the compound states based on catalogue.
@@ -290,12 +363,20 @@ function processCompoundStates( mpSim::ManpowerSimulation )::Void
     XLSX.openxlsx( mpSim.catFileName ) do catXF
         # Get list of catalogue states.
         catStates = Vector{String}()
-        nCatStates = catXF[ "General" ][ "B6" ]
-        stateCat = catXF[ "States" ]
+        stateCat = nothing
+        # These lines ensure that the catStates and stateCat objects exist when
+        #   the catalogue is okay. If it is not okay, stateCate won't get
+        #   called.
 
-        if nCatStates > 0
-            catStates = stateCat[ XLSX.CellRange( 2, 1, 1 + nCatStates, 1 ) ]
-        end  # if nCatStates > 0
+        if XLSX.hassheet( catXF, "General" )
+            nCatStates = catXF[ "General" ][ "B6" ]
+
+            if XLSX.hassheet( catXF, "States" ) && ( nCatStates > 0 )
+                stateCat = catXF[ "States" ]
+                catStates = stateCat[ XLSX.CellRange( 2, 1, 1 + nCatStates,
+                    1 ) ]
+            end  # if XLSX.hassheet( catXF, "States" ) && ...
+        end  # if XLSX.hassheet( catXF, "General" )
 
         for compStateName in keys( mpSim.compoundStatesCustom )
             compState = mpSim.compoundStatesCustom[ compStateName ]

@@ -275,16 +275,18 @@ end  # readStates( mpSim, sheet, catSheet )
 function readCompoundStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
     catSheet::XLSX.Worksheet )::Void
 
-    nCompStates = sheet[ "B4" ]
     clearCompoundStates!( mpSim )
-
     readHierarchy( sheet, mpSim )
+
+    # Catalogue based compound states.
+    nCompStates = sheet[ "B4" ]
 
     for ii in 1:nCompStates
         compState = readState( sheet, catSheet, ii + 6 )[ 1 ]
         mpSim.compoundStatesCat[ compState.name ] = compState
     end  # for ii in 1:nCompStates
 
+    # Custom compound states.
     nCompStates = sheet[ "I4" ]
 
     for ii in 1:nCompStates

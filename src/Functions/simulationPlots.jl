@@ -28,6 +28,11 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
 
     tmpFilename = fName * ( endswith( fName, ".xlsx" ) ? "" : ".xlsx" )
 
+    if !ispath( tmpFilename )
+        warn( "File '$tmpFilename' does not exist. Not generating plots." )
+        return
+    end  # if !ispath( tmpFileName )
+
     XLSX.openxlsx( tmpFilename ) do xf
         if !XLSX.hassheet( xf, "Output plots (pop)" )
             warn( "Excel file doesn't have sheet 'Output plots'. Can't create plots." )
@@ -48,26 +53,47 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
         end  # if !showPlots && ...
 
         nPlots = plotSheet[ "B8" ]
+        plotStates = plotSheet[ XLSX.CellRange( 12, 1, nPlots + 11, 1 ) ]
         plotList = Dict{Tuple{Float64, Bool},
             Vector{Tuple{String, Vector{Bool}}}}()
 
+        # Add requested catalogue states to the compound state list if the
+        #   catalogue is okay.
+        XLSX.openxlsx( mpSim.catFileName ) do catXF
+            if XLSX.hassheet( catXF, "General" ) &&
+                XLSX.hassheet( catXF, "States" )
+                processCompoundStates( mpSim )
+                nCatStates = catXF[ "General" ][ "B6" ]
+                stateCat = catXF[ "States" ]
+                catStateList = stateCat[ XLSX.CellRange( 2, 1, nCatStates + 1,
+                    1 ) ]
+                includeCatStates( mpSim, plotStates, stateCat, catStateList )
+            end  # if XLSX.hassheet( catXF, "General" ) && ...
+        end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
+
         # Get all requested transitions and time resolutions.
+        potentialStates = vcat( collect( keys( mpSim.stateList ) ),
+            collect( keys( mpSim.compoundStateList ) ), "active" )
+
         for ii in 1:nPlots
             plotFlags = Vector{Bool}( 7 )
             jj = ii + 11
-            stateName = plotSheet[ "A$jj" ]
+            stateName = plotStates[ ii ]
             stateName = isa( stateName, Missings.Missing ) ? "active" :
                 stateName
-            timeKey = ( plotSheet[ "B$jj" ], plotSheet[ "H$jj" ] == "YES" )
 
-            if !haskey( plotList, timeKey )
-                plotList[ timeKey ] = Vector{String}()
-            end  # if !haskey( plotList, timeKey )
+            if stateName in potentialStates
+                timeKey = ( plotSheet[ "B$jj" ], plotSheet[ "H$jj" ] == "YES" )
 
-            plotFlags[ 1:4 ] = plotSheet[ "C$jj:F$jj" ] .== "YES"
-            plotFlags[ 5:7 ] = plotSheet[ "I$jj:K$jj" ] .== "YES"
+                if !haskey( plotList, timeKey )
+                    plotList[ timeKey ] = Vector{String}()
+                end  # if !haskey( plotList, timeKey )
 
-            push!( plotList[ timeKey ], ( stateName, plotFlags ) )
+                plotFlags[ 1:4 ] = plotSheet[ "C$jj:F$jj" ] .== "YES"
+                plotFlags[ 5:7 ] = plotSheet[ "I$jj:K$jj" ] .== "YES"
+
+                push!( plotList[ timeKey ], ( stateName, plotFlags ) )
+            end  # if stateName in potentialStates
         end  # for ii in 1:nPlots
 
         overWrite = true
@@ -437,7 +463,8 @@ function plotFluxResults( mpSim::ManpowerSimulation, timeRes::T1,
         plotTitle = "Flux plot of transition '$(tNames[ ii ])' per interval of " *
             string( timeRes / timeFactor )
         gui( Plots.plot( tNodes, fluxData[ ii + 2 ], size = ( 960, 540 ),
-            lw = 2, ylim = [ 0, yMax ], title = plotTitle, legend = false ) )
+            lw = 2, ylim = [ 0, yMax ], title = plotTitle, legend = false,
+            hover = true ) )
     end  # for ii in eachindex( tNames )
 
     tElapsed = ( now() - tStart ).value / 1000.0
@@ -713,7 +740,7 @@ function plotAgeStats( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2 ) 
 
     plt = Plots.plot( timeSteps, ageStats[ :, 1 ], size = ( 960, 540 ),
         xlabel = "Simulation time", ylabel = "Age", label = "Mean age", lw = 2,
-        color = :blue,
+        color = :blue, hover = true,
         ylim = [ minAge, maxAge ] + 0.01 * ( maxAge - minAge ) * [ -1, 1 ] )
     plt = plot!( timeSteps, ageStats[ :, 3 ], label = "Median age", lw = 2,
         color = :red )
@@ -799,6 +826,7 @@ function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
             plt = Plots.plot( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
                 size = ( 960, 540 ), xlim = [ 0, timeSteps[ end ] ],
                 ylim = [ yMin, yMax ] + 0.01 * ( yMax - yMin ) * [ -1, 1 ],
+                hover = true,
                 title = "Evolution of whole population with resolution $(timeRes / timeFactor)" )
         else
             plt = plot!( tmpTimes, yCoords, label = toShow[ ii ], lw = 2 )
@@ -830,7 +858,7 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
 
     plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ yMin, yMax ] + 0.025 * ( yMax - yMin ) * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 960, 540 ),
+        xlabel = "Sim time in y", size = ( 960, 540 ), hover = true,
         title = "Evolution of personnel" *
             ( state == "active" ? "" : " in state '$state'" ) *
             " with resolution $(timeGrid[ 2 ] - timeGrid[ 1 ])" )
@@ -890,7 +918,7 @@ function plotBreakdownNormal( state::String, counts::DataFrames.DataFrame,
         ( countType === :pers ? "count" :
         ( countType === :in ? "in" : "out" ) * " flux" ),
         xlim = [ 0, maximum( timeGrid ) * 1.01 ],
-        ylim = [ 0, yMax ] + 0.025 * yMax * [ -1, 1 ],
+        ylim = [ 0, yMax ] + 0.025 * yMax * [ -1, 1 ], hover = true,
         xlabel = "Sim time in y", size = ( 960, 540 ), title = title  )
 
     for ii in eachindex( labels )
@@ -922,7 +950,7 @@ function plotBreakdownStacked( state::String, counts::DataFrames.DataFrame,
 
     plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ 0.0, yMax ] + 0.025 * yMax * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 960, 540 ),
+        xlabel = "Sim time in y", size = ( 960, 540 ), hover = true,
         title = ( countType === :pers ? "Personnel " :
             ( countType === :in ? "In" : "Out" ) * " flux " ) *
             ( isPercent ? "percentage " : "" ) * "breakdown of " *

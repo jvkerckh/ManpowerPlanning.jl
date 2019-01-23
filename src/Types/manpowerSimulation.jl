@@ -121,7 +121,7 @@ type ManpowerSimulation
     # simReports::Dict{Float64, SimulationReport}
 
 
-    function ManpowerSimulation( ; dbName::String = "simDB",
+    function ManpowerSimulation( ; dbName::String = "",
         simName::String = "testSim" )
 
         newMPsim = new()

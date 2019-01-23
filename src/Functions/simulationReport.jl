@@ -972,6 +972,19 @@ function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
         return resultReport
     end  # if now( mpSim ) == 0
 
+    # Add catalogue states ot the compound state list if possible.
+    XLSX.openxlsx( mpSim.catFileName ) do catXF
+        if XLSX.hassheet( catXF, "General" ) &&
+            XLSX.hassheet( catXF, "States" )
+            nCatStates = catXF[ "General" ][ "B6" ]
+            stateCat = catXF[ "States" ]
+            catStateList = stateCat[ XLSX.CellRange( 2, 1, nCatStates + 1,
+                1 ) ]
+            includeCatStates( mpSim, stateList..., stateCat,
+                catStateList )
+        end  # if XLSX.hassheet( catXF, "General" ) && ...
+    end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
+
     # Build list of real states.
     tmpStateList = Vector{String}()
 
@@ -2010,6 +2023,30 @@ function dumpFluxData( mpSim::ManpowerSimulation, fluxData::DataFrame,
     return tElapsed
 
 end  # dumpFluxData( mpSim, fluxData, timeRes, fileName, overWrite, timeFactor )
+
+
+function includeCatStates( mpSim, stateList, stateCat, catStateList )::Void
+
+    for stateName in stateList
+        # Check if the state name is
+        # 1. empty (whole population)
+        # 2. a base state name
+        # 3. a custom defined compound state name
+        # If none of the above, check if it's in the list of
+        #   catalogue state names
+        if !isa( stateName, Missings.Missing ) &&
+            !haskey( mpSim.stateList, stateName ) &&
+            !haskey( mpSim.compoundStateList, stateName ) &&
+            ( stateName ∈ catStateList )
+            catLine = findfirst( catStateList, stateName )
+            catState = readStateFromCatalogue( stateName, stateCat,
+                catLine )[ 1 ]
+            newCompState = processCompoundState( mpSim, catState )
+            addCompoundState!( mpSim, newCompState )
+        end  # if !isa( stateName, Missings.Missing ) && ...
+    end  # for stateName in stateList
+
+end
 
 
 # Include the retrieval functions.

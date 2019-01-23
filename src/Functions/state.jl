@@ -308,10 +308,47 @@ function readState( sheet::XLSX.Worksheet, stateCat::XLSX.Worksheet,
         error( "State '$(newState.name)' not defined in catalogue." )
     end  # if isa( catLine, Void )
 
+    # Read the state.
+    newState, attrPar = readStateFromCatalogue( string( sheet[ "A$sLine" ] ),
+        stateCat, catLine )
+
+    # Set target population of state.
     stateTarget = sheet[ "B$sLine" ]
     setStateTarget!( newState, isa( stateTarget, Missings.Missing ) ? -1 :
         stateTarget )
+
+    # Set retirement age of state.
+    stateRetAge = sheet[ "D$sLine" ]
+
+    if !isa( stateRetAge, Missing )
+        setStateRetirementAge!( newState, stateRetAge )
+    end  # if !isa( stateRetAge, Missing )
+
+    return newState, attrPar
+
+end  # readState( sheet, stateCat, sLine )
+
+
+"""
+```
+readStateFromCatalogue( stateName::String,
+                        stateCat::XLSX.Worksheet,
+                        catLine::Int )
+```
+This function reads the state with name `stateName` from the state catalogue
+Excel sheet `stateCat` at line `catSheet` and processes it.
+
+This function returns a `Tuple{State, T}` where `T` is either a `String` or a
+`Tuple{Float64, Float64}`. The first element is the state object as it is
+described in the Excel sheet, the second element is either the name of the
+attached attrition scheme, or the attrition period/rate pair describing
+attrition in this state.
+"""
+function readStateFromCatalogue( stateName::String, stateCat::XLSX.Worksheet,
+    catLine::Int )
+
     catLine += 1
+    newState = State( stateName )
     setInitial!( newState, stateCat[ "B$catLine" ] == "YES" )
 
     # Read attrition scheme.
@@ -324,15 +361,13 @@ function readState( sheet::XLSX.Worksheet, stateCat::XLSX.Worksheet,
         if any( par -> isa( par, Missings.Missing ), attrPar )
             error( "Attrition parameters for state '$(newState.name)' aren't properly defined." )
         end  # if any( par -> isa( par, Missings.Missing ), attrPar )
-
     else
         attrPar = stateCat[ "F$catLine" ]
 
         if isa( attrPar, Missings.Missing )
             attrPar = "default"
         end  # if isa( attrPar, Missings.Missing )
-
-    end
+    end  # if isFixedAttr
 
     # Read state requirements/updates.
     nReqs = Int( stateCat[ "G$catLine" ] )
@@ -345,8 +380,7 @@ function readState( sheet::XLSX.Worksheet, stateCat::XLSX.Worksheet,
 
     return newState, attrPar
 
-end  # readState( sheet, stateCat, sLine )
-
+end  # readStateFromCatalogue( stateName, catSheet, catLine )
 
 """
 ```
