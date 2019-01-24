@@ -10,3 +10,4 @@
 .cache*
 dependency graphs/*
 unit tests/*
+User guide/*

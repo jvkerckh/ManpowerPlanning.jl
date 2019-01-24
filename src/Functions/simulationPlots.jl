@@ -464,7 +464,7 @@ function plotFluxResults( mpSim::ManpowerSimulation, timeRes::T1,
             string( timeRes / timeFactor )
         gui( Plots.plot( tNodes, fluxData[ ii + 2 ], size = ( 960, 540 ),
             lw = 2, ylim = [ 0, yMax ], title = plotTitle, legend = false,
-            hover = true ) )
+            hover = fluxData[ ii + 2 ] ) )
     end  # for ii in eachindex( tNames )
 
     tElapsed = ( now() - tStart ).value / 1000.0
@@ -740,12 +740,14 @@ function plotAgeStats( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2 ) 
 
     plt = Plots.plot( timeSteps, ageStats[ :, 1 ], size = ( 960, 540 ),
         xlabel = "Simulation time", ylabel = "Age", label = "Mean age", lw = 2,
-        color = :blue, hover = true,
+        color = :blue, hover = ageStats[ :, 1 ],
         ylim = [ minAge, maxAge ] + 0.01 * ( maxAge - minAge ) * [ -1, 1 ] )
     plt = plot!( timeSteps, ageStats[ :, 3 ], label = "Median age", lw = 2,
-        color = :red )
-    plt = plot!( timeSteps, ageStats[ :, 4 ], label = "", color = :black )
-    plt = plot!( timeSteps, ageStats[ :, 5 ], label = "", color = :black )
+        color = :red, hover = ageStats[ :, 3 ] )
+    plt = plot!( timeSteps, ageStats[ :, 4 ], label = "", color = :black,
+        hover = ageStats[ :, 4 ] )
+    plt = plot!( timeSteps, ageStats[ :, 5 ], label = "", color = :black,
+        ageStats[ :, 5 ] )
     gui( plt )
 
 end  # plotAgeStats( mpSim, timeRes, timeComp )
@@ -826,10 +828,11 @@ function plotSimResults( mpSim::ManpowerSimulation, timeRes::T1, timeFactor::T2,
             plt = Plots.plot( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
                 size = ( 960, 540 ), xlim = [ 0, timeSteps[ end ] ],
                 ylim = [ yMin, yMax ] + 0.01 * ( yMax - yMin ) * [ -1, 1 ],
-                hover = true,
+                hover = yCoords,
                 title = "Evolution of whole population with resolution $(timeRes / timeFactor)" )
         else
-            plt = plot!( tmpTimes, yCoords, label = toShow[ ii ], lw = 2 )
+            plt = plot!( tmpTimes, yCoords, label = toShow[ ii ], lw = 2,
+                hover = yCoords )
         end  # if ii == 1
     end  # for ii in eachindex( toShow )
 
@@ -858,7 +861,7 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
 
     plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ yMin, yMax ] + 0.025 * ( yMax - yMin ) * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 960, 540 ), hover = true,
+        xlabel = "Sim time in y", size = ( 960, 540 ),
         title = "Evolution of personnel" *
             ( state == "active" ? "" : " in state '$state'" ) *
             " with resolution $(timeGrid[ 2 ] - timeGrid[ 1 ])" )
@@ -867,7 +870,8 @@ function plotSimResults( state::String, timeGrid::Vector{Float64},
     for ii in eachindex( validPlots )
         if validPlots[ ii ] ∈ toShow
             plt = plot!( timeGrid, counts[ :, ii ], lw = 2,
-                label = ii == 1 ? state : validPlots[ ii ] )
+                label = ii == 1 ? state : validPlots[ ii ],
+                hover = counts[ :, ii ] )
         end  # if validPlots[ ii ] ∈ toShow
     end  # for ii in eachindex( validPlots )
 
@@ -918,12 +922,13 @@ function plotBreakdownNormal( state::String, counts::DataFrames.DataFrame,
         ( countType === :pers ? "count" :
         ( countType === :in ? "in" : "out" ) * " flux" ),
         xlim = [ 0, maximum( timeGrid ) * 1.01 ],
-        ylim = [ 0, yMax ] + 0.025 * yMax * [ -1, 1 ], hover = true,
+        ylim = [ 0, yMax ] + 0.025 * yMax * [ -1, 1 ], hover = counts[ end ],
         xlabel = "Sim time in y", size = ( 960, 540 ), title = title  )
 
     for ii in eachindex( labels )
         jj = ii + ( isFlux ? 2 : 1 )
-        plt = plot!( timeGrid, counts[ jj ], lw = 2, label = labels[ ii ] )
+        plt = plot!( timeGrid, counts[ jj ], lw = 2, label = labels[ ii ],
+            hover = counts[ jj ] )
     end  # for ii in eachindex( fluxLabels )
 
     gui( plt )
@@ -950,7 +955,7 @@ function plotBreakdownStacked( state::String, counts::DataFrames.DataFrame,
 
     plt = Plots.plot( xlim = [ 0, maximum( timeGrid ) * 1.01 ],
         ylim = [ 0.0, yMax ] + 0.025 * yMax * [ -1, 1 ],
-        xlabel = "Sim time in y", size = ( 960, 540 ), hover = true,
+        xlabel = "Sim time in y", size = ( 960, 540 ),
         title = ( countType === :pers ? "Personnel " :
             ( countType === :in ? "In" : "Out" ) * " flux " ) *
             ( isPercent ? "percentage " : "" ) * "breakdown of " *
