@@ -69,6 +69,7 @@ type ManpowerSimulation
     initStateList::Dict{State, Vector{Transition}}
     otherStateList::Dict{State, Vector{Transition}}
     stateList::Dict{String, State}
+    preferredStateOrder::Vector{String}
 
     # The compound states. The first is for the compound states from catalogue,
     #   so they can be properly processed at runtime and inserted into the
@@ -171,6 +172,7 @@ type ManpowerSimulation
         newMPsim.initStateList = Dict{State, Vector{Transition}}()
         newMPsim.otherStateList = Dict{State, Vector{Transition}}()
         newMPsim.stateList = Dict{String, State}()
+        newMPsim.preferredStateOrder = Vector{String}()
         newMPsim.compoundStatesCat = Dict{String, State}()
         newMPsim.compoundStatesCustom = Dict{String, CompoundState}()
         newMPsim.compoundStateList = Dict{String, CompoundState}()

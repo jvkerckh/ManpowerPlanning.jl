@@ -506,7 +506,6 @@ function plotTransitionMap( mpSim::ManpowerSimulation, states::String...;
         edgelabel = map( edge -> get_prop( graph, edge, :trans ),
         edges( graph ) ) ) )
 
-    # XXX Add code to save to GraphML.
     if fileName == ""
         return
     end  # if fileName == ""

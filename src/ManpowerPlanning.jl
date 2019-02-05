@@ -2,6 +2,7 @@
 #   methods for the manpower planning project.
 
 module ManpowerPlanning
+    using IterTools
     using SimJulia
     using ResumableFunctions
     using Plots

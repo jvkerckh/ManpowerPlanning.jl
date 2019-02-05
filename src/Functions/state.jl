@@ -17,7 +17,8 @@ export setName!,
        setInitial!,
        setStateTarget!,
        setStateRetirementAge!,
-       setStateAttritionScheme!
+       setStateAttritionScheme!,
+       generateCatStates
 
 
 """
@@ -251,6 +252,113 @@ function setStateAttritionScheme!( state::State, attrName::String,
 end  # setStateAttritionScheme!( state, attrName, mpSim )
 
 
+"""
+```
+generateCatStates( catFileName::String )
+```
+This function generates a tree of states based on the information provided in
+the catalogue file `catFileName` and saves this tree into the appropriate format
+in this file. If the file is ill structured, or if no automatic generation is
+requested, this function does nothing.
+
+This function returns `nothing`.
+"""
+function generateCatStates( catFileName::String )::Void
+
+    # File doesn't exist.
+    if !ispath( catFileName )
+        warn( string( "The file '", catFileName, "' does not exist." ) )
+        return
+    end  # if !ispath( catFileName )
+
+    XLSX.openxlsx( catFileName, mode = "rw" ) do xf
+        # Does the file have the correct sheets?
+        if !all( XLSX.hassheet.( xf, [ "General", "Attributes",
+            "State cat generation" ] ) )
+            warn( string( "The file '", catFileName,
+                "' does not have the correct structure." ) )
+            return
+        end  # if !all( XLSX.hassheet.( xf, ...
+
+        println( "Validity checks okay." )
+
+        catConfig = xf[ "State cat generation" ]
+
+        if catConfig[ "B3" ] == "NO"
+            println( "No state catalogue generation requested." )
+            return
+        end  # if catConfig[ "B3" ] == "NO"
+
+        println( "State catalogue generation requested." )
+
+        # Get the generating attributes and all their possible values.
+        nGenAttribs = catConfig[ "B5" ]
+        genAttribs = catConfig[ XLSX.CellRange( 6, 2, 5 + nGenAttribs, 2 ) ]
+
+        println( "Attributes to sort on: ", join( genAttribs, ", " ) )
+
+        attrVals = Dict{String, Vector{String}}()
+        nCatAttribs = xf[ "General" ][ "B5" ]
+        attribCat = xf[ "Attributes" ]
+        catAttribs = attribCat[ XLSX.CellRange( 2, 1, 1 + nCatAttribs, 1 ) ]
+        tmpGenAttribs = Vector{String}()
+
+        for attrib in genAttribs
+            attrInd = findfirst( catAttribs, attrib )
+
+            # Failsafe, this shouldn't be used!
+            if ( attrInd != 0 ) && ( attrib ∉ tmpGenAttribs )
+                attrInd += 1
+                nVals = attribCat[ string( "E", attrInd ) ]
+
+                # Only use the attribute if there are multiple possible values.
+                if nVals > 1
+                    push!( tmpGenAttribs, attrib )
+                    attrVals[ attrib ] = attribCat[ XLSX.CellRange( attrInd, 6,
+                        attrInd, 5 + nVals ) ][ : ]
+                end  # if attribCat[ string( "E", attrInd ) ] > 1
+            end  # if attrInd != 0
+        end  # for attr in genAttribs
+
+        nCombs = map( attrib -> length( attrVals[ attrib ] ), tmpGenAttribs )
+        nCombs = cumprod( nCombs )
+        # Get a vector with each element the list of possible values for the
+        #   corresponding attribute.
+        combs = get.( Ref( attrVals ), tmpGenAttribs, nothing )
+        # Get all possible combinations. This is now a vector of tuples.
+        combs = collect( product( combs... ) )
+        # Turn it into a vector of vectors.
+        combs = collect.( combs )
+        # Link them properly. Every row is a level.
+        combs = hcat( combs... )
+
+        println( "Number of combinations on every level: ", nCombs )
+
+        stateCat = xf[ "States" ]
+        nStates = 0
+
+        # Overwrite only if the sheet exists already.
+        if !XLSX.hassheet( xf, "States" ) || ( catConfig[ "B4" ] == "YES" )
+            println( "Overwriting existing state catalogue." )
+            nStates = overwriteStateCat( stateCat, tmpGenAttribs, combs,
+                nCombs )
+        else
+            println( "Appending existing state catalogue." )
+            nStates = xf[ "General" ][ "B6" ]
+            nStates = appendStateCat( stateCat, tmpGenAttribs, combs, nCombs,
+                nStates )
+        end  # if catConfig[ "B4" ] == "YES"
+
+        # Ensure the value and the formula are correct.
+        sCell = XLSX.getcell( xf[ "General" ], "B6" )
+        sCell.value = string( nStates )
+    end  # XLSX.openxlsx( catFileName ) do xf
+
+    return
+
+end  # generateCatStates( catFileName::String )
+
+
 function Base.show( io::IO, state::State )
 
     print( io, "  State: $(state.name)" )
@@ -427,6 +535,7 @@ function isPersonnelOfState( persAttrs::Dict{String, Any}, state::State )::Bool
 end  # isPersonnelOfState( persAttrs, state )
 
 
+#=
 """
 ```
 orderStates( mpSim::ManpowerSimulation )
@@ -480,6 +589,86 @@ function orderStates( mpSim::ManpowerSimulation )::Vector{String}
     return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
 
 end  # orderStates( mpSim::ManpowerSimulation )
+=#
+
+"""
+```
+orderStates( mpSim::ManpowerSimulation )
+```
+This function orders the states in the manpower simulation `mpSim` in such a
+manner that a lower ordered state does not have any transitions to a higher
+ordered state, using the preferred order given in the manpower simulation. If
+this vector contains names of states that don't exist in the system, they get
+ignored. If this vector is missing states that are in the system, these get
+appended at the end of the vector.
+
+This function returns a `Vector{String}`, the list of ordered states.
+"""
+function orderStates( mpSim::ManpowerSimulation )::Vector{String}
+
+    nPref = length( mpSim.preferredStateOrder )
+    allStates = collect( keys( mpSim.stateList ) )
+    tmpPreferredOrder = unique( filter( stateName -> stateName ∈ allStates,
+        mpSim.preferredStateOrder ) )
+    tmpPreferredOrder = vcat( tmpPreferredOrder,
+        filter( stateName -> stateName ∉ tmpPreferredOrder, allStates ) )
+
+    # Build a graph of the network.
+    graph = ManpowerPlanning.buildTransitionNetwork( mpSim,
+        tmpPreferredOrder... )[ 1 ]
+
+    # Initialises the lists.
+    sortedNodes = Vector{Int}()
+    connectedNodes = Vector{Int}()
+    unconnectedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
+
+    # For each node, find the first state in the sorted node list for which a
+    #   transition state -> node exists. Insert the new node before the found
+    #   transition.
+    while !isempty( unconnectedNodes ) || !isempty( connectedNodes )
+        # Grab the last node of those queued for insertion, or the last unsorted
+        #   node if the queue is empty.
+        node = pop!( isempty( connectedNodes ) ? unconnectedNodes :
+            connectedNodes )
+
+        # If there are unsorted nodes left, find all that link directly with the
+        #   currently considered node, and shift them to the sorting queue.
+        if !isempty( unconnectedNodes )
+            hasLink = has_edge.( graph, node, unconnectedNodes ) .|
+                has_edge.( graph, unconnectedNodes, node )
+            push!( connectedNodes, unconnectedNodes[ hasLink ]... )
+            unconnectedNodes = unconnectedNodes[ .!hasLink ]
+        end  # if !isempty( unconnectedNodes )
+
+        # Insert the node in the right place in the list of sorted nodes.
+        firstFailIndex = findfirst( jj -> has_edge( graph, jj, node ),
+            sortedNodes )
+        lastFailIndex = findlast( jj -> has_edge( graph, node, jj ),
+            sortedNodes ) + 1  # Rework for v0.7
+        tmpFFI = firstFailIndex == 0 ? length( sortedNodes ) :
+            firstFailIndex - 1  # Reword for v0.7
+
+        indRange = tmpFFI - lastFailIndex + 1
+        insertIndex = tmpFFI + 1
+
+        # Try to take the preferred ordering into account. XXX not perfect,
+        #   needs work.
+        if node <= nPref
+            for ii in 1:indRange
+                sortedSnip = sortedNodes[ tmpFFI + 1 - (1:ii) ]
+
+                if all( sortedSnip .> node )
+                    insertIndex -= 1
+                end
+            end
+        end
+
+        insert!( sortedNodes, insertIndex, node )
+    end  # while !isempty( unconnectedNodes ) || ...
+
+    return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
+
+end  # orderStates( mpSim )
 
 
 function orderStatesOld( mpSim::ManpowerSimulation )::Vector{String}
@@ -531,3 +720,122 @@ function orderStatesOld( mpSim::ManpowerSimulation )::Vector{String}
     return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
 
 end  # orderStates( mpSim::ManpowerSimulation )
+
+
+"""
+"""
+function overwriteStateCat( stateCat::XLSX.Worksheet,
+    genAttribs::Vector{String}, combs::Array{String},
+    nCombs::Vector{Int} )::Int
+
+    nRows, nCols = XLSX.size( XLSX.get_dimension( stateCat ) )
+
+    # Clear the sheet.
+    for ii in 1:nRows, jj in 1:nCols
+        stateCat[ XLSX.CellRef( ii, jj ) ] = Missings.missing
+    end  # for ii in 1:nRows, jj in 1:nCols
+
+    stateCat[ "A1" ] = "Name"
+    stateCat[ "B1" ] = "Is state initial?"
+    stateCat[ "C1" ] = "Fixed attrition?"
+    stateCat[ "D1" ] = "Attrition period (m)"
+    stateCat[ "E1" ] = "Attrition\nRate / period"
+    stateCat[ "F1" ] = "Attrition Scheme"
+    stateCat[ "G1" ] = "# Attribute\nupdates"
+    stateCat[ "H1" ] = "Entity updates\n(Attr + Value)"
+
+    attrList = Vector{String}( 2 * length( nCombs ) )
+    attrList[ 1:2:end ] = genAttribs
+    nRow = 1
+
+    # Add the states, starting from the deepest level!
+    for ii in length( nCombs ):-1:1
+        attrList = attrList[ 1:(2 * ii) ]
+
+        for jj in 1:nCombs[ ii ]
+            nRow += 1
+            stateCat[ string( "B", nRow ) ] = "NO"
+            stateCat[ string( "C", nRow ) ] = "YES"
+            stateCat[ string( "D", nRow ) ] = 12
+            stateCat[ string( "E", nRow ) ] = 0.0
+            attrList[ 2:2:end ] = combs[ 1:ii, jj ]
+            stateCat[ string( "A", nRow ) ] = join( attrList )
+
+            for kk in eachindex( attrList )
+                stateCat[ XLSX.CellRef( nRow, 7 + kk ) ] =
+                    attrList[ kk ]
+            end  # for kk in eachindex( attrList )
+
+            stateCat[ string( "G", nRow ) ] = ii
+            cCell = XLSX.getcell( stateCat, string( "G", nRow ) )
+            cCell.formula = string( "=COUNTA(H", nRow, ":AMJ", nRow,
+                ")/2" )
+        end  # for jj in 1:nCombs[ ii ]
+    end  # for ii in length( nCombs ):-1:1
+
+    println( "Generated ", nRow - 1, " states in total." )
+    return nRow - 1
+
+end  # overwriteStateCat( stateCat, genAttribs, combs, nCombs )
+
+
+"""
+"""
+function appendStateCat( stateCat::XLSX.Worksheet, genAttribs::Vector{String},
+    combs::Array{String}, nCombs::Vector{Int}, nStates::Int )::Int
+
+    nRow = nStates + 1
+    nConds = maximum( stateCat[ XLSX.CellRange( 2, 7, nRow, 7 ) ] )
+    stateInfo = stateCat[ XLSX.CellRange( 2, 7, nRow, 7 + 2 * nConds ) ]
+    attrList = Vector{String}( 2 * length( nCombs ) )
+    attrList[ 1:2:end ] = genAttribs
+
+    # Add the states, starting from the deepest level!
+    for ii in length( nCombs ):-1:1
+        attrList = attrList[ 1:(2 * ii) ]
+
+        # Check if there's a match with an existing state.
+        isMatch = stateInfo[ :, 1 ] .== ii  # Number of conditions
+        nMatches = sum( isMatch )
+        tmpStateInfo = stateInfo[ isMatch, 2:(2 * ii + 1) ]
+
+        for jj in 1:nCombs[ ii ]
+            isMatch = trues( nMatches )
+            attrList[ 2:2:end ] = combs[ 1:ii, jj ]
+
+            # Check each attribute.
+            for kk in 1:ii
+                inds = map( ll -> find( isMatch[ ll ] .&
+                    ( tmpStateInfo[ ll, 1:2:(2 * ii) ] .==
+                    attrList[ 2 * kk - 1 ] ) ), 1:nMatches )
+                isMatch = map( ll -> ( length( inds[ ll ] ) == 1 ) &&
+                    ( tmpStateInfo[ ll, inds[ ll ][ 1 ] * 2 ] ==
+                    attrList[ 2 * kk ] ), 1:nMatches )
+            end  # for kk in 1:ii
+
+            if !any( isMatch )
+                nRow += 1
+                stateCat[ string( "B", nRow ) ] = "NO"
+                stateCat[ string( "C", nRow ) ] = "YES"
+                stateCat[ string( "D", nRow ) ] = 12
+                stateCat[ string( "E", nRow ) ] = 0.0
+                stateCat[ string( "A", nRow ) ] = join( attrList )
+
+                for kk in eachindex( attrList )
+                    stateCat[ XLSX.CellRef( nRow, 7 + kk ) ] =
+                        attrList[ kk ]
+                end  # for kk in eachindex( attrList )
+
+                stateCat[ string( "G", nRow ) ] = ii
+                cCell = XLSX.getcell( stateCat, string( "G", nRow ) )
+                cCell.formula = string( "=COUNTA(H", nRow, ":AMJ", nRow,
+                    ")/2" )
+            end  # if !any( isMatch )
+        end  # for jj in 1:nCombs[ ii ]
+    end  # for ii in length( nCombs ):-1:1
+
+    println( "Appended ", nRow - nStates - 1, " states in total." )
+    println( "Total number of states in catalogue: ", nRow - 1 )
+    return nRow - 1
+
+end

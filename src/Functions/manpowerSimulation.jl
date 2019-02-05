@@ -342,6 +342,18 @@ function clearTransitions!( mpSim::ManpowerSimulation )
 end  # clearTransitions!( mpSim )
 
 
+export setPrefStateOrder!
+function setPrefStateOrder!( mpSim::ManpowerSimulation,
+    prefOrder::Vector{String} )::Void
+
+    tmpPrefOrder = filter( stateName -> haskey( mpSim.stateList, stateName ),
+        prefOrder )
+    mpSim.preferredStateOrder = unique( tmpPrefOrder )
+    return
+
+end  # setPrefStateOrder!( mpSim, prefOrder )
+
+
 function processTransPriorities( mpSim::ManpowerSimulation )::Void
 
     transNames = collect( keys( mpSim.transList ) )
@@ -823,6 +835,10 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     saveSimConfigToDatabase( mpSim )
     mpSim.simTimeElapsed += now() - startTime
     println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
+
+    # Generation of basic info and plots.
+    plotSimulationResults( mpSim, 12, "personnel", "flux in", "flux out",
+        "net flux" )
 
     return
     # Wipe the simulation reports if the simulation time has advanced.

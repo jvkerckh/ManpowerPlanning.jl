@@ -86,6 +86,10 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             readTransitions( mpSim, sheet, catSheet, nTypes )
         end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
+        # Generate a network map.
+        plotTransitionMap( mpSim, collect( keys( mpSim.stateList ) )...,
+            fileName = "fullNetwork.graphml" )
+
         # Read recruitment parameters.
         sheet = xf[ "Recruitment" ]
         readRecruitmentPars( mpSim, sheet )
@@ -121,7 +125,7 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::String
     end  # if tmpDBname isa Missings.Missing
 
     if isConfigFromDB
-        tmpConfigName = sheet[ "B12" ]
+        tmpConfigName = joinpath( split( sheet[ "B12" ], r"[/\\]" )... )
 
         if isa( tmpConfigName, Missings.Missing )
             warn( "No database entered to get configuration from. Configuring simulation from Excel sheet." )
@@ -266,6 +270,13 @@ function readStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
 
         addState!( mpSim, newState, newState.isInitial )
     end  # for ii in 1:nStates
+
+    # Read the preferred state order.
+    stateList = string.( sheet[ XLSX.CellRange( 7, 1, 6 + nStates, 1 ) ] )
+    orderList = sheet[ XLSX.CellRange( 7, 5, 6 + nStates, 5 ) ]
+    stateList = stateList[ isa.( orderList, Int ) ]
+    orderList = orderList[ isa.( orderList, Int ) ]
+    setPrefStateOrder!( mpSim, stateList[ sortperm( orderList ) ] )
 
     return
 

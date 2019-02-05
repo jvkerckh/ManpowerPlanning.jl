@@ -45,6 +45,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     dataColsToGrab = collect( keys( colsToImport ) )
     systemAttrs = [ mpSim.idKey, "timeEntered", "ageAtRecruitment",
         "expectedRetirementTime" ]
+    snapshotComp = Dict{String, Int}()
 
     XLSX.openxlsx( tmpSnapName ) do xf
         # Get the personnel data.
@@ -68,7 +69,8 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         colNames = map( ii -> colsToImport[ ii ], dataColsToGrab )
         idColIndex = findfirst( dataColsToGrab .== idCol )
 
-        # Add generated id if no ID column is present in the retrieved data.
+        # Add generated id if no ID column is present in the retrieved data, and
+        #   remove duplicates.
         if ( idCol <= 0 ) || ( idCol > nCols )
             contents = hcat( contents,
                 "Sim" .* string.( collect( 1:nEntries ) ) )
@@ -80,9 +82,14 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         end  # if ( idCol <= 0 ) || ...
 
         nEffectiveEntries = size( contents )[ 1 ]
-        println( nEntries - nEffectiveEntries,
-            " entry/ies with duplicate IDs. Retaining only one of each." )
 
+        if nEntries > nEffectiveEntries
+            println( nEntries - nEffectiveEntries,
+                " entry/ies with duplicate IDs. Retaining only one of each." )
+            snapshotComp[ "Duplicates" ] = nEntries - nEffectiveEntries
+        end  # if nEntries > nEffectiveEntries
+
+        # Ensure the attributevalues satisfy the catalogue, if present.
         if catalogueName != ""
             tmpCatalogueName = endswith( catalogueName, ".xlsx" ) ?
                 catalogueName : catalogueName * ".xlsx"
@@ -90,7 +97,12 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
                 colNames[ vcat( 1:(idColIndex-1), (idColIndex+1):end ) ],
                 mpSim.idKey, tmpCatalogueName )
             contents = contents[ isEntryOkay, : ]
-            nEffectiveEntries = sum( isEntryOkay )
+
+            if !all( isEntryOkay )
+                tmpEntries = nEffectiveEntries
+                nEffectiveEntries = sum( isEntryOkay )
+                snapshotComp[ "Invalid" ] = tmpEntries - nEffectiveEntries
+            end  # if !all( isentryOkay )
 
             if nEffectiveEntries == 0
                 warn( "No valid personnel entries left in snapshot file '$snapName'." )
@@ -178,6 +190,18 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
                 # XXX Iterators.filter is needed to avoid deprecation warnings.
 
             id = contents[ ii, idColIndex ]
+
+            if isempty( persStates )
+                snapshotComp[ "No state" ] = 1 +
+                    get( snapshotComp, "No state", 0 )
+            elseif length( persStates ) > 1
+                snapshotComp[ "Multiple states" ] = 1 +
+                    get( snapshotComp, "Multiple states", 0 )
+            else
+                stateName = persStates[ 1 ]
+                snapshotComp[ stateName ] = 1 +
+                    get( snapshotComp, stateName, 0 )
+            end  # if isempty( persStates )
 
             # Check if each person can be assigned to exactly one state.
             if mpSim.isWellDefined
@@ -274,6 +298,12 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         #     end  # if colNames( ii ) ∉ [ mpSim.idKey, ...
         # end  # for ii in eachindex( colNames )
     end  # XLSX.openxlsx( tmpSnapName ) do xf
+
+    # Generate a pie chart of the composition of the snapshot.
+    snapshotStates = collect( keys( snapshotComp ) )
+    snapshotVals = get.( Ref( snapshotComp ), snapshotStates, 0 )
+    gui( pie( string.( snapshotStates, ": ", snapshotVals ), snapshotVals,
+        labels = "", title = "Composition of snapshot", lw = 2 ) )
 
     return
 
