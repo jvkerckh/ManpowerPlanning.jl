@@ -21,6 +21,8 @@ module ManpowerPlanning
     using XLSX
     # using ExcelWrapper
 
+    include( "Functions/XLSXfix.jl")
+
     types = [
 #        "historyEntry",
 #        "history",
