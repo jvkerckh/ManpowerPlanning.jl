@@ -324,13 +324,7 @@ function generateCatStates( catFileName::String )::Void
         nCombs = cumprod( nCombs )
         # Get a vector with each element the list of possible values for the
         #   corresponding attribute.
-        combs = get.( Ref( attrVals ), tmpGenAttribs, nothing )
-        # Get all possible combinations. This is now a vector of tuples.
-        combs = collect( product( combs... ) )
-        # Turn it into a vector of vectors.
-        combs = collect.( combs )
-        # Link them properly. Every row is a level.
-        combs = hcat( combs... )
+        attribVals = get.( Ref( attrVals ), tmpGenAttribs, nothing )
 
         println( "Number of combinations on every level: ", nCombs )
 
@@ -338,15 +332,16 @@ function generateCatStates( catFileName::String )::Void
         nStates = 0
 
         # Overwrite only if the sheet exists already.
-        if !XLSX.hassheet( xf, "States" ) || ( catConfig[ "B4" ] == "YES" )
-            println( "Overwriting existing state catalogue." )
-            nStates = overwriteStateCat( stateCat, tmpGenAttribs, combs,
+        if !XLSX.hassheet( xf, "States" ) || ( xf[ "General" ][ "B6" ] == 0 ) ||
+            ( catConfig[ "B4" ] == "YES" )
+            println( "Creating new state catalogue." )
+            nStates = overwriteStateCat( stateCat, tmpGenAttribs, attribVals,
                 nCombs )
         else
             println( "Appending existing state catalogue." )
             nStates = xf[ "General" ][ "B6" ]
-            nStates = appendStateCat( stateCat, tmpGenAttribs, combs, nCombs,
-                nStates )
+            nStates = appendStateCat( stateCat, tmpGenAttribs, attribVals,
+                nCombs, nStates )
         end  # if catConfig[ "B4" ] == "YES"
 
         # Ensure the value and the formula are correct.
@@ -725,7 +720,7 @@ end  # orderStates( mpSim::ManpowerSimulation )
 """
 """
 function overwriteStateCat( stateCat::XLSX.Worksheet,
-    genAttribs::Vector{String}, combs::Array{String},
+    genAttribs::Vector{String}, attribVals::Vector{Vector{String}},
     nCombs::Vector{Int} )::Int
 
     nRows, nCols = XLSX.size( XLSX.get_dimension( stateCat ) )
@@ -744,13 +739,21 @@ function overwriteStateCat( stateCat::XLSX.Worksheet,
     stateCat[ "G1" ] = "# Attribute\nupdates"
     stateCat[ "H1" ] = "Entity updates\n(Attr + Value)"
 
-    attrList = Vector{String}( 2 * length( nCombs ) )
-    attrList[ 1:2:end ] = genAttribs
+    nAttrs = length( nCombs )
+    attrList = Vector{String}( 2 * ( nAttrs + 1 ) )
+    attrList[ 3:2:end ] = reverse( genAttribs )
     nRow = 1
 
     # Add the states, starting from the deepest level!
-    for ii in length( nCombs ):-1:1
-        attrList = attrList[ 1:(2 * ii) ]
+    for ii in nAttrs:-1:1
+        attrList = attrList[ 3:end ]
+
+        # Get all possible combinations. This is now a vector of tuples.
+        combs = collect( product( reverse( attribVals[ 1:ii ] )... ) )
+        # Turn it into a vector of vectors.
+        combs = collect.( combs )
+        # Link them properly. Every row is a level.
+        combs = hcat( combs... )
 
         for jj in 1:nCombs[ ii ]
             nRow += 1
@@ -782,17 +785,26 @@ end  # overwriteStateCat( stateCat, genAttribs, combs, nCombs )
 """
 """
 function appendStateCat( stateCat::XLSX.Worksheet, genAttribs::Vector{String},
-    combs::Array{String}, nCombs::Vector{Int}, nStates::Int )::Int
+    attribVals::Vector{Vector{String}}, nCombs::Vector{Int}, nStates::Int )::Int
 
     nRow = nStates + 1
     nConds = maximum( stateCat[ XLSX.CellRange( 2, 7, nRow, 7 ) ] )
     stateInfo = stateCat[ XLSX.CellRange( 2, 7, nRow, 7 + 2 * nConds ) ]
-    attrList = Vector{String}( 2 * length( nCombs ) )
-    attrList[ 1:2:end ] = genAttribs
+
+    nAttrs = length( nCombs )
+    attrList = Vector{String}( 2 * ( nAttrs + 1 ) )
+    attrList[ 3:2:end ] = reverse( genAttribs )
 
     # Add the states, starting from the deepest level!
     for ii in length( nCombs ):-1:1
-        attrList = attrList[ 1:(2 * ii) ]
+        attrList = attrList[ 3:end ]
+
+        # Get all possible combinations. This is now a vector of tuples.
+        combs = collect( product( reverse( attribVals[ 1:ii ] )... ) )
+        # Turn it into a vector of vectors.
+        combs = collect.( combs )
+        # Link them properly. Every row is a level.
+        combs = hcat( combs... )
 
         # Check if there's a match with an existing state.
         isMatch = stateInfo[ :, 1 ] .== ii  # Number of conditions
