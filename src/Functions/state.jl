@@ -421,7 +421,7 @@ function readState( sheet::XLSX.Worksheet, stateCat::XLSX.Worksheet,
         stateTarget )
 
     # Set retirement age of state.
-    stateRetAge = sheet[ "D$sLine" ]
+    stateRetAge = sheet[ "D$sLine" ] * 12
 
     if !isa( stateRetAge, Missing )
         setStateRetirementAge!( newState, stateRetAge )
