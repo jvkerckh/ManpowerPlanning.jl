@@ -78,6 +78,10 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             sheet = xf[ "Compound States" ]
             readCompoundStates( mpSim, sheet, catSheet )
 
+            # Read recruitment parameters.
+            sheet = xf[ "Recruitment" ]
+            readRecruitmentPars( mpSim, sheet )
+
             # Read transition types.
             catSheet = catXF[ "General" ]
             nTypes = catSheet[ "B7" ]
@@ -89,10 +93,6 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         # Generate a network map.
         plotTransitionMap( mpSim, collect( keys( mpSim.stateList ) )...,
             fileName = "fullNetwork.graphml" )
-
-        # Read recruitment parameters.
-        sheet = xf[ "Recruitment" ]
-        readRecruitmentPars( mpSim, sheet )
 
         # Read retirement parameters.
         sheet = xf[ "Retirement" ]
@@ -164,10 +164,10 @@ function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::String
     # This line ensures that foreign key logic works.
     SQLite.execute!( mpSim.simDB, "PRAGMA foreign_keys = ON" )
 
-    simName = sheet[ "B5" ]
-    mpSim.personnelDBname = "Personnel_" * simName
-    mpSim.historyDBname = "History_" * simName
-    mpSim.transitionDBname = "Transitions_" * simName
+    mpSim.simName = sheet[ "B5" ]
+    mpSim.personnelDBname = "Personnel_" * mpSim.simName
+    mpSim.historyDBname = "History_" * mpSim.simName
+    mpSim.transitionDBname = "Transitions_" * mpSim.simName
 
     # Check if databases are present and issue a warning if so.
     tmpTableList = SQLite.tables( mpSim.simDB )[ :name ]

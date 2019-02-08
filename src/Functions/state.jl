@@ -314,8 +314,8 @@ function generateCatStates( catFileName::String )::Void
                 # Only use the attribute if there are multiple possible values.
                 if nVals > 1
                     push!( tmpGenAttribs, attrib )
-                    attrVals[ attrib ] = attribCat[ XLSX.CellRange( attrInd, 6,
-                        attrInd, 5 + nVals ) ][ : ]
+                    attrVals[ attrib ] = string.( attribCat[ XLSX.CellRange(
+                        attrInd, 6, attrInd, 5 + nVals ) ][ : ] )
                 end  # if attribCat[ string( "E", attrInd ) ] > 1
             end  # if attrInd != 0
         end  # for attr in genAttribs
@@ -351,7 +351,7 @@ function generateCatStates( catFileName::String )::Void
 
     return
 
-end  # generateCatStates( catFileName::String )
+end  # generateCatStates( catFileName )
 
 
 function Base.show( io::IO, state::State )

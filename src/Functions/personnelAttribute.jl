@@ -248,20 +248,21 @@ function readAttribute( sheet::XLSX.Worksheet, attrCat::XLSX.Worksheet,
     setFixed!( newAttr, attrCat[ "B$catLine" ] == "YES" )
     setOrdinal!( newAttr, attrCat[ "C$catLine" ] == "YES" )
     nVals = attrCat[ "E$catLine" ]
-    vals = Vector{String}( nVals )
-
-    for ii in 1:nVals
-        vals[ ii ] = strip( attrCat[ XLSX.CellRef( catLine, 5 + ii ) ] )
-    end  # for ii in 1:nVals
+    vals = strip.( string.( attrCat[ XLSX.CellRange( catLine, 6, catLine,
+        5 + nVals ) ][ : ] ) )
 
     setPossibleValues!( newAttr, vals )
     ii = 1
     nInitVals = sheet[ "B$(sLine + 2)" ]
     vals = Dict{String, Float64}()
+    valList = strip.( string.( sheet[ XLSX.CellRange( sLine, 3, sLine,
+        2 + nInitVals ) ] ) )
+    weightList = sheet[ XLSX.CellRange( sLine + 1, 3, sLine + 1,
+        2 + nInitVals ) ]
 
-    for ii in (1:nInitVals) + 2
-        val = sheet[ XLSX.CellRef( sLine, ii ) ]
-        weight = sheet[ XLSX.CellRef( sLine + 1, ii ) ]
+    for ii in eachindex( valList )
+        val = valList[ ii ]
+        weight = weightList[ ii ]
 
         if isa( weight, Real )
             vals[ val ] = weight + get( vals, val, 0.0 )

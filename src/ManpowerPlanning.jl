@@ -1,3 +1,5 @@
+__precompile__()
+
 # This file creates the Manpower module, holding all the types, definitions, and
 #   methods for the manpower planning project.
 
