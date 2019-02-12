@@ -90,13 +90,13 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             readTransitions( mpSim, sheet, catSheet, nTypes )
         end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
-        # Generate a network map.
-        plotTransitionMap( mpSim, collect( keys( mpSim.stateList ) )...,
-            fileName = "fullNetwork.graphml" )
-
         # Read retirement parameters.
         sheet = xf[ "Retirement" ]
         readRetirementPars( mpSim, sheet )
+
+        # Generate a network map.
+        plotTransitionMap( mpSim, true, :SVG, true,
+            collect( keys( mpSim.stateList ) )..., fileName = "fullNetwork" )
     end  # XLSX.openxlsx( fileName ) do xf
 
     # Make sure the databases are okay, and save configuration to database.

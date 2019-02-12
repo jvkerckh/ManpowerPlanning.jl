@@ -837,8 +837,8 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
 
     # Generation of basic info and plots.
-    plotSimulationResults( mpSim, 12, "personnel", "flux in", "flux out",
-        "net flux" )
+    plotSimulationResults( mpSim, 12, true, false, "personnel", "flux in",
+        "flux out", "net flux" )
 
     return
     # Wipe the simulation reports if the simulation time has advanced.

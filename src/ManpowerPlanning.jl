@@ -13,6 +13,7 @@ module ManpowerPlanning
     using GraphIO
     using EzXML
     using GraphPlot
+    using Compose
     using Gadfly
     using Distributions
     using Polynomials

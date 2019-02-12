@@ -291,22 +291,44 @@ function generateCatStates( catFileName::String )::Void
 
         println( "State catalogue generation requested." )
 
-        # Get the generating attributes and all their possible values.
+        # Get the generating attributes, the order, and all their possible
+        #   values.
         nGenAttribs = catConfig[ "B5" ]
-        genAttribs = catConfig[ XLSX.CellRange( 6, 2, 5 + nGenAttribs, 2 ) ]
+        nCatAttribs = xf[ "General" ][ "B5" ]
+        attribCat = xf[ "Attributes" ]
+        catAttribs = attribCat[ XLSX.CellRange( 2, 1, 1 + nCatAttribs, 1 ) ]
+        genAttribs = catAttribs
+        attribOrder = Vector{Any}( nCatAttribs )
+
+        # If there are no attributes to build a hierarchy on, build it on all
+        #   attributes in such a manner that the hierarchy tree is as slim as
+        #   possible.
+        if nGenAttribs == 0
+            attribOrder[ : ] = Missings.missing
+        else
+            genAttribs = catConfig[ XLSX.CellRange( 8, 2, 7 + nGenAttribs, 2 ) ]
+            attribOrder = catConfig[ XLSX.CellRange( 8, 1, 7 + nGenAttribs, 1 ) ]
+        end  # if nGenAttribs == 0
+
+        isUnordered = isa.( attribOrder, Missings.Missing )
+        maxOrder = 0
+
+        if !all( isUnordered )
+            maxOrder = maximum( attribOrder[ .!isUnordered ] )
+        end  # if !all( isUnordered )
 
         println( "Attributes to sort on: ", join( genAttribs, ", " ) )
 
         attrVals = Dict{String, Vector{String}}()
-        nCatAttribs = xf[ "General" ][ "B5" ]
-        attribCat = xf[ "Attributes" ]
-        catAttribs = attribCat[ XLSX.CellRange( 2, 1, 1 + nCatAttribs, 1 ) ]
         tmpGenAttribs = Vector{String}()
+        tmpAttribOrder = Vector{Int}()
 
-        for attrib in genAttribs
+        for ii in eachindex( genAttribs )
+            attrib = genAttribs[ ii ]
             attrInd = findfirst( catAttribs, attrib )
+            order = attribOrder[ ii ]
 
-            # Failsafe, this shouldn't be used!
+            # Only add the attribute if it isn't in the list already.
             if ( attrInd != 0 ) && ( attrib ∉ tmpGenAttribs )
                 attrInd += 1
                 nVals = attribCat[ string( "E", attrInd ) ]
@@ -314,19 +336,32 @@ function generateCatStates( catFileName::String )::Void
                 # Only use the attribute if there are multiple possible values.
                 if nVals > 1
                     push!( tmpGenAttribs, attrib )
+                    push!( tmpAttribOrder, order isa Int ? order :
+                        maxOrder + nVals )
                     attrVals[ attrib ] = string.( attribCat[ XLSX.CellRange(
                         attrInd, 6, attrInd, 5 + nVals ) ][ : ] )
                 end  # if attribCat[ string( "E", attrInd ) ] > 1
-            end  # if attrInd != 0
-        end  # for attr in genAttribs
+            end  # if ( attrInd != 0 ) && ...
+        end  # for ii in eachindex( genAttribs )
 
+        # Sort the attributes by the user defined order, and the non ordered
+        #   attributes by increasing number of possible values.
+        orderInds = sortperm( tmpAttribOrder )
+        tmpGenAttribs = tmpGenAttribs[ orderInds ]
+        println( "Attributes to sort on, final order: ",
+            join( tmpGenAttribs, ", " ) )
+
+        # Get number of combinations.
         nCombs = map( attrib -> length( attrVals[ attrib ] ), tmpGenAttribs )
+        println( "Number of possible values for each attribute: ",
+            join( string.( nCombs ), ", " ) )
         nCombs = cumprod( nCombs )
         # Get a vector with each element the list of possible values for the
         #   corresponding attribute.
         attribVals = get.( Ref( attrVals ), tmpGenAttribs, nothing )
 
-        println( "Number of combinations on every level: ", nCombs )
+        println( "Number of combinations on every level: ",
+            join( string.( nCombs ), ", " ) )
 
         stateCat = xf[ "States" ]
         nStates = 0
@@ -530,62 +565,6 @@ function isPersonnelOfState( persAttrs::Dict{String, Any}, state::State )::Bool
 end  # isPersonnelOfState( persAttrs, state )
 
 
-#=
-"""
-```
-orderStates( mpSim::ManpowerSimulation )
-```
-This function orders the states in the manpower simulation `mpSim` in such a
-manner that a lower ordered state does not have any transitions to a higher
-ordered state.
-
-This function returns a `Vector{String}`, the list of ordered states.
-"""
-function orderStates( mpSim::ManpowerSimulation )::Vector{String}
-
-    # Build a graph of the network.
-    graph = ManpowerPlanning.buildTransitionNetwork( mpSim,
-        keys( mpSim.stateList )... )[ 1 ]
-
-    # Initialises the lists.
-    sortedNodes = Vector{Int}()
-    connectedNodes = Vector{Int}()
-    unconnectedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
-
-    # For each node, find the first state in the sorted node list for which a
-    #   transition state -> node exists. Insert the new node before the found
-    #   transition.
-    while !isempty( unconnectedNodes ) || !isempty( connectedNodes )
-        # Grab the last node of those queued for insertion, or the last unsorted
-        #   node if the queue is empty.
-        node = pop!( isempty( connectedNodes ) ? unconnectedNodes :
-            connectedNodes )
-
-        # If there are unsorted nodes left, find all that link directly with the
-        #   currently considered node, and shift them to the sorting queue.
-        if !isempty( unconnectedNodes )
-            hasLink = has_edge.( graph, node, unconnectedNodes ) .|
-                has_edge.( graph, unconnectedNodes, node )
-            push!( connectedNodes, unconnectedNodes[ hasLink ]... )
-            unconnectedNodes = unconnectedNodes[ .!hasLink ]
-        end  # if !isempty( unconnectedNodes )
-
-        # Insert the node in the right place in the list of sorted nodes.
-        firstFailIndex = findfirst( jj -> has_edge( graph, jj, node ),
-            sortedNodes )
-
-        if firstFailIndex == 0
-                push!( sortedNodes, node )
-        else
-            insert!( sortedNodes, firstFailIndex, node )
-        end  # if firstFailIndex == 0
-    end  # while !isempty( unconnectedNodes ) || ...
-
-    return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
-
-end  # orderStates( mpSim::ManpowerSimulation )
-=#
-
 """
 ```
 orderStates( mpSim::ManpowerSimulation )
@@ -666,57 +645,6 @@ function orderStates( mpSim::ManpowerSimulation )::Vector{String}
 end  # orderStates( mpSim )
 
 
-function orderStatesOld( mpSim::ManpowerSimulation )::Vector{String}
-
-    # Build a graph of the network.
-    graph = ManpowerPlanning.buildTransitionNetwork( mpSim,
-        keys( mpSim.stateList )... )[ 1 ]
-
-    # Initialises the lists.
-    sortedNodes = Vector{Int}()
-    unsortedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
-    nChecks = 0
-
-    # For each node, find the first state in the sorted node list for which a
-    #   transition state -> node exists. Insert the new node before the found
-    #   transition.
-    while !isempty( unsortedNodes )
-        node = unsortedNodes[ 1 ]
-
-        # Only insert the new node if it's the first one, or if it has any links
-        #   to already sorted states. Otherwise, put it at the end of the
-        #   unsorted node list.
-        if isempty( sortedNodes ) || any( jj -> has_edge( graph, node, jj ) ||
-                has_edge( graph, jj, node ), sortedNodes )
-            firstFailIndex = findfirst( jj -> has_edge( graph, jj, node ),
-                sortedNodes )
-            lastFailIndex = findlast( jj -> has_edge( graph, node, jj ),
-                sortedNodes )
-
-            if firstFailIndex == 0
-                    push!( sortedNodes, node )
-            else
-                insert!( sortedNodes, firstFailIndex, node )
-            end  # if firstFailIndex == 0
-
-            deleteat!( unsortedNodes, 1 )
-            nChecks = 1
-        elseif nChecks == length( unsortedNodes )
-            push!( sortedNodes, node )
-            deleteat!( unsortedNodes, 1 )
-            nChecks = 1
-        else
-            unsortedNodes = vcat( unsortedNodes[ 2:end ], unsortedNodes[ 1 ] )
-            nChecks += 1
-        end  # if isempty( sortedNodes ) || ...
-
-    end  # while !isempty( unsortedNodes )
-
-    return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
-
-end  # orderStates( mpSim::ManpowerSimulation )
-
-
 """
 """
 function overwriteStateCat( stateCat::XLSX.Worksheet,
@@ -740,13 +668,13 @@ function overwriteStateCat( stateCat::XLSX.Worksheet,
     stateCat[ "H1" ] = "Entity updates\n(Attr + Value)"
 
     nAttrs = length( nCombs )
-    attrList = Vector{String}( 2 * ( nAttrs + 1 ) )
-    attrList[ 3:2:end ] = reverse( genAttribs )
+    attrList = Vector{String}( 2 * nAttrs )
+    attrList[ 1:2:end ] = genAttribs
     nRow = 1
 
     # Add the states, starting from the deepest level!
     for ii in nAttrs:-1:1
-        attrList = attrList[ 3:end ]
+        attrList = attrList[ 1:(2 * ii) ]
 
         # Get all possible combinations. This is now a vector of tuples.
         combs = collect( product( reverse( attribVals[ 1:ii ] )... ) )
@@ -754,6 +682,7 @@ function overwriteStateCat( stateCat::XLSX.Worksheet,
         combs = collect.( combs )
         # Link them properly. Every row is a level.
         combs = hcat( combs... )
+        combs = combs[ ii:-1:1, : ]
 
         for jj in 1:nCombs[ ii ]
             nRow += 1
@@ -792,12 +721,12 @@ function appendStateCat( stateCat::XLSX.Worksheet, genAttribs::Vector{String},
     stateInfo = stateCat[ XLSX.CellRange( 2, 7, nRow, 7 + 2 * nConds ) ]
 
     nAttrs = length( nCombs )
-    attrList = Vector{String}( 2 * ( nAttrs + 1 ) )
-    attrList[ 3:2:end ] = reverse( genAttribs )
+    attrList = Vector{String}( 2 * nAttrs )
+    attrList[ 1:2:end ] = genAttribs
 
     # Add the states, starting from the deepest level!
     for ii in length( nCombs ):-1:1
-        attrList = attrList[ 3:end ]
+        attrList = attrList[ 1:(2 * ii) ]
 
         # Get all possible combinations. This is now a vector of tuples.
         combs = collect( product( reverse( attribVals[ 1:ii ] )... ) )
@@ -805,6 +734,7 @@ function appendStateCat( stateCat::XLSX.Worksheet, genAttribs::Vector{String},
         combs = collect.( combs )
         # Link them properly. Every row is a level.
         combs = hcat( combs... )
+        combs = combs[ ii:-1:1, : ]
 
         # Check if there's a match with an existing state.
         isMatch = stateInfo[ :, 1 ] .== ii  # Number of conditions

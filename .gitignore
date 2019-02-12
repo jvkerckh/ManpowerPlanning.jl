@@ -2,12 +2,15 @@
 *.jl.*.cov
 *.jl.mem
 *.sqlite*
-*.xlsx#
-*testReport*.xlsx
-*testFluxReport*.xlsx
+*.xlsx*
+*.html
 *.graphml
+*.svg
+*.png
 *.pdf
 .cache*
 dependency graphs/*
 unit tests/*
 User guide/*
+Dictionary/*
+Subfolder test/*
