@@ -543,7 +543,7 @@ end  # plotFluxResults( mpSim, timeRes, isShow, isSave, transList, fileName,
      #   overWrite, timeFactor )
 
 
-sTypes = Dict{Symbol, Tuple{DataType, String}}(
+sTypes = Dict{Symbol, Tuple{Union{DataType, Function}, String}}(
     :SVG => ( SVG, ".svg" ),
     :PNG => ( PNG, ".png" ),
     :PDF => ( PDF, ".pdf" )
