@@ -61,6 +61,8 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
         end  # if nPlots == 0
 
         plotStates = plotSheet[ XLSX.CellRange( 13, 1, nPlots + 12, 1 ) ]
+        isMissing = isa.( plotStates, Missings.Missing )
+        plotStates[ .!isMissing ] = string.( plotStates[ .!isMissing ] )
         plotList = Dict{Tuple{Float64, Bool},
             Vector{Tuple{String, Vector{Bool}}}}()
 
@@ -107,6 +109,22 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
         toShow = [ "personnel", "flux in", "flux out", "net flux" ]
 
         if showPlots || savePlots
+            if savePlots
+                popPlotName = mpSim.parFileName[ 1:(end - 5) ]
+                popPlotName = joinpath( popPlotName, "population plot" )
+                inBreakdownName = replace( popPlotName, "population plot",
+                    "in flux breakdown" )
+                outBreakdownName = replace( popPlotName, "population plot",
+                    "out flux breakdown" )
+
+                # Wipe and create the necessary folders.
+                for dName in [ popPlotName, inBreakdownName,
+                    outBreakdownName ]
+                    rm( dName, force = true, recursive = true )
+                    mkdir( dName )
+                end  # for dName in dirname.( ...
+            end  # if isSave
+
             for timeKey in keys( plotList ), plotInfo in plotList[ timeKey ]
                 stateName, plotFlags = plotInfo
                 plotSimulationResults( mpSim, timeKey[ 1 ], showPlots,
@@ -230,6 +248,16 @@ function showFluxPlotsFromFile( mpSim::ManpowerSimulation,
 
         # Make the plots.
         if showPlots || savePlots
+            # Wipe folder if needed
+            if savePlots
+                plotDir = mpSim.parFileName[ 1:(end - 5) ]
+                plotDir = joinpath( plotDir, "flux plot" )
+
+                # Wipe and create folder.
+                rm( plotDir, force = true, recursive = true )
+                mkdir( plotDir )
+            end  # if savePlots
+
             for timeRes in keys( plotList )
                 plotFluxResults( mpSim, timeRes, showPlots, savePlots,
                     plotList[ timeRes ]..., fileName = reportFileName,
@@ -383,13 +411,6 @@ function plotSimulationResults( mpSim::ManpowerSimulation, timeRes::T1,
             "in flux breakdown" )
         outBreakdownName = replace( popPlotName, "population plot",
             "out flux breakdown" )
-
-        # Wipe and create the necessary folders.
-        for dName in dirname.( [ popPlotName, inBreakdownName,
-            outBreakdownName ] )
-            rm( dName, force = true, recursive = true )
-            mkdir( dName )
-        end  # for dName in dirname.( ...
     end  # if isSave
 
     # Generate the reports for the requested state.
@@ -512,11 +533,6 @@ function plotFluxResults( mpSim::ManpowerSimulation, timeRes::T1, isShow::Bool,
         if isSave
             plotFileName = mpSim.parFileName[ 1:(end - 5) ]
             plotFileName = joinpath( plotFileName, "flux plot" )
-
-            # Wipe and create folder.
-            rm( plotFileName, force = true, recursive = true )
-            mkdir( plotFileName )
-
             plotFileName = joinpath( plotFileName, string( tNames[ ii ], " (",
                 timeRes / timeFactor, ").html" ) )
             savefig( plt, plotFileName )
@@ -532,7 +548,6 @@ function plotFluxResults( mpSim::ManpowerSimulation, timeRes::T1, isShow::Bool,
     if fileName != ""
         tmpFileName = endswith( fileName, ".xlsx" ) ? fileName :
             fileName * ".xlsx"
-        tmpFileName = joinpath( mpSim.parFileName[ 1:(end-5) ], tmpFileName )
         dumpFluxData( mpSim, fluxData, timeRes, tmpFileName, overWrite,
             timeFactor, tElapsed )
     end  # if fileName != ""

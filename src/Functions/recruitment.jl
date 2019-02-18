@@ -580,7 +580,7 @@ function readRecruitmentScheme( sheet::XLSX.Worksheet,
         sheet[ XLSX.CellRef( 7, dataColNr ) ] )
     recState = sheet[ XLSX.CellRef( 8, dataColNr ) ]
     recState = isa( recState, Missings.Missing ) ||
-        lowercase( recState ) == "active" ? "" : recState
+        lowercase( string( recState ) ) == "active" ? "" : string( recState )
     setRecruitState( recScheme, recState )
     isAdaptive = sheet[ XLSX.CellRef( 11, dataColNr ) ] == "YES"
     isRandom = sheet[ XLSX.CellRef( 12, dataColNr ) ] == "YES"

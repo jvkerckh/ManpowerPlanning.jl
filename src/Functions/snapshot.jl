@@ -12,11 +12,12 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     tmpSnapName *= endswith( snapName, ".xlsx" ) ? "" : ".xlsx"
 
     if !ispath( tmpSnapName )
-        warn( "The file `$tmpSnapName` does not exist. Cannot upload snapshot." )
+        warn( string( "The file '", tmpSnapName,
+            "' does not exist. Cannot upload snapshot." ) )
         return
     end  # if !ispath( tmpSnapName )
 
-    # Check if required columns (id, age, etc...) are all different
+    # Check if required columns (id, age, etc...) are all different.
     colsToIgnore = [ idCol, recCol, ageCol, stateCol ]
 
     if length( unique( colsToIgnore ) ) < length( colsToIgnore )
@@ -25,24 +26,9 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     end  # if length( unique( colsToIgnore ) ) < length( colsToIgnore )
 
     verifyAttributes( colsToImport, colsToIgnore, mpSim )
-
-    # Make sure the name of the ID column is the one stored in the
-    #   simulation configuration.
-    if idCol > 0
-        colsToImport[ idCol ] = mpSim.idKey
-    end  # if idCol > 0
-
-    # Add recruitment time information to the database.
-    if recCol > 0
-        colsToImport[ recCol ] = "timeEntered"
-    end  # if recCol > 0
-
-    # Add recruitment age information to the database.
-    if ageCol > 0
-        colsToImport[ ageCol ] = "ageAtRecruitment"
-    end  # if ageCol > 0
-
+    extraColsToImport = addSystemAttributes( mpSim, idCol, recCol, ageCol )
     dataColsToGrab = collect( keys( colsToImport ) )
+    filter!( ii -> !haskey( extraColsToImport, ii ), dataColsToGrab )
     systemAttrs = [ mpSim.idKey, "timeEntered", "ageAtRecruitment",
         "expectedRetirementTime" ]
     snapshotComp = Dict{String, Int}()
@@ -55,30 +41,60 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         excessCols = filter( ii -> ii > nCols, dataColsToGrab )
 
         if nEntries == 0
-            warn( "Snapeshot file '$snapName' empty." )
+            warn( string( "Snapshot file '", snapName, "' is empty." ) )
             return
         end  # if nEffectiveEntries == 0
 
         # Purge non-existent columns.
         if !isempty( excessCols )
             filter!( ii -> ii <= nCols, dataColsToGrab )
-            warn( "Column(s) $(join( excessCols, ", " )) do(es) not exist in snapshot. Not importing those columns." )
+            warn( string( "Column(s) ", join( excessCols, ", " ),
+                " do(es) not exist in snapshot. ",
+                "Not importing those columns." ) )
         end  # if !isempty( excessCols )
 
-        contents = XLSX.getdata( dataSheet )[ 2:end, dataColsToGrab ]
+        contents = string.( XLSX.getdata( dataSheet )[ 2:end, dataColsToGrab ] )
         colNames = map( ii -> colsToImport[ ii ], dataColsToGrab )
-        idColIndex = findfirst( dataColsToGrab .== idCol )
+        extraColsToGrab = collect( keys( extraColsToImport ) )
+        contents = hcat( contents, XLSX.getdata( dataSheet )[ 2:end,
+            extraColsToGrab ] )
+        colNames = vcat( colNames, map( ii -> extraColsToImport[ ii ],
+            extraColsToGrab ) )
+        idColIndex = findfirst( extraColsToGrab .== idCol ) +
+            length( dataColsToGrab )
+        contents[ :, idColIndex ] = string.( contents[ :, idColIndex ] )
 
-        # Add generated id if no ID column is present in the retrieved data, and
-        #   remove duplicates.
+        # Retrieve time of last transition.
+        lastTransTime = - 12.0 .* ones( nEntries )
+
+        if 0 < stateCol <= nCols
+            lastTransTime = map( transDate ->
+            -( mpSim.simStartDate - transDate ).value,
+                XLSX.getdata( dataSheet )[ 2:end, stateCol ] ) ./
+                ( 365.0 / 12.0 )
+        end  # if 0 < stateCol <= nCols
+
+        # Add generated id if no ID column is present in the retrieved data, or
+        #   if IDs are missing for some entries, and remove duplicates.
         if ( idCol <= 0 ) || ( idCol > nCols )
             contents = hcat( contents,
                 "Sim" .* string.( collect( 1:nEntries ) ) )
             push!( colNames, mpSim.idKey )
         else
+            # Fill in missing IDs
+            isIDmissing = contents[ :, idColIndex ] .== "missing"
+
+            if any( isIDmissing )
+                existingIDs = sort( contents[ .!isIDmissing, idColIndex ] )
+                generatedIDs = string.( "Sim", 1:sum( isIDmissing ) )
+                contents[ isIDmissing, idColIndex ] = generatedIDs
+            end  # if any( isIDmissing )
+
+            # Filter out duplicates.
             uniqueIndices = indexin( unique( contents[ :, idColIndex ] ),
                 contents[ :, idColIndex ] )
             contents = contents[ uniqueIndices, : ]
+            lastTransTime = lastTransTime[ uniqueIndices ]
         end  # if ( idCol <= 0 ) || ...
 
         nEffectiveEntries = size( contents )[ 1 ]
@@ -89,14 +105,14 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
             snapshotComp[ "Duplicates" ] = nEntries - nEffectiveEntries
         end  # if nEntries > nEffectiveEntries
 
-        # Ensure the attributevalues satisfy the catalogue, if present.
+        # Ensure the attribute values satisfy the catalogue, if present.
         if catalogueName != ""
             tmpCatalogueName = endswith( catalogueName, ".xlsx" ) ?
                 catalogueName : catalogueName * ".xlsx"
             isEntryOkay = validateContents( contents,
-                colNames[ vcat( 1:(idColIndex-1), (idColIndex+1):end ) ],
-                mpSim.idKey, tmpCatalogueName )
+                colNames[ eachindex( dataColsToGrab ) ], tmpCatalogueName )
             contents = contents[ isEntryOkay, : ]
+            lastTransTime = lastTransTime[ isEntryOkay ]
 
             if !all( isEntryOkay )
                 tmpEntries = nEffectiveEntries
@@ -105,7 +121,8 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
             end  # if !all( isentryOkay )
 
             if nEffectiveEntries == 0
-                warn( "No valid personnel entries left in snapshot file '$snapName'." )
+                warn( string( "No valid personnel entries left in snapshot ",
+                    "file '", snapName, "'." ) )
                 return
             end  # if nEffectiveEntries == 0
         end  # if catalogueName != ""
@@ -155,16 +172,6 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         # Determine retirement ages/times.
         push!( colNames, "expectedRetirementTime" )
         contents = hcat( contents, zeros( Float64, nEffectiveEntries ) )
-
-        # Retrieve time of last transition.
-        lastTransTime = - 12.0 .* ones( nEntries )
-
-        if 0 < stateCol <= nCols
-            lastTransTime = map( transDate ->
-            -( mpSim.simStartDate - transDate ).value,
-                XLSX.getdata( dataSheet )[ 2:end, stateCol ] ) ./
-                ( 365.0 / 12.0 )
-        end  # if 0 < stateCol <= nCols
 
         # Discover states of personnel members.
         attrList = filter( attrName -> attrName ∉ systemAttrs, colNames )
@@ -338,8 +345,63 @@ function verifyAttributes( colsToImport::Dict{Int, String},
 end  # verifyAttributes( colsToImport, colsToIgnore, mpSim )
 
 
+function addSystemAttributes( mpSim::ManpowerSimulation, idCol::Int,
+    recCol::Int, ageCol::Int )::Dict{Int64, String}
+
+    extraColsToImport = Dict{Int64,String}()
+
+    # Make sure the name of the ID column is the one stored in the
+    #   simulation configuration.
+    if idCol > 0
+        extraColsToImport[ idCol ] = mpSim.idKey
+    end  # if idCol > 0
+
+    # Add recruitment time information to the database.
+    if recCol > 0
+        extraColsToImport[ recCol ] = "timeEntered"
+    end  # if recCol > 0
+
+    # Add recruitment age information to the database.
+    if ageCol > 0
+        extraColsToImport[ ageCol ] = "ageAtRecruitment"
+    end  # if ageCol > 0
+
+    return extraColsToImport
+
+end  # addSystemAttributes( mpSim, idCol, recCol, ageCol )
+
+
+function retrieveLastTransitionTime( mpSim::ManpowerSimulation, nEntries::Int,
+    stateCol::Int, nCols::Int, dataSheet::XLSX.Worksheet, contents::Array,
+    snapshotComp::Dict{String, Int} )
+
+    # Retrieve time of last transition.
+    lastTransTime = - 12.0 .* ones( nEntries )
+
+    if 0 < stateCol <= nCols
+        lastTransDates = XLSX.getdata( dataSheet )[ 2:end, stateCol ]
+        isDateMissing = isa.( lastTransDates, Missings.Missing )
+
+        if any( isDateMissing )
+            snapshotComp[ "Invalid" ] = sum( isDateMissing )
+            nEntries -= sum( isDateMissing )
+        end  # if any( isDateMissing )
+
+        lastTransDates = lastTransDates[ .!isDateMissing ]
+        contents = contents[ .!isDateMissing, : ]
+        lastTransTime = map( transDate ->
+        -( mpSim.simStartDate - transDate ).value, lastTransDates ) ./
+            ( 365.0 / 12.0 )
+    end  # if 0 < stateCol <= nCols
+
+    return lastTransTime, contents
+
+end  # retrieveLastTransitionTime( mpSim, nEntries, stateCol, nCols, dataSheet,
+     #   contents, snapshotComp )
+
+
 function validateContents( dataMatrix::Array, attrNames::Vector{String},
-    idKey::String, catalogueName::String )::Vector{Bool}
+    catalogueName::String )::Vector{Bool}
 
     nEntries = size( dataMatrix )[ 1 ]
     isEntryOkay = trues( nEntries )
@@ -352,14 +414,11 @@ function validateContents( dataMatrix::Array, attrNames::Vector{String},
 
         for ii in eachindex( attrNames )
             attrName = attrNames[ ii ]
-
-            if attrName ∉ [ idKey, "timeEntered", "ageAtRecruitment" ]
-                attrIndex = findfirst( catalogueAttrNames .== attrName )
-                nVals = dataSheet[ "E$(attrIndex + 1)" ]
-                vals = dataSheet[ XLSX.CellRange( attrIndex + 1, 6,
-                    attrIndex + 1, 5 + nVals ) ]
-                isEntryOkay .&= map( val -> val ∈ vals, dataMatrix[ :, ii ] )
-            end  # if attrName != idKey
+            attrIndex = findfirst( catalogueAttrNames .== attrName )
+            nVals = dataSheet[ "E$(attrIndex + 1)" ]
+            vals = string.( dataSheet[ XLSX.CellRange( attrIndex + 1, 6,
+                attrIndex + 1, 5 + nVals ) ] )
+            isEntryOkay .&= map( val -> val ∈ vals, dataMatrix[ :, ii ] )
         end  # for attrName in attrNames
     end  # XLSX.openxlsx( catalogueName ) do xf
 
@@ -367,7 +426,7 @@ function validateContents( dataMatrix::Array, attrNames::Vector{String},
 
     return isEntryOkay
 
-end  # validateContents( dataMatrix, attrNames, idKey, catalogueName )
+end  # validateContents( dataMatrix, attrNames, catalogueName )
 
 
 function readSnapshot( mpSim::ManpowerSimulation )::Void
@@ -376,7 +435,8 @@ function readSnapshot( mpSim::ManpowerSimulation )::Void
 
     XLSX.openxlsx( mpSim.parFileName ) do xf
         if !XLSX.hassheet( xf, "Snapshot" )
-            warn( "Configuration file has no sheet named 'Snapshot'. Not uploading initial population." )
+            warn( string( "Configuration file has no sheet named 'Snapshot'. ",
+                "Not uploading initial population." ) )
             return
         end  # if !hassheet( xf, "Snapshot" )
 
@@ -391,7 +451,9 @@ function readSnapshot( mpSim::ManpowerSimulation )::Void
         snapName = joinpath( dirname( mpSim.parFileName ), snapName )
 
         if !ispath( snapName )
-            warn( "Snapshot file '$snapName' does not exist. Not uploading initial population." )
+            warn( string( "Snapshot file '", snapName,
+                "' does not exist. Not uploading initial population." ) )
+            return
         end  # if !ispath( snapName )
 
         # Get special column parameters.

@@ -954,9 +954,9 @@ the fluxes for each time interval `timeStart < t <= timeEnd`
 except for the first row; that one counts the flux occurring at time `t = 0.0`.
 """
 function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
-    isInFlux::Bool, stateList::String... )::DataFrame where T <: Real
+    isInFlux::Bool, stateList::String... )::DataFrames.DataFrame where T <: Real
 
-    resultReport = DataFrame( Array{Float64}( 0, 2 ),
+    resultReport = DataFrames.DataFrame( Array{Float64}( 0, 2 ),
         [ :timeStart, :timeEnd ] )
 
     # Issue warning if time resolution is negative.
@@ -980,8 +980,14 @@ function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
             stateCat = catXF[ "States" ]
             catStateList = stateCat[ XLSX.CellRange( 2, 1, nCatStates + 1,
                 1 ) ]
-            includeCatStates( mpSim, stateList..., stateCat,
-                catStateList )
+
+            if length( stateList ) > 1
+                includeCatStates( mpSim, string.( stateList )..., stateCat,
+                    catStateList )
+            else
+                includeCatStates( mpSim, string( stateList ), stateCat,
+                    catStateList )
+            end  # if length( stateList ) > 1
         end  # if XLSX.hassheet( catXF, "General" ) && ...
     end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
 
@@ -1016,7 +1022,7 @@ function generateFluxReport( mpSim::ManpowerSimulation, timeRes::T,
         resultData = hcat( resultData, tmpResult )
     end  # for ii in eachindex( tmpStateList )
 
-    resultReport = DataFrame( resultData, vcat( :timeStart, :timeEnd,
+    resultReport = DataFrames.DataFrame( resultData, vcat( :timeStart, :timeEnd,
         Symbol.( nameList ) ) )
 
     return resultReport
@@ -1956,7 +1962,7 @@ file is created, otherwise a new sheet is added to the file.
 This function returns a `Float6'`, the time (in seconds) it took to write the
 Excel report.
 """
-function dumpFluxData( mpSim::ManpowerSimulation, fluxData::DataFrame,
+function dumpFluxData( mpSim::ManpowerSimulation, fluxData::DataFrames.DataFrame,
     timeRes::T1, fileName::String, overWrite::Bool, timeFactor::T2,
     reportGenerationTime::Float64 )::Float64 where T1 <: Real where T2 <: Real
 
@@ -2047,6 +2053,7 @@ function includeCatStates( mpSim, stateList, stateCat, catStateList )::Void
     end  # for stateName in stateList
 
 end
+
 
 
 # Include the retrieval functions.

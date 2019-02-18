@@ -385,7 +385,8 @@ end  # Base.show( io, trans )
 function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
 
     newTrans = Transition( sheet[ "A$sLine" ], dummyState, dummyState )
-    startState, endState = sheet[ "B$sLine" ], sheet[ "C$sLine" ]
+    startState, endState = string( sheet[ "B$sLine" ] ),
+        string( sheet[ "C$sLine" ] )
     setSchedule( newTrans, sheet[ "D$sLine" ], sheet[ "E$sLine" ] )
 
     # Read time related conditions.
@@ -402,7 +403,6 @@ function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
             addCondition!( newTrans, newCond )
         end  # if isCondOkay
     end  # for ii in 1:nTimeConds
-
 
     # Read other/attribute conditions.
     sCol += nTimeConds + 2
@@ -424,7 +424,8 @@ function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
     maxFlux = sheet[ XLSX.CellRef( sLine, sCol ) ]
     setMaxFlux( newTrans, isa( maxFlux, Missings.Missing ) ? -1 :
         Int( maxFlux ) )
-    setHasPriority( newTrans, XLSX.CellRef( sLine, sCol + 1 ) == "NO" )
+    setHasPriority( newTrans,
+        sheet[ XLSX.CellRef( sLine, sCol + 1 ) ] == "NO" )
     maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 2 ) ]
     setMaxAttempts( newTrans, isa( maxAttempts, Missings.Missing ) ? -1 :
         Int( maxAttempts ) )
@@ -628,10 +629,11 @@ function determineTransitionIDs( trans::Transition, eligibleIDs::Vector{String},
             #   the ii-th eligible person.
 
         # Check how many spots are available in the end state, ONLY if the end
-        #   state differs from the start state.
+        #   state differs from the start state, and if the end state target has
+        #   to be respected.
         available = -1
 
-        if ( trans.startState != trans.endState ) &&
+        if !( trans.hasPriority) && ( trans.startState != trans.endState ) &&
             ( trans.endState.stateTarget >= 0 )
             available = max( trans.endState.stateTarget -
                 length( trans.endState.inStateSince ), 0 )
