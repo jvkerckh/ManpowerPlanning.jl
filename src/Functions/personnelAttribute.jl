@@ -254,6 +254,11 @@ function readAttribute( sheet::XLSX.Worksheet, attrCat::XLSX.Worksheet,
     setPossibleValues!( newAttr, vals )
     ii = 1
     nInitVals = sheet[ "B$(sLine + 2)" ]
+
+    if nInitVals == 0
+        return newAttr
+    end  # if nInitVals == 0
+
     vals = Dict{String, Float64}()
     valList = strip.( string.( sheet[ XLSX.CellRange( sLine, 3, sLine,
         2 + nInitVals ) ] ) )

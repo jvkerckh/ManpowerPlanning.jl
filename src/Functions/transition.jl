@@ -13,6 +13,7 @@ end  # for reqType in requiredTypes
 
 export setName,
        setState,
+       setIsOutTrans!,
        setSchedule,
        addCondition!,
        clearConditions!,
@@ -21,12 +22,11 @@ export setName,
        setTransProbabilities,
        setMaxAttempts,
        setTimeBetweenAttempts,
-       setFireAfterFail,
+       setFluxBounds,
+       setMinFlux,
        setMaxFlux,
        setHasPriority
 
-
-dummyState = State( "Dummy" )
 
 """
 ```
@@ -53,7 +53,8 @@ setState( trans::Transition,
 ```
 This function sets one of the states (start/end) of the transition `trans` to
 `state`. If `isEndState` is `true`, the end state will be set, otherwise the
-start state will be set.
+start state will be set. Note that the end state will be ignored if the
+transition's `isOutTrans` flag is set to `true`.
 
 This function returns `nothing`.
 """
@@ -69,6 +70,24 @@ function setState( trans::Transition, state::State,
     return
 
 end  # setState( trans, state, isEndState )
+
+
+"""
+```
+setIsOutTrans!( trans::Transition,
+                isOutTrans::Bool )
+```
+This function sets the `isOutTrans` flag of the transition `trans` to
+`isOutTrans`.
+
+This function returns `nothing`.
+"""
+function setIsOutTrans!( trans::Transition, isOutTrans::Bool )::Void
+
+    trans.isOutTrans = isOutTrans
+    return
+
+end  # setIsOutTrans!( trans, isOutTrans )
 
 
 """
@@ -246,69 +265,101 @@ end  # setMaxAttempts( trans, maxAttempts )
 
 """
 ```
-function setTimeBetweenAttempts( trans::Transition,
-                                 timeBetweenAttempts::T )
-    where T <: Real
+setFluxBounds( trans::Transition,
+               minFlux::Integer,
+               maxFlux::Integer )
 ```
-This function sets the time between two successive attempts at the transition
-`trans` to `timeBetweenAttempts`. Values < 0.0 are invalid, and 0.0 means that
-the time is the same as the schedule time of the transition.
+This function sets the flux of the transition `trans` to the range `minFlux` to
+`maxFlux`. Values below 0 for the minimum flux are invalid. Values below -1 for
+the maximum flux are invalid. A value of -1 for the maximum flux means that
+there is no upper limit on the flux. A minimum flux which is higher than the
+maximum flux is invalid.
 
-This function returns `nothing`. If an invalid time is entered, the function
-will issue a warning to that effect and makes no changes to the transition.
-"""
-function setTimeBetweenAttempts( trans::Transition,
-    timeBetweenAttempts::T )::Void where T <: Real
-
-    if timeBetweenAttempts < 0.0
-        warn( "Time between attempts must be >= 0.0. Not making any changes." )
-        return
-    end  # if timeBetweenAttempts < 0.0
-
-    trans.timeBetweenAttempts = timeBetweenAttempts
-    return
-
-end  # setTimeBetweenAttempts( trans, timeBetweenAttempts )
-
-
-"""
-```
-setFireAfterFail( trans::Transition,
-                  isFiredOnFail::Bool )
-```
-This function changes the isFiredOnFail flag of the transition `trans` to
-`isFiredOnFail`.
-
-This function returns `nothing`.
-"""
-function setFireAfterFail( trans::Transition, isFiredOnFail::Bool )::Void
-
-    trans.isFiredOnFail = isFiredOnFail
-    return
-
-end  # setFireAfterFail( trans, isFiredOnFail )
-
-
-"""
-```
-setMaxFlux( trans::Transition,
-            maxFlux::T )
-    where T <: Integer
-```
-This function sets the maximum flux of the transition `trans` to `maxFlux`.
-Values below -1 are invalid. A value of -1 means that there is no limit on the
-flux.
-
-This function returns `nothing`. If an invalid maximum flux is entered,
-the function issues a warning to that effect and makes no changes to the
+This function returns `nothing`. If an invalid flux range is entered, the
+function issues a warning to that effect and makes no changes to the
 transition.
 """
-function setMaxFlux( trans::Transition, maxFlux::T )::Void where T <: Integer
+function setFluxBounds( trans::Transition, minFlux::Integer,
+    maxFlux::Integer )
+
+    if minFlux < 0
+        warn( "Min flux must be >= 0. Not making any changes." )
+        return
+    end  # if minFlux < 0
 
     if maxFlux < -1
         warn( "Max flux must be >= -1. Not making any changes." )
         return
     end  # if maxFlux < -1
+
+    if ( maxFlux > -1 ) && ( minFlux > maxFlux )
+        warn( "Min flux cannot be higher than max flux.",
+            " Not making any changes." )
+        return
+    end  # if ( maxFlux > -1 ) && ...
+
+    trans.minFlux = minFlux
+    trans.maxFlux = maxFlux
+    return
+
+end  # setMaxFlux( trans, maxFlux )
+
+
+"""
+```
+setMinFlux( trans::Transition,
+            minFlux::Integer )
+```
+This function sets the minimum flux of the transition `trans` to `minFlux`.
+Values below 0 are invalid. Values higher than the transition's current max flux
+are invalid.
+
+This function returns `nothing`. If an invalid minimum flux is entered, the
+function issues a warning to that effect and makes no changes to the
+transition.
+"""
+function setMinFlux( trans::Transition, minFlux::Integer )::Void
+
+    if minFlux < 0
+        warn( "Min flux must be >= 0. Not making any changes." )
+        return
+    end  # if minFlux < 0
+
+    if ( trans.maxFlux > -1 ) && ( minFlux > trans.maxFlux )
+        warn( "Min flux must be <= current max flux ", trans.maxFlux,
+            ". Not making any changes." )
+    end  # if ( trans.maxFlux > -1 ) && ...
+
+    trans.minFlux = minFlux
+    return
+
+end  # setMaxFlux( trans, maxFlux )
+
+
+"""
+```
+setMaxFlux( trans::Transition,
+            maxFlux::Integer )
+```
+This function sets the maximum flux of the transition `trans` to `maxFlux`.
+Values below -1 are invalid. A value of -1 means that there is no limit on the
+flux. Values smaller than the transition's current min flux are invalid.
+
+This function returns `nothing`. If an invalid maximum flux is entered, the
+function issues a warning to that effect and makes no changes to the
+transition.
+"""
+function setMaxFlux( trans::Transition, maxFlux::Integer )::Void
+
+    if maxFlux < -1
+        warn( "Max flux must be >= -1. Not making any changes." )
+        return
+    end  # if maxFlux < -1
+
+    if ( maxFlux > -1 ) && ( maxFlux > maxFlux )
+        warn( "Max flux must be >= current min flux ", trans.minFlux,
+            ". Not making any changes." )
+    end  # if ( maxFlux > -1 ) && ...
 
     trans.maxFlux = maxFlux
     return
@@ -338,15 +389,17 @@ end  # setHasPriority( trans, hasPrio )
 
 function Base.show( io::IO, trans::Transition )
 
-    print( io, "    Transition $(trans.name): '$(trans.startState.name)' to '$(trans.endState.name)'" )
-    print( io, "\n      Occurs with period $(trans.freq) (offset $(trans.offset))" )
+    print( io, "    Transition '", trans.name, "': '", trans.startState.name,
+        "' to '", trans.isOutTrans ? "external" : trans.endState.name, "'" )
+    print( io, "\n      Occurs with period ", trans.freq, " (offset ",
+        trans.offset, ")" )
 
     if !isempty( trans.extraConditions )
-        print( io, "\n      Extra conditions: $(trans.extraConditions)" )
+        print( io, "\n      Extra conditions: ", trans.extraConditions )
     end  # if !isempty( trans.extraConditions )
 
     if !isempty( trans.extraChanges )
-        print( io, "\n      Extra changes: $(trans.extraChanges)" )
+        print( io, "\n      Extra changes: ", trans.extraChanges )
     end
 
     if trans.maxAttempts == -1
@@ -354,25 +407,25 @@ function Base.show( io::IO, trans::Transition )
     else
         nAttempts = trans.maxAttempts == 0 ? length( trans.probabilityList ) :
             trans.maxAttempts
-        print( io, "\n      Max $nAttempts" )
+        print( io, "\n      Max ", nAttempts )
     end  # if trans.maxAttempts == -1
 
     print( io, " attempts" )
 
-    if trans.isFiredOnFail && ( trans.maxAttempts != -1 )
-        print( io, "\n      Personnel members are fired if transition isn't succesful." )
-    end  # if trans.isFiredOnFail
+    if trans.minFlux > 0
+        print( io, "\n      Min flux: ", trans.minFlux )
+    end
 
     if trans.maxFlux >= 0
-        print( io, "\n      Max flux: $(trans.maxFlux)" )
+        print( io, "\n      Max flux: ", trans.maxFlux )
 
         if trans.hasPriority
             print( io, " (overrides state pop. constraint)" )
         end  # if trans.hasPriority
     end  # if trans.maxFlux >= 0
 
-    print( io, "\n      Transition execution probabilities: " )
-    print( io, join( trans.probabilityList .* 100, "%, " ) * '%' )
+    print( io, "\n      Transition execution probabilities: ",
+        join( trans.probabilityList .* 100, "%, " ), '%' )
     print( io, "\n      Transition at priority ", - trans.transPriority )
 
 end  # Base.show( io, trans )
@@ -382,9 +435,9 @@ end  # Base.show( io, trans )
 # Non-exported methods.
 # ==============================================================================
 
-function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
+function readTransition( sheet::XLSX.Worksheet, sLine::Integer )
 
-    newTrans = Transition( sheet[ "A$sLine" ], dummyState, dummyState )
+    newTrans = Transition( sheet[ "A$sLine" ], dummyNode, dummyNode )
     startState, endState = string( sheet[ "B$sLine" ] ),
         string( sheet[ "C$sLine" ] )
     setSchedule( newTrans, sheet[ "D$sLine" ], sheet[ "E$sLine" ] )
@@ -421,21 +474,15 @@ function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
 
     # Read dynamics.
     sCol += nOtherConds + 2
-    maxFlux = sheet[ XLSX.CellRef( sLine, sCol ) ]
-    setMaxFlux( newTrans, isa( maxFlux, Missings.Missing ) ? -1 :
-        Int( maxFlux ) )
+    minFlux = sheet[ XLSX.CellRef( sLine, sCol ) ]
+    maxFlux = sheet[ XLSX.CellRef( sLine, sCol + 1 ) ]
+    setFluxBounds( newTrans, isa( minFlux, Missing ) ? 0 : Int( minFlux ),
+        isa( maxFlux, Missing ) ? -1 : Int( maxFlux ) )
     setHasPriority( newTrans,
-        sheet[ XLSX.CellRef( sLine, sCol + 1 ) ] == "NO" )
-    maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 2 ) ]
-    setMaxAttempts( newTrans, isa( maxAttempts, Missings.Missing ) ? -1 :
+        sheet[ XLSX.CellRef( sLine, sCol + 2 ) ] == "NO" )
+    maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 3 ) ]
+    setMaxAttempts( newTrans, isa( maxAttempts, Missing ) ? -1 :
         Int( maxAttempts ) )
-
-    if isa( maxAttempts, Missings.Missing )
-        setFireAfterFail( newTrans, false )
-    else
-        setFireAfterFail( newTrans,
-            sheet[ XLSX.CellRef( sLine, sCol + 3 ) ] == "YES" )
-    end  # if !isa( maxAttempts, Missings.Missing )
 
     # Read probability vector.
     sCol += 4
@@ -461,6 +508,68 @@ function readTransition( sheet::XLSX.Worksheet, sLine::T ) where T <: Integer
     return newTrans, startState, endState
 
 end  # readTransition( sheet, sLine )
+
+
+function readOutTransition( sheet::XLSX.Worksheet, sLine::Integer )
+
+    newTrans = Transition( sheet[ "A$sLine" ], dummyNode )
+    sourceNode = string( sheet[ "B$sLine" ] )
+    setSchedule( newTrans, sheet[ "C$sLine" ], sheet[ "D$sLine" ] )
+
+    # Read time related conditions.
+    sCol = 6
+    nTimeConds = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
+
+    for ii in 1:nTimeConds
+        newCond, isCondOkay = processCondition(
+            sheet[ XLSX.CellRef( sLine, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 1, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 2, sCol + ii ) ] )
+
+        if isCondOkay
+            addCondition!( newTrans, newCond )
+        end  # if isCondOkay
+    end  # for ii in 1:nTimeConds
+
+    # Read other/attribute conditions.
+    sCol += nTimeConds + 2
+    nOtherConds = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
+
+    for ii in 1:nOtherConds
+        newCond, isCondOkay = processCondition(
+            sheet[ XLSX.CellRef( sLine, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 1, sCol + ii ) ],
+            sheet[ XLSX.CellRef( sLine + 2, sCol + ii ) ] )
+
+        if isCondOkay
+            addCondition!( newTrans, newCond )
+        end  # if isCondOkay
+    end  # for ii in 1:nOtherConds
+
+    # Read dynamics.
+    sCol += nOtherConds + 2
+    minFlux = sheet[ XLSX.CellRef( sLine, sCol ) ]
+    maxFlux = sheet[ XLSX.CellRef( sLine, sCol + 1 ) ]
+    setFluxBounds( newTrans, isa( minFlux, Missing ) ? 0 : Int( minFlux ),
+        isa( maxFlux, Missing ) ? -1 : Int( maxFlux ) )
+    maxAttempts = sheet[ XLSX.CellRef( sLine, sCol + 2 ) ]
+    setMaxAttempts( newTrans, isa( maxAttempts, Missing ) ? -1 :
+        Int( maxAttempts ) )
+
+    # Read probability vector.
+    sCol += 2
+    nProbs = Int( sheet[ XLSX.CellRef( sLine, sCol ) ] )
+    probs = Vector{Float64}( nProbs )
+
+    for ii in 1:nProbs
+        probs[ ii ] = sheet[ XLSX.CellRef( sLine, sCol + ii ) ]
+    end  # for ii in 1:nProbs
+
+    setTransProbabilities( newTrans, probs )
+
+    return newTrans, sourceNode
+
+end  # readOutTransition( sheet, sLine )
 
 
 function purgeRedundantExtraChanges( trans::Transition )::Void
@@ -504,13 +613,18 @@ end  # initiateTransitionProcesses( mpSim )
     timeOfCheck = floor( timeOfCheck / trans.freq + 1.0 ) * trans.freq +
         trans.offset
     priority = - trans.transPriority
+    priorityShift = ( trans.hasPriority ? 1 : 2 ) * mpSim.nTrans
     maxAttempts = trans.maxAttempts == 0 ? length( trans.probabilityList ) :
         trans.maxAttempts
     nAttempts = Dict{String, Int}()
+    toShow = true
 
     while timeOfCheck <= mpSim.simLength
         processTime += now() - tStart
-        @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority ) )
+        filter!( ( id, nAtt ) -> haskey( trans.startState.inStateSince, id ),
+            nAttempts )
+        @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority -
+            ( trans.minFlux == 0 ? priorityShift : 0 ) ) )
         tStart = now()
         timeOfCheck += trans.freq
 
@@ -519,18 +633,22 @@ end  # initiateTransitionProcesses( mpSim )
         eligibleIDs = getEligibleIDs( trans, nAttempts, maxAttempts, mpSim )
         checkedIDs = checkExtraConditions( trans, eligibleIDs, mpSim )
         updateAttemptsAndIDs!( nAttempts, maxAttempts, checkedIDs )
-        transIDs = determineTransitionIDs( trans, checkedIDs, nAttempts )
 
-        # Halt execution until the transition candidates for all transitions at
-        #   the current time are determined.
-        processTime += now() - tStart
-        # @yield( timeout( sim, 0, priority = priority - 1 ) )
-        tStart = now()
-        executeTransitions( trans, transIDs, mpSim )
-        newStateList = updateStates( trans, transIDs, nAttempts, mpSim )
-        updateTimeToAttrition( newStateList, mpSim )
-        firePersonnel( trans, checkedIDs, transIDs, nAttempts, maxAttempts,
-            mpSim )
+        # Assign a modified probability to each person.
+        transLevels = determineTransitionLevels( trans, checkedIDs, nAttempts )
+
+        # If the transition has a minimum flux, transition those IDs first, and
+        #   set the priority of the rest of the transition to the proper level.
+        if trans.minFlux > 0
+            mandIDs = determineMandatoryIDs( trans, checkedIDs, transLevels )
+            performTransitions( mpSim, trans, mandIDs )
+            @yield( timeout( sim, 0, priority = priority - priorityShift ) )
+            filter!( id -> haskey( trans.startState.inStateSince, id ),
+                checkedIDs )
+        end  # if trans.minFlux > 0
+
+        transIDs = determineAdditionalIDs( trans, checkedIDs, transLevels )
+        performTransitions( mpSim, trans, transIDs )
     end  # while timeOfCheck <= mpSim.simLength
 
     processTime += now() - tStart
@@ -543,7 +661,6 @@ function getEligibleIDs( trans::Transition, nAttempts::Dict{String, Int},
     maxAttempts::Int, mpSim::ManpowerSimulation )::Vector{String}
 
     eligibleIDs = collect( keys( trans.startState.inStateSince ) )
-    filter!( id -> !trans.startState.isLockedForTransition[ id ], eligibleIDs )
 
     # Check if attempts have been exhausted (imprtant if transition doesn't fire
     #   after exhaustion of attempts).
@@ -553,7 +670,7 @@ function getEligibleIDs( trans::Transition, nAttempts::Dict{String, Int},
             ( nAttempts[ id ] < maxAttempts ), eligibleIDs )
     end  # if maxAttempts > 0
 
-    for cond in filter( cond -> cond.attr == "time in state",
+    for cond in filter( cond -> cond.attr == "time in node",
         trans.extraConditions )
         filter!( id -> cond.rel( now( mpSim ) -
             trans.startState.inStateSince[ id ], cond.val ), eligibleIDs )
@@ -562,6 +679,37 @@ function getEligibleIDs( trans::Transition, nAttempts::Dict{String, Int},
     return eligibleIDs
 
 end  # getEligibleIDs( trans, mpSim )
+
+
+function checkExtraConditions( trans::Transition, eligibleIDs::Vector{String},
+    mpSim::ManpowerSimulation )::Vector{String}
+
+    if isempty( eligibleIDs ) || isempty( trans.extraConditions )
+        return eligibleIDs
+    end  # if isempty( eligibleIDs ) || ...
+
+    checkedIDs = eligibleIDs
+
+    # Check extra conditions.
+    queryCmd = string( "SELECT *, ageAtRecruitment + ", now( mpSim ),
+        " - timeEntered age, ", now( mpSim ), " - timeEntered tenure
+        FROM `", mpSim.personnelDBname, "`
+        WHERE `", mpSim.idKey, "` IN ('", join( eligibleIDs, "', '" ), "')" )
+    eligibleIDsState = SQLite.query( mpSim.simDB, queryCmd )
+    isIDokay = isa.( eligibleIDs, String )
+
+    for cond in filter( cond -> cond.attr != "time in node",
+        trans.extraConditions )
+        isIDokay = isIDokay .& map( ii -> cond.rel(
+            eligibleIDsState[ Symbol( cond.attr ) ][ ii ], cond.val ),
+            eachindex( isIDokay ) )
+    end  # for cond in filter( ...
+
+    checkedIDs = eligibleIDsState[ Symbol( mpSim.idKey ) ][ isIDokay ]
+
+    return checkedIDs
+
+end  # checkExtraConditions( trans, eligibleIDs, mpSim )
 
 
 function updateAttemptsAndIDs!( nAttempts::Dict{String, Int}, maxAttempts::Int,
@@ -584,155 +732,132 @@ function updateAttemptsAndIDs!( nAttempts::Dict{String, Int}, maxAttempts::Int,
 end  # updateAttemptsAndIDs!( nAttempts, eligibleIDs )
 
 
-function checkExtraConditions( trans::Transition, eligibleIDs::Vector{String},
-    mpSim::ManpowerSimulation )::Vector{String}
+function determineTransitionLevels( trans::Transition,
+    eligibleIDs::Vector{String},
+    nAttempts::Dict{String, Int} )::Dict{String, Float64}
 
-    checkedIDs = eligibleIDs
+    if isempty( eligibleIDs )
+        return Dict{String, Float64}()
+    end  # if isempty( eligibleIDs )
 
-    # Check extra conditions.
-    if !isempty( eligibleIDs ) && !isempty( trans.extraConditions )
-        queryCmd = "SELECT *, ageAtRecruitment + $(now( mpSim )) - timeEntered age, $(now( mpSim )) - timeEntered tenure
-            FROM $(mpSim.personnelDBname)
-            WHERE $(mpSim.idKey) IN ('$(join( eligibleIDs, "', '" ))')"
-        eligibleIDsState = SQLite.query( mpSim.simDB, queryCmd )
-        isIDokay = isa.( eligibleIDs, String )
+    # The probabilities of undergoing the transition for each person.
+    tresholds = trans.probabilityList[ map( ii -> min(
+        length( trans.probabilityList ), nAttempts[ eligibleIDs[ ii ] ] ),
+        eachindex( eligibleIDs ) ) ]
+    modProbs = rand( length( eligibleIDs ) ) ./ tresholds
 
-        for cond in filter( cond -> cond.attr != "time in state",
-            trans.extraConditions )
-            isIDokay = isIDokay .& map( ii -> cond.rel(
-                eligibleIDsState[ Symbol( cond.attr ) ][ ii ], cond.val ),
-                eachindex( isIDokay ) )
-        end  # for cond in filter( ...
+    return Dict{String, Float64}( eligibleIDs[ ii ] => modProbs[ ii ] for ii =
+        eachindex( eligibleIDs ) )
 
-        checkedIDs = eligibleIDsState[ Symbol( mpSim.idKey ) ][ isIDokay ]
-    end  # if !isempty( eligibleIDs )
-
-    return checkedIDs
-
-end  # checkExtraConditions( trans, eligibleIDs, mpSim )
+end  # determineTransitionLevels( trans, eligibleIDs, nAttempts )
 
 
-function determineTransitionIDs( trans::Transition, eligibleIDs::Vector{String},
-    nAttempts::Dict{String, Int} )::Vector{String}
+function determineMandatoryIDs( trans::Transition, eligibleIDs::Vector{String},
+    transLevels::Dict{String, Float64} )::Vector{String}
 
-    transIDs = eligibleIDs
+    if length( eligibleIDs ) <= trans.minFlux
+        return eligibleIDs
+    end  # if length( eligibleIDs ) <= trans.minFlux
 
-    if !isempty( eligibleIDs )
-        # Determine who undergoes transition.
-        nEligible = length( eligibleIDs )
-        transRolls = rand( nEligible )
-        transIDs = eligibleIDs[ map( ii -> transRolls[ ii ] <
-            trans.probabilityList[ min( length( trans.probabilityList ),
-            nAttempts[ eligibleIDs[ ii ] ] ) ], 1:nEligible ) ]
-            # The n-th probability in the list where n is the lesser of the
-            #   size of the probability list and the number of attempts by
-            #   the ii-th eligible person.
+    # Get the min flux IDs which have the smallest value for their transLevel.
+    modProbs = map( id -> transLevels[ id ], eligibleIDs )
 
-        # Check how many spots are available in the end state, ONLY if the end
-        #   state differs from the start state, and if the end state target has
-        #   to be respected.
-        available = -1
+    return eligibleIDs[ sortperm( modProbs )[ 1:(trans.minFlux) ] ]
 
-        if !( trans.hasPriority) && ( trans.startState != trans.endState ) &&
-            ( trans.endState.stateTarget >= 0 )
-            available = max( trans.endState.stateTarget -
-                length( trans.endState.inStateSince ), 0 )
-        end  # if ( trans.startState != trans.endState ) && ...
+end  # determineMandatoryIDs( trans, eligibleIDs, transLevels )
 
-        # Determine the number of personnel members to undergo the transition.
-        #   This is the minimum of the number of the max flux and the number of
-        #   vacancies in the end state.
-        toChoose = trans.maxFlux
 
-        if trans.maxFlux == -1
-            toChoose = available
-        elseif available != -1
-            toChoose = min( available, toChoose )
-        end  # if trans.maxFlux == -1
+function performTransitions( mpSim::ManpowerSimulation, trans::Transition,
+    idList::Vector{String} )::Void
 
-        # Take only toChoose random IDs if the number of eligible IDs exceeds
-        #   this.
-        if ( toChoose != -1 ) && ( length( transIDs ) > toChoose )
-            transIDs = transIDs[ sortperm( rand( length( transIDs ) ) )[
-                1:toChoose ] ]
-                # Get the first toChoose entries of the permutation
-                #   vector that puts the vector of random numbers in sorted
-                #   order.
-        end  # if ( toChoose != -1 ) && ...
+    if trans.isOutTrans
+        retirePersons( mpSim, idList, trans.name )
+    else
+        # Execute the transition for the selected personnel members and
+        #   perform necessary updates.
+        executeTransitions( trans, idList, mpSim )
 
-        # Lock the chosen IDs for transition.
-        foreach( id -> trans.startState.isLockedForTransition[ id ] = true,
-            transIDs )
-    end  # if !isempty( eligibleIDs )
+        if trans.startState !== trans.endState
+            newStateList = updateStates( trans, idList, mpSim )
+            updateTimeToAttrition( newStateList, mpSim )
+        end  # if trans.startState !== trans.endState
+    end  # if trans.isOutTrans
 
-    return transIDs
+    return
 
-end  # determineTransitionIDs( trans, eligibleIDs, nAttempts )
+end  # performTransitions( mpSim, trans, idList )
 
 
 function executeTransitions( trans::Transition, transIDs::Vector{String},
     mpSim::ManpowerSimulation )
 
-    if !isempty( transIDs )
-        # Get current state of the personnel members undergoing the
-        #   transition.
-        queryCmd = "SELECT * FROM $(mpSim.personnelDBname)
-            WHERE $(mpSim.idKey) IN ('$(join( transIDs, "', '" ))')"
-        transIDsState = SQLite.query( mpSim.simDB, queryCmd )
-        tmpIDs = transIDsState[ Symbol( mpSim.idKey ) ]
+    if isempty( transIDs )
+        return
+    end  # if isempty( transIDs )
 
-        # Make changes in personnel database.
-        persChangesCmd = Vector{String}()
-        changedAttrs = Vector{String}()
-        newAttrValues = Vector{String}()
+    # Get current state of the personnel members undergoing the
+    #   transition.
+    queryCmd = "SELECT * FROM `$(mpSim.personnelDBname)`
+        WHERE `$(mpSim.idKey)` IN ('$(join( transIDs, "', '" ))')"
+    transIDsState = SQLite.query( mpSim.simDB, queryCmd )
+    tmpIDs = transIDsState[ Symbol( mpSim.idKey ) ]
 
-        # End state attributes.
+    # Make changes in personnel database.
+    persChangesCmd = Vector{String}()
+    changedAttrs = Vector{String}()
+    newAttrValues = Vector{String}()
+
+    # End state attributes.
+    if trans.startState !== trans.endState
         for attr in keys( trans.endState.requirements )
             push!( changedAttrs, attr )
             push!( newAttrValues,
                 trans.endState.requirements[ attr ][ 1 ] )
-            push!( persChangesCmd, "'$attr' = '$(newAttrValues[ end ])'" )
+            push!( persChangesCmd, "`$attr` = '$(newAttrValues[ end ])'" )
         end  # for attr in keys( trans.endState.requirements )
+    end  # if trans.startState !== trans.endState
 
-        # Extra attribute changes.
-        for attr in trans.extraChanges
-            push!( changedAttrs, attr.name )
-            push!( newAttrValues, collect( keys( attr.values ) )[ 1 ] )
-            push!( persChangesCmd, "'$(attr.name)' = '$(newAttrValues[ end ])'" )
-        end  # for attr in trans.extraChanges
+    # Extra attribute changes.
+    for attr in trans.extraChanges
+        push!( changedAttrs, attr.name )
+        push!( newAttrValues, collect( keys( attr.values ) )[ 1 ] )
+        push!( persChangesCmd, "`$(attr.name)` = '$(newAttrValues[ end ])'" )
+    end  # for attr in trans.extraChanges
 
-        persChangesCmd = "UPDATE $(mpSim.personnelDBname)
+    if !isempty( persChangesCmd )
+        persChangesCmd = "UPDATE `$(mpSim.personnelDBname)`
             SET $(join( persChangesCmd, ", " ))
-            WHERE $(mpSim.idKey) IN ('$(join( tmpIDs, "', '" ))')"
+            WHERE `$(mpSim.idKey)` IN ('$(join( tmpIDs, "', '" ))')"
         SQLite.execute!( mpSim.simDB, persChangesCmd )
+    end  # if !isempty( persChangesCmd )
 
-        # Record attribute changes in history database.
-        histChangesCmd = Vector{String}()
+    # Record attribute changes in history database.
+    histChangesCmd = Vector{String}()
 
-        for ii in eachindex( changedAttrs )
-            oldAttrValues = transIDsState[ Symbol( changedAttrs[ ii ] ) ]
-            changedIDs = tmpIDs[ oldAttrValues .!= newAttrValues[ ii ] ]
+    for ii in eachindex( changedAttrs )
+        oldAttrValues = transIDsState[ Symbol( changedAttrs[ ii ] ) ]
+        changedIDs = tmpIDs[ oldAttrValues .!= newAttrValues[ ii ] ]
 
-            if !isempty( changedIDs )
-                suffix = "', '$(changedAttrs[ ii ])', $(now( mpSim )), '$(newAttrValues[ ii ])')"
-                push!( histChangesCmd,
-                    join( "('" .* changedIDs .* suffix, ", " ) )
-            end  # if !isempty( changedIDs )
-        end  # for attr in changedAttrs
+        if !isempty( changedIDs )
+            suffix = "', '$(changedAttrs[ ii ])', $(now( mpSim )), '$(newAttrValues[ ii ])')"
+            push!( histChangesCmd,
+                join( "('" .* changedIDs .* suffix, ", " ) )
+        end  # if !isempty( changedIDs )
+    end  # for attr in changedAttrs
 
-        if !isempty( histChangesCmd )
-            histChangesCmd = "INSERT INTO $(mpSim.historyDBname)
-                ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES
-                $(join( histChangesCmd, ", "))"
-            SQLite.execute!( mpSim.simDB, histChangesCmd )
-        end  # if !isempty( histChangesCmd )
-    end  # if !isempty( transIDs )
+    if !isempty( histChangesCmd )
+        histChangesCmd = "INSERT INTO `$(mpSim.historyDBname)`
+            (`$(mpSim.idKey)`, attribute, timeIndex, strValue) VALUES
+            $(join( histChangesCmd, ", "))"
+        SQLite.execute!( mpSim.simDB, histChangesCmd )
+    end  # if !isempty( histChangesCmd )
+
+    return
 
 end  # executeTransitions( trans, transIDs, mpSim )
 
 
 function updateStates( trans::Transition, transIDs::Vector{String},
-    nAttempts::Dict{String, Int},
     mpSim::ManpowerSimulation )::Dict{String, Vector{State}}
 
     newStateList = Dict{String, Vector{State}}()
@@ -742,167 +867,162 @@ function updateStates( trans::Transition, transIDs::Vector{String},
     end  # if isempty( transIDs )
 
     stateUpdates = Vector{String}( length( transIDs ) )
-    queryCmd = "SELECT $(mpSim.idKey), ageAtRecruitment, timeEntered
-        FROM $(mpSim.personnelDBname)
-        WHERE $(mpSim.idKey) in ('$(join( transIDs, "', '" ))')"
+    queryCmd = "SELECT `$(mpSim.idKey)`, ageAtRecruitment, timeEntered
+        FROM `$(mpSim.personnelDBname)`
+        WHERE `$(mpSim.idKey)` in ('$(join( transIDs, "', '" ))')"
     importantTimes = SQLite.query( mpSim.simDB, queryCmd )
 
     for ii in eachindex( transIDs )
         pid = importantTimes[ ii, 1 ]
         newStateList[ pid ] = [ trans.endState ]
         delete!( trans.startState.inStateSince, pid )
-        delete!( trans.startState.isLockedForTransition, pid )
-        delete!( nAttempts, pid )
         trans.endState.inStateSince[ pid ] = now( mpSim )
-        trans.endState.isLockedForTransition[ pid ] = false
         stateUpdates[ ii ] = "('$pid', $(now( mpSim )), '$(trans.name)', '$(trans.startState.name)', '$(trans.endState.name)')"
-        newRetirementTime = computeExpectedRetirementTime( mpSim,
-            mpSim.retirementScheme, importantTimes[ ii, 2 ],
-            trans.endState.stateRetAge, importantTimes[ ii, 3 ] )
-        retireUpdate = "UPDATE $(mpSim.personnelDBname)
-            SET expectedRetirementTime = $newRetirementTime
-            WHERE $(mpSim.idKey) IS '$pid'"
-        SQLite.execute!( mpSim.simDB, retireUpdate )
     end  # for id in transIDs
 
-    transChangesCmd = "INSERT INTO $(mpSim.transitionDBname)
-        ($(mpSim.idKey), timeIndex, transition, startState, endState) VALUES
+    transChangesCmd = "INSERT INTO `$(mpSim.transitionDBname)`
+        (`$(mpSim.idKey)`, timeIndex, transition, startState, endState) VALUES
         $(join( stateUpdates, ", " ))"
     SQLite.execute!( mpSim.simDB, transChangesCmd )
     return newStateList
 
-end  # function updateStates( trans, transIDs, nAttempts, mpSim )
+end  # function updateStates( trans, transIDs, mpSim )
 
 
-function firePersonnel( trans::Transition, checkedIDs::Vector{String},
-    transIDs::Vector{String}, nAttempts::Dict{String, Int}, maxAttempts::Int,
-    mpSim::ManpowerSimulation )::Void
+function determineAdditionalIDs( trans::Transition, eligibleIDs::Vector{String},
+    transLevels::Dict{String, Float64} )::Vector{String}
 
-    # Fire the personnel members who haven't succesfully made the transition
-    #   after the maximum number of attempts.
-    if trans.isFiredOnFail && ( maxAttempts >= 0 ) && !isempty( checkedIDs )
-        fireIDs = filter( id -> ( id ∉ transIDs ) &&
-            ( nAttempts[ id ] == maxAttempts ), checkedIDs )
+    if trans.maxFlux == trans.minFlux
+        return Vector{String}()
+    end  # if trans.maxFlux == trans.minFlux
 
-        if !isempty( fireIDs )
-            foreach( id -> delete!( nAttempts, id ), fireIDs )
-            retirePersons( mpSim, fireIDs, "fired" )
-        end  # if !isempty( fireIDs )
-    end  # if maxAttempts >= 0
+    if isempty( eligibleIDs )
+        return eligibleIDs
+    end  # if isempty( eligibleIDs )
 
-    return
+    # Determine the max number of personnel members left to transfer.
+    maxToTransfer = trans.maxFlux == -1 ? length( eligibleIDs ) :
+        trans.maxFlux - trans.minFlux
+    vacancies = -1
 
-end  # firePersonnel( trans, checkedIDs, transIDs, nAttempts, maxAttempts,
-     #   mpSim )
+    if !( trans.isOutTrans ) && !( trans.hasPriority ) &&
+        ( trans.startState !== trans.endState ) &&
+        trans.endState.stateTarget >= 0
+        vacancies = max( 0, trans.endState.stateTarget -
+            length( trans.endState.inStateSince ) )
+    end  # if !( trans.isOutTrans ) && ...
+
+    if vacancies >= 0
+        maxToTransfer = min( maxToTransfer, vacancies )
+    end  # if vacancies >= 0
+
+    if maxToTransfer == 0
+        return Vector{String}()
+    end  # if maxToTransfer == 0
+
+    modProbs = map( id -> transLevels[ id ], eligibleIDs )
+    hasPassed = modProbs .< 1
+
+    # If the number of people who have passed the test is smaller than the
+    #   number of people who can transfer, return the list of people who passed.
+    if sum( hasPassed ) <= maxToTransfer
+        return eligibleIDs[ hasPassed ]
+    end  # if sum( hasPassed ) <= maxToTransfer
+
+    # Otherwise, only select people with highest scores.
+    return eligibleIDs[ sortperm( modProbs )[ 1:maxToTransfer ] ]
+
+end  # determineAdditionalIDs( trans, eligibleIDs, transLevels )
 
 
 function buildTransitionNetwork( mpSim::ManpowerSimulation,
-    states::String... )
+    nodes::String... )
 
     # Filter out non-existing nodes.
-    stateList = merge( mpSim.initStateList, mpSim.otherStateList )
-    tmpStates = collect( Iterators.filter(
-        stateName -> any( state -> state.name == stateName, keys( stateList ) ),
-        states ) )
-    graphStates = tmpStates
+    nodeList = merge( mpSim.initStateList, mpSim.otherStateList )
+    tmpNodes = collect( Iterators.filter(
+        nodeName -> any( node -> node.name == nodeName, keys( nodeList ) ),
+        nodes ) )
+    graphNodes = tmpNodes
     graphTrans = Vector{String}()
 
     # Initialise directed graph.
-    nStates = length( graphStates )
-    graph = MetaDiGraph( DiGraph( nStates + 2 ) )
-    inNodeIndex = nStates + 1
-    outNodeIndex = nStates + 2
-    set_prop!( graph, nStates + 1, :state, "In" )
-    set_prop!( graph, nStates + 2, :state, "Out" )
+    nNodes = length( graphNodes )
+    graph = MetaDiGraph( DiGraph( nNodes + 2 ) )
+    inNodeIndex = nNodes + 1
+    outNodeIndex = nNodes + 2
+    set_prop!( graph, nNodes + 1, :node, "In" )
+    set_prop!( graph, nNodes + 2, :node, "Out" )
 
-    # Add node labels and transitions for initial states.
-    for ii in eachindex( tmpStates )
-        set_prop!( graph, ii, :state, tmpStates[ ii ] )
-        state = mpSim.stateList[ tmpStates[ ii ] ]
+    # Add node labels to states.
+    for ii in 1:nNodes
+        set_prop!( graph, ii, :node, graphNodes[ ii ] )
+    end  # for ii in 1:nNodes
 
-        # Add recruitment edge for initial state.
-        if haskey( mpSim.initStateList, state )
-            add_edge!( graph, inNodeIndex, ii )
-            set_prop!( graph, inNodeIndex, ii, :trans, "recruitment" )
-        end  # if any( state -> state.name == tmpStates[ ii ], ...
+    # Add recruitment edges.
+    for recScheme in mpSim.recruitmentSchemes
+        recNodeIndex = findfirst( graphNodes .== recScheme.recState )
+        add_edge!( graph, inNodeIndex, recNodeIndex )
+        set_prop!( graph, inNodeIndex, recNodeIndex, :trans,
+            recScheme.name )
+    end  # for recScheme in mpSim.recSchemes
 
-        # Add retirement edge for states with defined retirement scheme.
-        retScheme = mpSim.retirementScheme
-
-        if ( isa( retScheme, Retirement ) &&
-            ( ( retScheme.maxCareerLength != 0.0 ) ||
-                ( retScheme.retireAge != 0.0 ) ) ) ||
-            ( state.stateRetAge != 0.0 )
-            add_edge!( graph, ii, outNodeIndex )
-            set_prop!( graph, ii, outNodeIndex, :trans, "retirement" )
-        end  # if ( isa( retScheme, Retirement ) && ...
-    end  # for ii in eachindex( tmpStates )
-
-    push!( graphStates, "In", "Out" )
-    nStates += 2
+    push!( graphNodes, "In", "Out" )
+    nNodes += 2
 
     # Add all other transitions.
-    for state in keys( stateList )
+    for state in keys( nodeList )
         # Is the state in the original list?
-        if state.name ∈ tmpStates
+        if state.name ∈ tmpNodes
             # Find its index.
-            startStateIndex = findfirst( tmpState -> tmpState == state.name,
-                tmpStates )
+            startStateIndex = findfirst( tmpNodes .== state.name )
 
             # Add all transitions starting from there.
-            for trans in stateList[ state ]
-                endStateIndex = findfirst(
-                    tmpState -> tmpState == trans.endState.name, graphStates )
+            for trans in nodeList[ state ]
+                endStateIndex = trans.endState.name == "Dummy" ? outNodeIndex :
+                    findfirst( graphNodes .== trans.endState.name )
 
                 # If end state hasn't been put in the list, add it.
                 if endStateIndex == 0
                     add_vertex!( graph )
-                    push!( graphStates, trans.endState.name )
-                    nStates += 1
-                    set_prop!( graph, nStates, :state, trans.endState.name )
-                    endStateIndex = nStates
+                    push!( graphNodes, trans.endState.name )
+                    nNodes += 1
+                    set_prop!( graph, nNodes, :node, trans.endState.name )
+                    endStateIndex = nNodes
                 end  # if endStateIndex == 0
 
                 add_edge!( graph, startStateIndex, endStateIndex )
                 set_prop!( graph, startStateIndex, endStateIndex, :trans,
                     trans.name )
-
-                if trans.isFiredOnFail
-                    add_edge!( graph, startStateIndex, outNodeIndex )
-                    set_prop!( graph, startStateIndex, outNodeIndex, :trans,
-                        "fired\n(failed $(trans.name))" )
-                end  # if trans.isFiredOnFail
-            end  # for trans in stateList[ state ]
+            end  # for trans in nodeList[ state ]
         else
-            startStateIndex = findfirst( tmpState -> tmpState == state.name,
-                graphStates )
+            startStateIndex = findfirst( graphNodes .== state.name )
             isStateCreated = startStateIndex > 0
 
-            for trans in stateList[ state ]
-                endStateIndex = findfirst(
-                    tmpState -> tmpState == trans.endState.name, tmpStates )
+            for trans in nodeList[ state ]
+                endStateIndex = findfirst( tmpNodes .== trans.endState.name )
                 # Add the transition if the end state is in the list of original
                 #   states.
                 if endStateIndex > 0
                     # Create the state if it isn't in the list.
                     if !isStateCreated
                         add_vertex!( graph )
-                        push!( graphStates, trans.startState.name )
-                        nStates += 1
-                        set_prop!( graph, nStates, :state,
+                        push!( graphNodes, trans.startState.name )
+                        nNodes += 1
+                        set_prop!( graph, nNodes, :node,
                             trans.startState.name )
-                        startStateIndex = nStates
+                        startStateIndex = nNodes
                         isstateCreated = true
                     end  # if !isStateCreated
 
                     add_edge!( graph, startStateIndex, endStateIndex )
                     set_prop!( graph, startStateIndex, endStateIndex, :trans,
                         trans.name )
-                end  # if trans.endState.name ∈ tmpStates
-            end  # for trans in stateList[ state ]
-        end  # if state.name ∈ graphStates
-    end  # for state in keys( stateList )
+                end  # if trans.endState.name ∈ tmpNodes
+            end  # for trans in nodeList[ state ]
+        end  # if state.name ∈ graphNodes
+    end  # for state in keys( nodeList )
 
     return graph, inNodeIndex, outNodeIndex
 
-end  # buildTransitionNetwork( mpSim, states )
+end  # buildTransitionNetwork( mpSim, nodes )

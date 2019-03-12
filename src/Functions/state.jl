@@ -16,7 +16,6 @@ export setName!,
        clearRequirements!,
        setInitial!,
        setStateTarget!,
-       setStateRetirementAge!,
        setStateAttritionScheme!,
        generateCatStates
 
@@ -199,30 +198,6 @@ function setStateAttritionScheme!( state::State, attrRate::Float64,
     return
 
 end  # setStateAttritionScheme!( state, attrScheme )
-
-
-"""
-```
-setStateRetirementAge!( state::State,
-                        retAge::T )
-    where T <: Real
-```
-This function sets the retirement age for personnel in the state `state` to
-`retAge`. If the age is set to 0, the default retirement scheme is used instead.
-
-This function returns `nothing`.
-"""
-function setStateRetirementAge!( state::State, retAge::T )::Void where T <: Real
-
-    if retAge < 0
-        warn( "Retirement age must be > 0. Not making change." )
-        return
-    end  # if retAge < 0
-
-    state.stateRetAge = retAge
-    return
-
-end  # setStateRetirementAge( state::State, retAge::T )
 
 
 """
@@ -421,6 +396,9 @@ end  # show( io, state )
 # Non-exported methods.
 # ==============================================================================
 
+dummyNode = State( "Dummy" )
+setStateTarget!( dummyNode, -1 )
+
 """
 ```
 readState( sheet::XLSX.Worksheet,
@@ -454,13 +432,6 @@ function readState( sheet::XLSX.Worksheet, stateCat::XLSX.Worksheet,
     stateTarget = sheet[ "B$sLine" ]
     setStateTarget!( newState, isa( stateTarget, Missings.Missing ) ? -1 :
         stateTarget )
-
-    # Set retirement age of state.
-    stateRetAge = sheet[ "D$sLine" ] * 12
-
-    if !isa( stateRetAge, Missing )
-        setStateRetirementAge!( newState, stateRetAge )
-    end  # if !isa( stateRetAge, Missing )
 
     return newState, attrPar
 
@@ -588,59 +559,25 @@ function orderStates( mpSim::ManpowerSimulation )::Vector{String}
         filter( stateName -> stateName ∉ tmpPreferredOrder, allStates ) )
 
     # Build a graph of the network.
-    graph = ManpowerPlanning.buildTransitionNetwork( mpSim,
+    graph = buildTransitionNetwork( mpSim,
         tmpPreferredOrder... )[ 1 ]
 
     # Initialises the lists.
     sortedNodes = Vector{Int}()
-    connectedNodes = Vector{Int}()
-    unconnectedNodes = collect( vertices( graph ) )[ 1:(end-2) ]
+    unsortedNodes = collect( vertices( graph ) )[ 1:(end - 2) ]
 
-    # For each node, find the first state in the sorted node list for which a
-    #   transition state -> node exists. Insert the new node before the found
-    #   transition.
-    while !isempty( unconnectedNodes ) || !isempty( connectedNodes )
-        # Grab the last node of those queued for insertion, or the last unsorted
-        #   node if the queue is empty.
-        node = pop!( isempty( connectedNodes ) ? unconnectedNodes :
-            connectedNodes )
+    # Simple insertion sort.
+    for node in unsortedNodes
+        insIndex = findfirst( has_path.( graph, sortedNodes, node ) )
 
-        # If there are unsorted nodes left, find all that link directly with the
-        #   currently considered node, and shift them to the sorting queue.
-        if !isempty( unconnectedNodes )
-            hasLink = has_edge.( graph, node, unconnectedNodes ) .|
-                has_edge.( graph, unconnectedNodes, node )
-            push!( connectedNodes, unconnectedNodes[ hasLink ]... )
-            unconnectedNodes = unconnectedNodes[ .!hasLink ]
-        end  # if !isempty( unconnectedNodes )
+        if insIndex == 0  # XXX to change in Julia v0.7
+            push!( sortedNodes, node )
+        else
+            insert!( sortedNodes, insIndex, node )
+        end  # if insIndex == 0
+    end  # for node in tmpPreferredOrder
 
-        # Insert the node in the right place in the list of sorted nodes.
-        firstFailIndex = findfirst( jj -> has_edge( graph, jj, node ),
-            sortedNodes )
-        lastFailIndex = findlast( jj -> has_edge( graph, node, jj ),
-            sortedNodes ) + 1  # Rework for v0.7
-        tmpFFI = firstFailIndex == 0 ? length( sortedNodes ) :
-            firstFailIndex - 1  # Reword for v0.7
-
-        indRange = tmpFFI - lastFailIndex + 1
-        insertIndex = tmpFFI + 1
-
-        # Try to take the preferred ordering into account. XXX not perfect,
-        #   needs work.
-        if node <= nPref
-            for ii in 1:indRange
-                sortedSnip = sortedNodes[ tmpFFI + 1 - (1:ii) ]
-
-                if all( sortedSnip .> node )
-                    insertIndex -= 1
-                end
-            end
-        end
-
-        insert!( sortedNodes, insertIndex, node )
-    end  # while !isempty( unconnectedNodes ) || ...
-
-    return map( ii -> get_prop( graph, ii, :state ), sortedNodes )
+    return map( ii -> get_prop( graph, ii, :node ), sortedNodes )
 
 end  # orderStates( mpSim )
 

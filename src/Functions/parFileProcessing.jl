@@ -35,11 +35,12 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         # Check if the file has the required sheets.
         sheets = [ "General",
                    "Attributes",
-                   "States",
-                   "Compound States",
-                   "Transitions",
-                   "Recruitment",
-                   "Retirement" ]
+                   "Nodes",
+                   "Compound Nodes",
+                   "Transition types",
+                   "IN Transitions",
+                   "THROUGH Transitions",
+                   "OUT Transitions" ]
 
         if any( shName -> !XLSX.hassheet( xf, shName ), sheets )
             warn( "Improperly formatted Excel parameter file. Not making any changes." )
@@ -70,33 +71,27 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
             readAttributes( mpSim, sheet, catSheet )
 
             # Read states.
-            sheet = xf[ "States" ]
+            sheet = xf[ "Nodes" ]
             catSheet = catXF[ "States" ]
             readStates( mpSim, sheet, catSheet )
 
             # Read compound states.
-            sheet = xf[ "Compound States" ]
+            sheet = xf[ "Compound Nodes" ]
             readCompoundStates( mpSim, sheet, catSheet )
 
             # Read recruitment parameters.
-            sheet = xf[ "Recruitment" ]
+            sheet = xf[ "IN Transitions" ]
             readRecruitmentPars( mpSim, sheet )
 
             # Read transition types.
-            catSheet = catXF[ "General" ]
-            nTypes = catSheet[ "B7" ]
-            sheet = xf[ "Transitions" ]
-            catSheet = catXF[ "Transition types" ]
+            catSheet = xf[ "Transition types" ]
+            nTypes = catSheet[ "B4" ]
+            sheet = xf[ "THROUGH Transitions" ]
             readTransitions( mpSim, sheet, catSheet, nTypes )
+
+            sheet = xf[ "OUT Transitions" ]
+            readOutTransitions( mpSim, sheet, catSheet, nTypes )
         end  # XLSX.openxlsx( mpSim.catFileName ) do catXF
-
-        # Read retirement parameters.
-        sheet = xf[ "Retirement" ]
-        readRetirementPars( mpSim, sheet )
-
-        # Generate a network map.
-        plotTransitionMap( mpSim, true, :SVG, true,
-            collect( keys( mpSim.stateList ) )..., fileName = "fullNetwork" )
     end  # XLSX.openxlsx( fileName ) do xf
 
     # Make sure the databases are okay, and save configuration to database.
@@ -104,6 +99,10 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
         initialise( mpSim )
         saveSimConfigToDatabase( mpSim )
     end  # if isDBuninitialised
+
+    # Generate a network map.
+    plotTransitionMap( mpSim, true, :SVG, true,
+        collect( keys( mpSim.stateList ) )..., fileName = "fullNetwork" )
 
     return true
 
@@ -273,7 +272,7 @@ function readStates( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet,
 
     # Read the preferred state order.
     stateList = string.( sheet[ XLSX.CellRange( 7, 1, 6 + nStates, 1 ) ] )
-    orderList = sheet[ XLSX.CellRange( 7, 5, 6 + nStates, 5 ) ]
+    orderList = sheet[ XLSX.CellRange( 7, 4, 6 + nStates, 4 ) ]
     stateList = stateList[ isa.( orderList, Int ) ]
     orderList = orderList[ isa.( orderList, Int ) ]
     setPrefStateOrder!( mpSim, stateList[ sortperm( orderList ) ] )
@@ -317,7 +316,7 @@ function readTransitions( mpSim::ManpowerSimulation,
     clearTransitions!( mpSim )
 
     # Read the transition types first.
-    for sLine in ( 1:nTypes ) + 1
+    for sLine in ( 1:nTypes ) + 6
         tType = catSheet[ "A$sLine" ]
         tPrio = catSheet[ "B$sLine" ]
         tPrio = isa( tPrio, Int ) ? tPrio : 0
@@ -333,13 +332,32 @@ function readTransitions( mpSim::ManpowerSimulation,
         endInd = findfirst( state -> state.name == endName, stateList )
         setState( newTrans, stateList[ startInd ] )
         setState( newTrans, stateList[ endInd ], true )
-        # purgeRedundantExtraChanges( newTrans )
         addTransition!( mpSim, newTrans )
     end  # for sLine in 3 + 4 * ( 1:nTransitions )
 
     return
 
-end  # readTransitions( mpSim, sheet )
+end  # readTransitions( mpSim, sheet, catSheet, nTypes )
+
+
+function readOutTransitions( mpSim::ManpowerSimulation,
+    sheet::XLSX.Worksheet, catSheet::XLSX.Worksheet, nTypes::Int )::Void
+
+    nOutTransitions = Int( sheet[ "B4" ] )
+    stateList = collect( keys( merge( mpSim.initStateList,
+        mpSim.otherStateList ) ) )
+
+    for sLine in 3 + 4 * ( 1:nOutTransitions )
+        # XXX to add to
+        newTrans, sourceName = readOutTransition( sheet, sLine )
+        startInd = findfirst( state -> state.name == sourceName, stateList )
+        setState( newTrans, stateList[ startInd ] )
+        addTransition!( mpSim, newTrans )
+    end  # for sLine in 3 + 4 * ( 1:nTransitions )
+
+    return
+
+end  # readOutTransitions( mpSim, sheet, catSheet, nTypes )
 
 
 function readRecruitmentPars( mpSim::ManpowerSimulation,
@@ -358,19 +376,4 @@ function readRecruitmentPars( mpSim::ManpowerSimulation,
 end  # readRecruitmentPars( mpSim, sheet )
 
 
-function readRetirementPars( mpSim::ManpowerSimulation,
-    sheet::XLSX.Worksheet )::Void
-
-    maxTenure = sheet[ "B5" ] * 12.0
-    maxAge = sheet[ "B6" ] * 12.0
-    isEither = sheet[ "B7" ] == "EITHER"
-    retScheme = Retirement( freq = sheet[ "B3" ], offset = sheet[ "B4" ],
-        maxCareer = maxTenure, retireAge = maxAge, isEither = isEither )
-    setRetirement( mpSim, retScheme )
-
-    return
-
-end  # readRetirementPars( mpSim, sheet )
-
-
-include( "simplifiedParFileProcessing.jl" )
+# include( "simplifiedParFileProcessing.jl" )

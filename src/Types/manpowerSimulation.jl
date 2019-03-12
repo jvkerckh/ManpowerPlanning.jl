@@ -82,6 +82,9 @@ type ManpowerSimulation
     # The names of the transitions.
     transList::Dict{String, Int}
 
+    # The number of transitions.
+    nTrans::Int
+
     # The recruitment schemes.
     recruitmentSchemes::Vector{Recruitment}
 
@@ -177,6 +180,7 @@ type ManpowerSimulation
         newMPsim.compoundStatesCustom = Dict{String, CompoundState}()
         newMPsim.compoundStateList = Dict{String, CompoundState}()
         newMPsim.transList = Dict{String, Int}()
+        newMPsim.nTrans = 0
         newMPsim.recruitmentSchemes = Vector{Recruitment}()
         newMPsim.defaultAttritionScheme = Attrition( "default" )
         newMPsim.attritionSchemes = Dict{String, Attrition}()
@@ -203,7 +207,8 @@ type ManpowerSimulation
         newMPsim = ManpowerSimulation()
         tmpPath = Base.source_path()
         tmpPath = tmpPath isa Void ? "" : dirname( tmpPath )
-        newMPsim.parFileName = joinpath( tmpPath, configFileName )
+        # newMPsim.parFileName = joinpath( tmpPath, configFileName )
+        newMPsim.parFileName = configFileName  # XXX good idea?
         initialiseFromExcel( newMPsim, configFileName )
         # initialise( newMPsim )
         return newMPsim

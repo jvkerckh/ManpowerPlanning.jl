@@ -417,10 +417,10 @@ function updateTimeToAttrition( stateList::Dict{String, Vector{State}},
                 isa( timeToAttr, String ) ? +Inf : timeToAttr )
 
             # Update database
-            updateCmd = "UPDATE $(mpSim.personnelDBname)
+            updateCmd = "UPDATE `$(mpSim.personnelDBname)`
                 SET attritionScheme = '$(attrScheme.name)',
                     expectedAttritionTime = $timeToAttr
-                WHERE $(mpSim.idKey) IS '$id'"
+                WHERE `$(mpSim.idKey)` IS '$id'"
             SQLite.execute!( mpSim.simDB, updateCmd )
         end  # if attrSchemeList[ id ] != attrScheme.name
     end  # for ii in length( attrList[ Symbol( mpSim.idKey ) ] )

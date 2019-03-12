@@ -18,7 +18,7 @@ end  # for reqType in requiredTypes
 
 relationFunctions = Dict{String, Function}( "IS" => ==, "IS NOT" => !=,
     "IN" => ∈, "NOT IN" => ∉, ">" => >, ">=" => >=, "<" => <, "<=" => <= )
-timeAttrs = [ "age", "tenure", "time in state" ]
+timeAttrs = [ "age", "tenure", "time in node" ]
 
 
 function processCondition( attr::String, rel::String, val::T ) where T <: Union{Real, String}

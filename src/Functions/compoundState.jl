@@ -122,7 +122,7 @@ end  # clearStatesFromCompound!( compState )
 configureCompoundStates( mpSim::ManpowerSimulation )
 ```
 This function configures the compound states of the manpower simulation `mpSim`
-using the information provided in sheet `Compound States` of the Excel file
+using the information provided in sheet `Compound Nodes` of the Excel file
 which originally configured the simulation. If that configuration file doesn't
 exist, does not have the requested sheet, or if the simulation's catalogue file
 doesn't exist, the function will issue a warning and not make any changes.
@@ -139,7 +139,7 @@ end  # configureCompoundStates( mpSim )
 ```
 configureCompoundStates( mpSim::ManpowerSimulation,
                          configFileName::String,
-                         configSheetName::String = "Compound States" )
+                         configSheetName::String = "Compound Nodes" )
 ```
 This function configures the compound states of the manpower simulation `mpSim`
 using the information provided in sheet `configSheetName` of the Excel file
@@ -151,7 +151,7 @@ function will issue a warning and not make any changes.
 This function returns `nothing`.
 """
 function configureCompoundStates( mpSim::ManpowerSimulation,
-    configFileName::String, configSheetName::String = "Compound States" )::Void
+    configFileName::String, configSheetName::String = "Compound Nodes" )::Void
 
     tmpConfigName = endswith( configFileName, ".xlsx" ) ? configFileName :
         configFileName * ".xlsx"
@@ -207,6 +207,21 @@ function Base.show( io::IO, compState::CompoundState )
     end  # if compState.stateTarget >= 0
 
 end  # show( io, compoundState )
+
+
+function Base.in( baseNode::State, compoundNode::CompoundState )::Bool
+
+    return baseNode.name ∈ compoundNode.stateList
+
+end  # in( baseNode, compoundNode )
+
+
+function Base.issubset( lCompound::CompoundState,
+    rCompound::CompoundState )::Bool
+
+    return lCompound.stateList ⊆ rCompound.stateList
+
+end  # issubset( lCompound, rCompound )
 
 
 # ==============================================================================

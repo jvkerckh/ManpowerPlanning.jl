@@ -434,30 +434,24 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
 
     for state in initPersStates
         state.inStateSince[ id ] = now( mpSim )
-        state.isLockedForTransition[ id ] = false
     end  # for state in initPersStates
 
-    stateRetAge = isempty( initPersStates ) ? 0 :
-        initPersStates[ 1 ].stateRetAge
-
     stateNames = map( state -> state.name, initPersStates )
-    timeOfRetirement = computeExpectedRetirementTime( mpSim,
-        mpSim.retirementScheme, ageAtRecruitment, stateRetAge, now( mpSim ) )
     attrScheme = determineAttritionScheme( initPersStates, mpSim )
     timeOfAttr = generateTimeOfAttrition( attrScheme, now( mpSim ) )
 
     # Add person to the personnel database.
-    command = "INSERT INTO $(mpSim.personnelDBname)
-        ($(mpSim.idKey), status, timeEntered, ageAtRecruitment,
-            expectedRetirementTime, expectedAttritionTime, attritionScheme"
+    command = "INSERT INTO `$(mpSim.personnelDBname)`
+        (`$(mpSim.idKey)`, status, timeEntered, ageAtRecruitment,
+            expectedAttritionTime, attritionScheme"
 
     if !isempty( initVals )
-        command *= ", '$(join( keys( initVals ), "', '" ))'"
+        command *= ", `$(join( keys( initVals ), "`, `" ))`"
     end  # if !isempty( initVals )
 
     command *= ") VALUES
-        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment, $timeOfRetirement,
-            $timeOfAttr, '$(attrScheme.name)'"
+        ('$id', 'active', $(now( mpSim )), $ageAtRecruitment, $timeOfAttr,
+        '$(attrScheme.name)'"
 
     if !isempty( initVals )
         command *= ", '$(join( map( attrName -> initVals[ attrName ], keys( initVals ) ), "', '" ))'"
@@ -467,8 +461,8 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
     SQLite.execute!( mpSim.simDB, command )
 
     # Add entry of person to the history database.
-    command = "INSERT INTO $(mpSim.historyDBname)
-        ($(mpSim.idKey), attribute, timeIndex, strValue) VALUES
+    command = "INSERT INTO `$(mpSim.historyDBname)`
+        (`$(mpSim.idKey)`, attribute, timeIndex, strValue) VALUES
         ('$id', 'status', $(now( mpSim )), 'active')"
 
     # Additional variable attributes.
@@ -482,8 +476,8 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
 
     # Add recruitment event and all applicable initial states to transition
     #   database.
-    command = "INSERT INTO $(mpSim.transitionDBname)
-        ($(mpSim.idKey), timeIndex, transition, endState) VALUES
+    command = "INSERT INTO `$(mpSim.transitionDBname)`
+        (`$(mpSim.idKey)`, timeIndex, transition, endState) VALUES
         ('$id', $(now( mpSim )), '$(recScheme.name)', 'active')"
 
     # Initiate all applicable transition processes.

@@ -25,13 +25,9 @@ The type contains the following fields:
 * `isInitial::Bool`: this flag states whether the state is an initial state or
   not.
 * `stateTarget::Int`: the target number of personnel members in this state.
-* `stateRetAge::Float64`: the retirement age of this state. If this is zero, the
-  default retirement age is used.
 * `attrScheme::Attrition`: The attrition scheme attached to this state.
 * `inStateSince::Dict{String, Float64}`: a record of all the persons in the
   state, including the time they last entered the state.
-* `isLockedForTransition::Dict{String, Bool}`: a record of all the persons ready
-  to undergo a transition.
 """
 type State
 
@@ -39,10 +35,8 @@ type State
     requirements::Dict{String, Vector{String}}
     isInitial::Bool
     stateTarget::Int
-    stateRetAge::Float64
     attrScheme::Attrition
     inStateSince::Dict{String, Float64}
-    isLockedForTransition::Dict{String, Bool}
 
 
     # Basic constructor.
@@ -53,10 +47,8 @@ type State
         newState.requirements = Dict{String, Vector{String}}()
         newState.isInitial = isInitial
         newState.stateTarget = 0
-        newState.stateRetAge = 0.0
         newState.attrScheme = Attrition()
         newState.inStateSince = Dict{String, Float64}()
-        newState.isLockedForTransition = Dict{String, Bool}()
         return newState
 
     end  # State( name, isInitial )

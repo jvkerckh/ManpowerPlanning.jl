@@ -370,39 +370,42 @@ end  # processTransPriorities( mpSim )
 
 function assignTransPriorities( mpSim::ManpowerSimulation )::Void
 
-    stateList = orderStates( mpSim )
-    nTypes = length( mpSim.transList )
-    transPrio = 1
+    nodeList = orderStates( mpSim )
+    transList = Vector{Transition}()
+    transRankList = Vector{Tuple{Int, Int, Int}}()
 
-    for ii in eachindex( stateList )
-        state = mpSim.stateList[ stateList[ ii ] ]
-        isInitial = haskey( mpSim.initStateList, state )
-        transList = isInitial ? mpSim.initStateList[ state ] :
-            mpSim.otherStateList[ state ]
-        transPrios = similar( transList, Int )
+    # Generate the list of transitions and the ranking tuple.
+    for nodeName in nodeList
+        node = mpSim.stateList[ nodeName ]
+        fromTransList = haskey( mpSim.initStateList, node ) ?
+            mpSim.initStateList[ node ] : mpSim.otherStateList[ node ]
+        append!( transList, fromTransList )
 
-        for jj in eachindex( transList )
-            trans = transList[ jj ]
-            transPrios[ jj ] = trans.hasPriority ? 0 :
-                mpSim.transList[ trans.name ]
-        end  # for jj in eachindex( transList )
+        for trans in fromTransList
+            sourceOrder = findfirst( trans.startState.name .== nodeList )
+            transOrder = mpSim.transList[ trans.name ]
 
-        orderIndex = sortperm( transPrios )
+            if trans.isOutTrans
+                push!( transRankList, ( sourceOrder,  0, transOrder ) )
+            else
+                targetOrder = findfirst( trans.endState.name .== nodeList )
+                push!( transRankList, ( targetOrder, transOrder, sourceOrder ) )
+            end  # if trans.isOutTrans
+        end  # for trans in fromTransList
+    end  # for node in nodeList
 
-        for jj in eachindex( transList )
-            kk = orderIndex[ jj ]
-            trans = transList[ kk ]
-            trans.transPriority = trans.hasPriority ? 0 : transPrio
+    # Sort and assign priorities.
+    mpSim.nTrans = length( transRankList )
+    transOrder = sortperm( transRankList )
 
-            if !trans.hasPriority
-                transPrio += 1
-            end  # if !trans.hasPriority
-        end  # for jj in eachindex( transList )
-    end  # for state in stateList
+    for ii in eachindex( transOrder )
+        jj = transOrder[ ii ]
+        transList[ jj ].transPriority = ii
+    end  # for ii in transOrder
 
     return
 
-end
+end  # assignTransPriorities( mpSim )
 
 
 # This function adds a recruitment scheme to the simulation.
@@ -448,16 +451,6 @@ function clearRecruitmentSchemes!( mpSim::ManpowerSimulation )
     return
 
 end  # clearRecruitmentSchemes!( mpSim )
-
-
-# This function sets the retirement scheme of the simulation.
-export setRetirement
-function setRetirement( mpSim::ManpowerSimulation,
-    retScheme::Union{Void, Retirement} = nothing )
-
-    mpSim.retirementScheme = retScheme
-
-end  # setRetirement( mpSim, retScheme )
 
 
 # This function sets the attrition scheme.
@@ -514,40 +507,39 @@ function resetSimulation( mpSim::ManpowerSimulation )
 
     # Then, create the personnel and history databases.
     # XXX Other defined attributes need to be introduced here as well.
-    command = "CREATE TABLE $(mpSim.personnelDBname)(
-        $(mpSim.idKey) varchar(16) NOT NULL PRIMARY KEY,
+    command = "CREATE TABLE `$(mpSim.personnelDBname)`(
+        `$(mpSim.idKey)` varchar(16) NOT NULL PRIMARY KEY,
         timeEntered float,
         timeExited float,
         ageAtRecruitment float,
-        expectedRetirementTime float,
         expectedAttritionTime float,
         attritionScheme varchar(64)"
 
     if !( isempty( mpSim.initAttrList ) && isempty( mpSim.otherAttrList ) )
-        command *= ",\n" * join( map( attr -> "'" * attr.name * "' varcar(64)",
+        command *= ",\n" * join( map( attr -> "`" * attr.name * "` varcar(64)",
             vcat( mpSim.initAttrList, mpSim.otherAttrList ) ), ",\n" )
     end  # if !( isempty( mpSim.initAttrList ) &&
 
     command *= ",\nstatus varchar(16) )"
     SQLite.execute!( mpSim.simDB, command )
 
-    command = "CREATE TABLE $(mpSim.historyDBname)(
-        $(mpSim.idKey) varchar(16),
+    command = "CREATE TABLE `$(mpSim.historyDBname)`(
+        `$(mpSim.idKey)` varchar(16),
         attribute varchar(255),
         timeIndex float,
         numValue float,
         strValue varchar(255),
-        FOREIGN KEY ($(mpSim.idKey)) REFERENCES $(mpSim.personnelDBname)($(mpSim.idKey))
+        FOREIGN KEY (`$(mpSim.idKey)`) REFERENCES `$(mpSim.personnelDBname)`(`$(mpSim.idKey)`)
     )"
     SQLite.execute!( mpSim.simDB, command )
 
-    command = "CREATE TABLE $(mpSim.transitionDBname)(
-        $(mpSim.idKey) varchar(16),
+    command = "CREATE TABLE `$(mpSim.transitionDBname)`(
+        `$(mpSim.idKey)` varchar(16),
         timeIndex float,
         transition varchar(255),
         startState varchar(255),
         endState varchar(255),
-        FOREIGN KEY ($(mpSim.idKey)) REFERENCES $(mpSim.personnelDBname)($(mpSim.idKey))
+        FOREIGN KEY (`$(mpSim.idKey)`) REFERENCES `$(mpSim.personnelDBname)`(`$(mpSim.idKey)`)
     )"
     SQLite.execute!( mpSim.simDB, command )
 
@@ -556,7 +548,6 @@ function resetSimulation( mpSim::ManpowerSimulation )
 
     for state in keys( merge( mpSim.initStateList, mpSim.otherStateList ) )
         empty!( state.inStateSince )
-        empty!( state.isLockedForTransition )
     end  # for state in keys( merge(
 
     # And wipe all existing simulation reports.
@@ -815,24 +806,31 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         processCompoundStates( mpSim )
     end  # if ispath( mpSim.catFileName )
 
-    # Start the database commits.
-    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+    # Initiate processes.
     @process dbCommitProcess( mpSim.sim,
         toTime == 0.0 ? mpSim.simLength : toTime, mpSim )
     initiateTransitionProcesses( mpSim )
-    @process retireProcess( mpSim.sim, mpSim )
     @process checkAttritionProcess( mpSim.sim, mpSim )
     startTime = now()
 
-    if toTime > 0.0
-        run( mpSim.sim, toTime )
-    else
-        run( mpSim.sim )
-    end  # if toTime > 0.0
+    # Start the database commits.
+    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+
+    try
+        if toTime > 0.0
+            run( mpSim.sim, toTime )
+        else
+            run( mpSim.sim )
+        end  # if toTime > 0.0
+    catch err
+        SQLite.execute!( mpSim.simDB, "COMMIT" )
+        rethrow()
+    end  # try
 
     # Final commit.
     SQLite.execute!( mpSim.simDB, "COMMIT" )
     saveSimConfigToDatabase( mpSim )
+
     mpSim.simTimeElapsed += now() - startTime
     println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
 
@@ -841,10 +839,6 @@ function SimJulia.run( mpSim::ManpowerSimulation )
         "flux out", "net flux" )
 
     return
-    # Wipe the simulation reports if the simulation time has advanced.
-    # if oldSimTime < now( mpSim )
-    #     empty!( mpSim.simReports )
-    # end  # if oldSimTime < now( mpSim )
 
 end  # run( mpSim, toTime )
 
@@ -911,7 +905,8 @@ end  # runSimFromFile( fName )
 
 
 # These are the functions that process simulation results.
-include( joinpath( funcPath, "simProcessing.jl" ) )
+# include( joinpath( funcPath, "simProcessing.jl" ) )
+include( joinpath( funcPath, "popReports.jl" ) )
 
 
 function Base.show( io::IO, mpSim::ManpowerSimulation )
@@ -987,10 +982,6 @@ function Base.show( io::IO, mpSim::ManpowerSimulation )
     if isa( mpSim.defaultAttritionScheme, Attrition )
         print( io, "\nDefault attrition scheme: $(mpSim.defaultAttritionScheme)" )
     end  #if isa( mpSim.defaultAttritionScheme, Attrition )
-
-    if isa( mpSim.retirementScheme, Retirement )
-        print( io, "\nRetirement scheme: $(mpSim.retirementScheme)" )
-    end  # if isa( mpSim.retirementScheme, Retirement )
 
     print( io, "\nSimulation length: $(mpSim.simLength)" )
 

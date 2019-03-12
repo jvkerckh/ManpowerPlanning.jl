@@ -1577,8 +1577,7 @@ This function returns a `Bool`, the result of the test.
 function validateTransition( mpSim::ManpowerSimulation,
     transName::String )::Bool
 
-    isOut = lowercase( transName ) ∈ [ "snapshot", "retirement", "attrition",
-        "fired" ]
+    isOut = lowercase( transName ) == "attrition"
     isIn = transName ∈ map( recScheme -> recScheme.name,
         mpSim.recruitmentSchemes )
     isThrough = haskey( mpSim.transList, transName )

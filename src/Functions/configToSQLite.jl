@@ -43,8 +43,7 @@ function saveSimConfigToDatabase( mpSim::ManpowerSimulation, dbName::String,
 
     createConfigTable( configName, configDB )
 
-    command = "BEGIN TRANSACTION"
-    SQLite.execute!( configDB, command )
+    SQLite.execute!( configDB, "BEGIN TRANSACTION" )
 
     # try
         readGeneralParsFromSim( mpSim, configDB, configName )
@@ -55,15 +54,13 @@ function saveSimConfigToDatabase( mpSim::ManpowerSimulation, dbName::String,
         readTransTypesFromSim( mpSim, configDB, configName )
         readTransitionsFromSim( mpSim, configDB, configName )
         readRecruitmentFromSim( mpSim, configDB, configName )
-        readRetirementFromSim( mpSim, configDB, configName )
     # catch errType
     #     command = "COMMIT"
     #     SQLite.execute!( configDB, command )
     #     error( errType )
     # end
 
-    command = "COMMIT"
-    SQLite.execute!( configDB, command )
+    SQLite.execute!( configDB, "COMMIT" )
 
     return
 
@@ -106,7 +103,7 @@ relationEntries = Dict{Function, String}( Base.:(==) => "IS",
 function createConfigTable( configName::String, configDB::SQLite.DB )::Void
 
     SQLite.drop!( configDB, configName, ifexists = true )
-    command = "CREATE TABLE $configName(
+    command = "CREATE TABLE `$configName`(
         parName VARCHAR( 32 ),
         parType VARCHAR( 32 ),
         intPar MEDIUMINT,
@@ -125,7 +122,7 @@ function readGeneralParsFromSim( mpSim::ManpowerSimulation,
     configDB::SQLite.DB, configName::String )::Void
 
     dbCommits = Int( mpSim.simLength / mpSim.commitFrequency )
-    command = "INSERT INTO config
+    command = "INSERT INTO `$configName`
         (parName, parType, intPar, realPar, strPar) VALUES
         ('Config file', 'General', NULL, NULL, '$(mpSim.parFileName)'),
         ('DB name', 'General', NULL, NULL, '$(mpSim.dbName)'),
@@ -155,7 +152,7 @@ function readAttributesFromSim( mpSim::ManpowerSimulation,
     # Read every single attribute.
     attrInserts = map( attr -> saveAttributeToDatabase( attr ),
         vcat( mpSim.initAttrList, mpSim.otherAttrList ) )
-    command = "INSERT INTO $configName
+    command = "INSERT INTO `$configName`
         (parName, parType, boolPar, strPar) VALUES
         $(join( attrInserts, ", " ))"
     SQLite.execute!( configDB, command )
@@ -181,7 +178,7 @@ function readAttritionFromSim( mpSim::ManpowerSimulation,
         mpSim.attritionSchemes[ attrName ]), keys( mpSim.attritionSchemes ) )
     push!( attrInserts, saveAttritionToDatabase(
         mpSim.defaultAttritionScheme ) )
-    command = "INSERT INTO $configName
+    command = "INSERT INTO `$configName`
         (parName, parType, realPar, strPar) VALUES
         $(join( attrInserts, ", " ))"
     SQLite.execute!( configDB, command )
@@ -210,10 +207,20 @@ function readStatesFromSim( mpSim::ManpowerSimulation,
     # Read every single state.
     stateInserts = map( state -> saveStateToDatabase( mpSim.stateList[ state ],
         mpSim ), keys( mpSim.stateList ) )
-    command = "INSERT INTO $configName
-        (parName, parType, intPar, realPar, boolPar, strPar) VALUES
+    command = "INSERT INTO `$configName`
+        (parName, parType, intPar, boolPar, strPar) VALUES
         $(join( stateInserts, ", " ))"
     SQLite.execute!( configDB, command )
+
+    # Read preferred state order.
+    if !isempty( mpSim.preferredStateOrder )
+        command = string( "INSERT INTO '", configName, "'
+            (parName, parType, strPar) VALUES
+            ('Preferred Order', 'State Order', '",
+            join( mpSim.preferredStateOrder, ";" ), "')" )
+        SQLite.execute!( configDB, command )
+    end  # if !isempty( mpSim.preferredStateOrder )
+
     return
 
 end  # readStatesFromSim( mpSim, configDB, configName )
@@ -222,22 +229,24 @@ end  # readStatesFromSim( mpSim, configDB, configName )
 function saveStateToDatabase( state::State, mpSim::ManpowerSimulation )::String
 
     reqList = collect( keys( state.requirements ) )
-    map!( attr -> "$attr:$(join( state.requirements[ attr ], "//" ))", reqList,
-        reqList )
-    stateEntry = "('$(state.name)', 'State', $(state.stateTarget), "
-    stateEntry *= "$(state.stateRetAge), '$(state.isInitial)', '["
-    stateEntry *= join( reqList, "," ) * "];"
+    map!( attr -> string( attr, ':', join( state.requirements[ attr ], "//" ) ),
+        reqList, reqList )
+    stateEntry = string( "('", state.name, "', 'State', ", state.stateTarget,
+        ", '", state.isInitial, "', '[", join( reqList, "," ), "];" )
+    attrName = "default"
 
-    if state.attrScheme == mpSim.defaultAttritionScheme
-        stateEntry *= "default"
-    elseif haskey( mpSim.attritionSchemes, state.attrScheme.name )
-        stateEntry *= state.attrScheme.name
-    else
-        attrScheme = state.attrScheme
-        stateEntry *= "$(attrScheme.attrPeriod):$(attrScheme.attrRates[ 1 ])"
-    end
+    if state.attrScheme != mpSim.defaultAttritionScheme
+        if haskey( mpSim.attritionSchemes, state.attrScheme.name )
+            attrName = state.attrScheme.name
+        else
+            warn( "Unknown attrition scheme." )
+            attrScheme = state.attrScheme
+            attrName = string( attrScheme.attrPeriod, ':',
+                attrScheme.attrRates[ 1 ] )
+        end  # if haskey( mpSim.attritionSchemes, state.attrScheme.name )
+    end  # if state.attrScheme != mpSim.defaultAttritionScheme )
 
-    stateEntry *= "')"
+    stateEntry = string( stateEntry, attrName, "')" )
 
     return stateEntry
 
@@ -260,7 +269,7 @@ function readCompoundStatesFromSim( mpSim::ManpowerSimulation,
         compState -> saveCompStateToDatabase(
         mpSim.compoundStatesCustom[ compState ], mpSim ),
         keys( mpSim.compoundStatesCustom ) ) )
-    command = "INSERT INTO $configName
+    command = "INSERT INTO `$configName`
         (parName, parType, intPar, boolPar, strPar) VALUES
         $(join( compStateInserts, ", " ))"
     SQLite.execute!( configDB, command )
@@ -305,7 +314,7 @@ function readTransTypesFromSim( mpSim::ManpowerSimulation,
         return "('$trans', 'Transition type', $(mpSim.transList[ trans ]))"
     end  # map( keys( transList ) ) do
 
-    command = "INSERT INTO $configName
+    command = "INSERT INTO `$configName`
         (parName, parType, intPar) VALUES
         $(join( transTypeInserts, ", " ))"
     SQLite.execute!( configDB, command )
@@ -323,7 +332,6 @@ function readTransitionsFromSim( mpSim::ManpowerSimulation,
 
     for state in keys( stateList )
         for trans in stateList[ state ]
-            entry = saveTransitionToDatabase( trans )
             push!( transInserts, saveTransitionToDatabase( trans ) )
         end  # for trans in stateList[ state ]
     end  # for state in keys( stateList )
@@ -333,7 +341,7 @@ function readTransitionsFromSim( mpSim::ManpowerSimulation,
         return
     end  # if isempty( transInserts )
 
-    command = "INSERT INTO $configName
+    command = "INSERT INTO `$configName`
         (parName, parType, strPar) VALUES
         $(join( transInserts, ", " ))"
     SQLite.execute!( configDB, command )
@@ -345,9 +353,9 @@ end  # readTransitionsFromSim( mpSim, configDB, configName )
 
 function saveTransitionToDatabase( trans::Transition )::String
 
-    transEntry = "('$(trans.name)', 'Transition', '"
-    transEntry *= "$(trans.startState.name);$(trans.endState.name);"
-    transEntry *= "$(trans.freq);$(trans.offset);["
+    transEntry = string( "('", trans.name, "', 'Transition', '",
+        trans.startState.name, ';', trans.isOutTrans ? "" : trans.endState.name,
+        ';', trans.freq, ';', trans.offset, ";[" )
     condList = Vector{String}( length( trans.extraConditions ) )
 
     for ii in eachindex( trans.extraConditions )
@@ -362,18 +370,22 @@ function saveTransitionToDatabase( trans::Transition )::String
         end  # if isa( cond.val, Vector )
     end  # for cond in trans.extraConditions
 
-    transEntry *= join( condList, "," ) * "];["
-    changeList = Vector{String}( length( trans.extraChanges ) )
+    transEntry = string( transEntry, join( condList, "," ), "];[" )
 
-    for ii in eachindex( trans.extraChanges )
-        attr = trans.extraChanges[ ii ]
-        changeList[ ii ] = "$(attr.name):" * collect( keys( attr.values ) )[ 1 ]
-    end  # for ii in eachindex( trans.extraChanges )
+    if !trans.isOutTrans
+        changeList = Vector{String}( length( trans.extraChanges ) )
 
-    transEntry *= join( changeList, "," ) * "];["
-    transEntry *= join( trans.probabilityList, "," ) * "];"
-    transEntry *= "$(trans.maxAttempts);$(trans.isFiredOnFail);"
-    transEntry *= "$(trans.maxFlux);$(trans.hasPriority)')"
+        for ii in eachindex( trans.extraChanges )
+            attr = trans.extraChanges[ ii ]
+            changeList[ ii ] = string( "$(attr.name):",
+                collect( keys( attr.values ) )[ 1 ] )
+        end  # for ii in eachindex( trans.extraChanges )
+    end  # if !trans.isOutTrans
+
+    transEntry = string( transEntry, trans.isOutTrans ? "" :
+        join( changeList, "," ), "];[", join( trans.probabilityList, "," ),
+        "];", trans.maxAttempts, ';', trans.isOutTrans, ';', trans.maxFlux, ';',
+        trans.hasPriority, "')" )
     return transEntry
 
 end  # saveTransitionToDatabase( trans::Transition )
@@ -390,7 +402,7 @@ function readRecruitmentFromSim( mpSim::ManpowerSimulation,
     # Read every single recruitment scheme.
     recInserts = map( recScheme -> saveRecruitmentToDatabase( recScheme ),
         mpSim.recruitmentSchemes )
-    command = "INSERT INTO $configName
+    command = "INSERT INTO `$configName`
         (parName, parType, boolPar, strPar) VALUES
         $(join( recInserts, ", " ))"
     SQLite.execute!( configDB, command )
@@ -431,24 +443,3 @@ function saveRecruitmentToDatabase( recScheme::Recruitment )::String
     return recEntry
 
 end  # saveAttrToDatabase( attr, configDB, configName )
-
-
-function readRetirementFromSim( mpSim::ManpowerSimulation,
-    configDB::SQLite.DB, configName::String )::Void
-
-    # Only process if there is a retirement scheme.
-    if mpSim.retirementScheme === nothing
-        return
-    end  # if mpSim.retirementScheme === nothing
-
-    retScheme = mpSim.retirementScheme
-
-    command = "INSERT INTO $configName
-        (parName, parType, boolPar, strPar) VALUES
-        ('Retirement', 'Retirement', '$(retScheme.isEither)',
-            '$(retScheme.maxCareerLength);$(retScheme.retireAge);$(retScheme.retireFreq);$(retScheme.retireOffset)')"
-    SQLite.execute!( configDB, command )
-
-    return
-
-end  # readRetirementFromSim( mpSim, configDB, configName )

@@ -48,10 +48,9 @@ function configureSimFromDatabase( mpSim::ManpowerSimulation, dbName::String,
         readTransTypesFromDatabase( configDB, mpSim, configName )
         readTransitionsFromDatabase( configDB, mpSim, configName )
         readRecruitmentFromDatabase( configDB, mpSim, configName )
-        readRetirementFromDatabase( configDB, mpSim, configName )
 
         # Current sim time.
-        queryCmd = "SELECT realPar FROM $configName WHERE parName IS 'Sim time'"
+        queryCmd = "SELECT realPar FROM '$configName' WHERE parName IS 'Sim time'"
         currentTime = SQLite.query( configDB, queryCmd )[ 1, 1 ]
 
         # Wipe simulation results when requested, or advance the simulation to
@@ -98,13 +97,13 @@ issue warnings, or throw an error depending on the severity.
 function readGeneralParsFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'General'"
     generalPars = SQLite.query( configDB, queryCmd )
 
     # Config file name.
     index = findfirst( generalPars[ :parName ], "Config file" )
-    mpSim.parFileName = generalPars[ :strPar ][ index ]
+    # mpSim.parFileName = generalPars[ :strPar ][ index ]
 
     # Database name.
     index = findfirst( generalPars[ :parName ], "DB name" )
@@ -168,7 +167,7 @@ function readAttributesFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearAttributes!( mpSim )
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'Attribute'"
     attributes = SQLite.query( configDB, queryCmd )
     nAttrs = length( attributes[ :parName ] )
@@ -229,7 +228,7 @@ function readAttritionFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearAttritionSchemes!( mpSim )
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'Attrition'"
     attrList = SQLite.query( configDB, queryCmd )
     nSchemes = length( attrList[ :parName ] )
@@ -297,7 +296,7 @@ function readStatesFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearStates!( mpSim )
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'State'"
     states = SQLite.query( configDB, queryCmd )
     nStates = length( states[ :parName ] )
@@ -306,7 +305,6 @@ function readStatesFromDatabase( configDB::SQLite.DB,
         newState = State( strip( states[ :parName ][ ii ] ) )
         setInitial!( newState, parse( Bool, states[ :boolPar ][ ii ] ) )
         setStateTarget!( newState, states[ :intPar ][ ii ] )
-        setStateRetirementAge!( newState, states[ :realPar ][ ii ] )
 
         # Read all the parameters stored as string.
         statePars = split( states[ :strPar ][ ii ], ";" )
@@ -345,7 +343,19 @@ function readStatesFromDatabase( configDB::SQLite.DB,
         end  # if length( stateAttr ) == 1
 
         addState!( mpSim, newState, newState.isInitial )
-    end  # for ii in 1:nAttrs
+    end  # for ii in 1:nStates
+
+    # Read preferred state order.
+    queryCmd = string( "SELECT strPar FROM '", configName, "'
+        WHERE parType IS 'State Order' AND parName is 'Preferred Order'" )
+    stateOrder = SQLite.query( configDB, queryCmd )
+    nEntries = length( stateOrder[ :strPar ] )
+
+    if nEntries != 0
+        prefOrder = stateOrder[ :strPar ][ 1 ]
+        prefOrder = String.( strip.( split( prefOrder, ";" ) ) )
+        setPrefStateOrder!( mpSim, prefOrder )
+    end  # if nEntries != 0
 
     return
 
@@ -356,7 +366,7 @@ function readCompoundStatesFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearCompoundStates!( mpSim )
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'Compound state'"
     compStates = SQLite.query( configDB, queryCmd )
     nCompStates = length( compStates[ :parName ] )
@@ -402,7 +412,7 @@ function readTransTypesFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearTransitions!( mpSim )
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'Transition type'"
     transTypes = SQLite.query( configDB, queryCmd )
     nTypes = length( transTypes[ :parName ] )
@@ -431,7 +441,7 @@ issue warnings, or throw an error depending on the severity.
 function readTransitionsFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'Transition'"
     transitions = SQLite.query( configDB, queryCmd )
     nTrans = length( transitions[ :parName ] )
@@ -440,9 +450,19 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
 
     for ii in 1:nTrans
         transPars = split( transitions[ :strPar ][ ii ], ";" )
-        newTrans = Transition( strip( transitions[ :parName ][ ii ] ),
-            mpSim.stateList[ strip( transPars[ 1 ] ) ],
-            mpSim.stateList[ strip( transPars[ 2 ] ) ] )
+
+        # Create a blank transition.
+        transName = strip( transitions[ :parName ][ ii ] )
+        sourceName = strip( transPars[ 1 ] )
+        targetName = strip( transPars[ 2 ] )
+        isOutTrans = parse( Bool, transPars[ 9 ] )
+
+        newTrans = isOutTrans ?
+            Transition( transName, mpSim.stateList[ sourceName ] ) :
+            Transition( transName, mpSim.stateList[ sourceName ],
+            mpSim.stateList[ targetName ] )
+
+        # Enter transition schedule.
         setSchedule( newTrans, parse( Float64, transPars[ 3 ] ),
             parse( Float64, transPars[ 4 ] ) )
 
@@ -467,8 +487,9 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
             end  # for cond in conds
         end  # if transPars[ 5 ] != "[]"
 
-        # Read the extra changes of the transition.
-        if transPars[ 6 ] != "[]"
+        # Read the extra changes of the transition if it's not an out
+        #   transition.
+        if !isOutTrans && ( transPars[ 6 ] != "[]" )
             changes = split( transPars[ 6 ][ 2:(end - 1) ], "," )
 
             for change in changes
@@ -476,14 +497,14 @@ function readTransitionsFromDatabase( configDB::SQLite.DB,
                 addAttributeChange!( newTrans, String( change[ 1 ] ),
                     String( change[ 2 ] ) )
             end  # for change in changes
-        end  # if transPars[ 6 ] != "[]"
+        end  # if !isOutTrans && ...
 
         # Read the final parameters.
         probList = map( prob -> parse( Float64, prob ),
             split( transPars[ 7 ][ 2:(end - 1) ], "," ) )
         setTransProbabilities( newTrans, probList )
         setMaxAttempts( newTrans, parse( Int, transPars[ 8 ] ) )
-        setFireAfterFail( newTrans, parse( Bool, transPars[ 9 ] ) )
+        setIsOutTrans!( newTrans, isOutTrans )
         setMaxFlux( newTrans, parse( Int, transPars[ 10 ] ) )
         setHasPriority( newTrans, parse( Bool, transPars[ 11 ] ) )
         addTransition!( mpSim, newTrans )
@@ -511,7 +532,7 @@ function readRecruitmentFromDatabase( configDB::SQLite.DB,
     mpSim::ManpowerSimulation, configName::String )::Void
 
     clearRecruitmentSchemes!( mpSim )
-    queryCmd = "SELECT * FROM $configName
+    queryCmd = "SELECT * FROM '$configName'
         WHERE parType IS 'Recruitment'"
     recruitment = SQLite.query( configDB, queryCmd )
     numSchemes = length( recruitment[ :parName ] )
@@ -563,45 +584,3 @@ function readRecruitmentFromDatabase( configDB::SQLite.DB,
     return
 
 end  # readRecruitmentFromDatabase( configDB, mpSim, configName )
-
-
-"""
-```
-readRetirementFromDatabase( configDB::SQLite.DB,
-                            mpSim::ManpowerSimulation,
-                            configName::String )
-```
-This function reads the retirement parameters from the SQLite database
-`configDB`, looking in the table with name `configName`, and uses these
-parameters to configure the manpower simulation `mpSim`.
-
-This function returns `nothing`. If information is missing, the funuction will
-issue warnings, or throw an error depending on the severity.
-"""
-function readRetirementFromDatabase( configDB::SQLite.DB,
-    mpSim::ManpowerSimulation, configName::String )::Void
-
-    queryCmd = "SELECT * FROM $configName
-        WHERE parType IS 'Retirement' AND parName IS 'Retirement'"
-    retirement = SQLite.query( configDB, queryCmd )
-
-    # If no retirement is in the database, set the retirement scheme to nothing
-    #   and finish.
-    if length( retirement ) == 0
-        setRetirement( mpSim )
-        return
-    end  # if length( retirement ) == 0
-
-    retScheme = Retirement( isEither = parse( Bool,
-        retirement[ :boolPar ][ 1 ] ) )
-
-    retPars = split( retirement[ :strPar ][ 1 ], ";" )
-    setCareerLength( retScheme, parse( Float64, retPars[ 1 ] ) )
-    setRetirementAge( retScheme, parse( Float64, retPars[ 2 ] ) )
-    setRetirementSchedule( retScheme, parse( Float64, retPars[ 3 ] ),
-        parse( Float64, retPars[ 4 ] ) )
-    setRetirement( mpSim, retScheme )
-
-    return
-
-end  # readRetirementFromDatabase( configDB, mpSim, configName )

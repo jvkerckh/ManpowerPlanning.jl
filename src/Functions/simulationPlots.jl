@@ -588,7 +588,7 @@ function plotTransitionMap( mpSim::ManpowerSimulation, isShow::Bool,
     graph, inNodeIndex, outNodeIndex = buildTransitionNetwork( mpSim,
         states... )
     graphPlot = gplot( graph,
-        nodelabel = map( node -> get_prop( graph, node, :state ),
+        nodelabel = map( node -> get_prop( graph, node, :node ),
         vertices( graph ) ),
         edgelabel = map( edge -> get_prop( graph, edge, :trans ),
         edges( graph ) ) )
@@ -659,7 +659,7 @@ function plotTransitionMap( mpSim::ManpowerSimulation, isShow::Bool,
         elementForm = ElementNode( "y:" *
             ( isNode ? "ShapeNode" : "PolyEdgeLine" ) )
         elementLabelText = isNode ?
-            get_prop( graph, nodeList[ nNodes ], :state ) :
+            get_prop( graph, nodeList[ nNodes ], :node ) :
             get_prop( graph, edgeList[ nEdges ], :trans )
         elementLabel = ElementNode( "y:" * ( isNode ? "Node" : "Edge" ) *
             "Label" )

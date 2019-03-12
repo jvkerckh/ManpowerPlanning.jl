@@ -29,8 +29,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     extraColsToImport = addSystemAttributes( mpSim, idCol, recCol, ageCol )
     dataColsToGrab = collect( keys( colsToImport ) )
     filter!( ii -> !haskey( extraColsToImport, ii ), dataColsToGrab )
-    systemAttrs = [ mpSim.idKey, "timeEntered", "ageAtRecruitment",
-        "expectedRetirementTime" ]
+    systemAttrs = [ mpSim.idKey, "timeEntered", "ageAtRecruitment" ]
     snapshotComp = Dict{String, Int}()
 
     XLSX.openxlsx( tmpSnapName ) do xf
@@ -169,10 +168,6 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
             contents[ :, ageColIndex ] += contents[ :, recColIndex ]
         end  # if ( ageCol <= 0 ) || ...
 
-        # Determine retirement ages/times.
-        push!( colNames, "expectedRetirementTime" )
-        contents = hcat( contents, zeros( Float64, nEffectiveEntries ) )
-
         # Discover states of personnel members.
         attrList = filter( attrName -> attrName ∉ systemAttrs, colNames )
         attrIndices = map( attrName -> findfirst( attrName .== colNames ),
@@ -221,12 +216,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
                 end  # if isempty( initPersStates )
             end  # if mpSim.isWellDefined
 
-            # Determine person's expected retirement age.
-            stateRetAge = isempty( persStates ) ? 0 :
-                mpSim.stateList[ persStates[ 1 ] ].stateRetAge
-            contents[ ii, end ] = computeExpectedRetirementTime(
-                mpSim, mpSim.retirementScheme, contents[ ii, ageColIndex ],
-                stateRetAge, contents[ ii, recColIndex ] )
+            # Determine person's expected time of attrition.
             attrScheme = mpSim.defaultAttritionScheme
             transTime = lastTransTime[ ii ]
             timeOfAttr = transTime
@@ -235,7 +225,6 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
             for stateName in persStates
                 state = mpSim.stateList[ stateName ]
                 state.inStateSince[ id ] = transTime
-                state.isLockedForTransition[ id ] = false
                 attrScheme = state.attrScheme
                 push!( transCmd,
                     "('$id', $transTime, 'snapshot', '$stateName')" )
@@ -259,8 +248,8 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         # Inject data into database.
         persCmd = map( ii -> "(" * join( contents[ ii, : ], ", " ) *
             ", 'active')", 1:nEffectiveEntries )
-        persCmd = "INSERT INTO $(mpSim.personnelDBname)
-            ('$(join( colNames, "', '" ))', expectedAttritionTime, attritionScheme, status)
+        persCmd = "INSERT INTO `$(mpSim.personnelDBname)`
+            (`$(join( colNames, "`, `" ))`, expectedAttritionTime, attritionScheme, status)
             VALUES $(join( persCmd, ", " ))"
         SQLite.execute!( mpSim.simDB, persCmd )
 
@@ -280,15 +269,15 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
                 # XXX -12.0 is chosen since actual information on last attribute
                 #   change isn't available, and for consistency when tenure
                 #   information is missing.
-            histCmd = "INSERT INTO $(mpSim.historyDBname)
-                ($(mpSim.idKey), attribute, timeIndex, strValue)
+            histCmd = "INSERT INTO `$(mpSim.historyDBname)`
+                (`$(mpSim.idKey)`, attribute, timeIndex, strValue)
                 VALUES $(join( histCmd, ", " ))"
             SQLite.execute!( mpSim.simDB, histCmd )
         end  # for attrName in varColNames
 
         # Generate transition database.
-        transCmd = "INSERT INTO $(mpSim.transitionDBname)
-            ($(mpSim.idKey), timeIndex, transition, endState )
+        transCmd = "INSERT INTO `$(mpSim.transitionDBname)`
+            (`$(mpSim.idKey)`, timeIndex, transition, endState )
             VALUES $(join( transCmd, ", " ))"
         SQLite.execute!( mpSim.simDB, transCmd )
         mpSim.personnelSize = nEffectiveEntries
@@ -310,7 +299,8 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     snapshotStates = collect( keys( snapshotComp ) )
     snapshotVals = get.( Ref( snapshotComp ), snapshotStates, 0 )
     gui( pie( string.( snapshotStates, ": ", snapshotVals ), snapshotVals,
-        labels = "", title = "Composition of snapshot", lw = 2 ) )
+        labels = "", title = "Composition of snapshot", lw = 2,
+        size = ( 960, 540 ) ) )
 
     return
 
