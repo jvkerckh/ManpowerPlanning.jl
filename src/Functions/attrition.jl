@@ -1,3 +1,4 @@
+
 # This file holds the definition of the functions pertaining to the Attrition
 #   type.
 
@@ -578,10 +579,10 @@ end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
     tStart = now()
     timeOfNextCheck = 0.0
     priority = mpSim.phasePriorities[ :attrCheck ]
-    queryCmd = "SELECT $(mpSim.idKey), expectedAttritionTime
-        FROM $(mpSim.personnelDBname)
-        WHERE status NOT IN ('retirement', 'attrition', 'fired')
-            AND expectedAttritionTime <= "
+    queryCmd = string( "SELECT `", mpSim.idKey, "`, expectedAttritionTime
+        FROM `", mpSim.personnelDBname, "`
+        WHERE status IS 'active'
+            AND expectedAttritionTime <= " )
 
     while now( sim ) < mpSim.simLength
         processTime += now() - tStart
@@ -606,7 +607,8 @@ end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
     end  # while now( sim ) < mpSim.simLength
 
     processTime += now() - tStart
-    println( "Attrition check process took $(processTime.value / 1000) seconds." )
+    println( "Attrition check process took ", processTime.value / 1000,
+        " seconds." )
 
 end  # checkAttritionProcess( sim, mpSim )
 
@@ -621,15 +623,14 @@ end  # checkAttritionProcess( sim, mpSim )
 
     tStart = now()
     # Get the personnel record.
-    queryCmd = "SELECT expectedAttritionTime, status
-        FROM $(mpSim.personnelDBname)
-        WHERE $(mpSim.idKey) IS '$id'"
+    queryCmd = string( "SELECT expectedAttritionTime, status
+        FROM `", mpSim.personnelDBname, "`
+        WHERE `", mpSim.idKey, "` IS '", id, "'" )
     persRecord = SQLite.query( mpSim.simDB, queryCmd )
 
     # Only perform the attrition if the person is still active and the time of
     #   attrition hasn't changed.
-    if ( persRecord[ :status ][ 1 ] ∉
-        [ "attrition", "retirement", "fired" ] ) &&
+    if ( persRecord[ :status ][ 1 ] == "active" ) &&
         ( persRecord[ :expectedAttritionTime ][ 1 ] == timeOfAttrition )
         retirePerson( mpSim, id, "attrition" )
     end  # if ( persRecord[ :status ][ 1 ] ∉ ...

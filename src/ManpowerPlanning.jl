@@ -24,9 +24,13 @@ module ManpowerPlanning
     using XLSX
     # using ExcelWrapper
 
+    version = v"1.1.2"
+
+    export versionMP
+    versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )
+
     include( "Functions/XLSXfix.jl")
 
-    version = v"1.1.0"
     types = [
 #        "historyEntry",
 #        "history",
@@ -59,7 +63,5 @@ module ManpowerPlanning
 
     # The functions
     map( mpType -> include( joinpath( funcPath, mpType * ".jl" ) ), types )
-
-    info( "Using version ", version, " of ManpowerPlanning module." )
 
 end  # module ManpowerPlanning
