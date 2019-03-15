@@ -21,7 +21,7 @@ This function returns a `Bool`, indicating whether the simulation has been
 succesfully initialised or not.
 """
 function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
-    initDB::Bool = true )::Bool
+    initDB::Bool = true; showOutput::Bool = true )::Bool
 
     # Do nothing if the file isn't an Excel file.
     if !endswith( fileName, ".xlsx" )
@@ -101,17 +101,18 @@ function initialiseFromExcel( mpSim::ManpowerSimulation, fileName::String,
     end  # if isDBuninitialised
 
     # Generate a network map.
-    plotTransitionMap( mpSim, true, :SVG, true,
+    plotTransitionMap( mpSim, showOutput, :SVG, true,
         collect( keys( mpSim.stateList ) )..., fileName = "fullNetwork" )
 
     return true
 
-end  # initialiseFromExcel( mpSim, fileName )
+end  # initialiseFromExcel( mpSim, fileName, initDB, showOutput )
 
 
 function readDBpars( mpSim::ManpowerSimulation, sheet::XLSX.Worksheet )::String
 
-    isConfigFromDB = sheet[ "B11" ] == "YES"
+    isConfigFromDB = !( sheet[ "B12" ] isa Missing ) &&
+        ( sheet[ "B11" ] == "YES" )
     configDBname = Base.source_path()
     configDBname = configDBname isa Void ? "" : dirname( configDBname )
     tmpDBname = sheet[ "B4" ]

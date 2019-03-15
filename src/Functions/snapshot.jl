@@ -99,7 +99,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         nEffectiveEntries = size( contents )[ 1 ]
 
         if nEntries > nEffectiveEntries
-            println( nEntries - nEffectiveEntries,
+            warn( nEntries - nEffectiveEntries,
                 " entry/ies with duplicate IDs. Retaining only one of each." )
             snapshotComp[ "Duplicates" ] = nEntries - nEffectiveEntries
         end  # if nEntries > nEffectiveEntries
@@ -284,15 +284,11 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
         mpSim.resultSize = nEffectiveEntries
 
         # Statistics of entered data.
-        println( "Entered $nEffectiveEntries of $nEntries persons ($(100.0 * nEffectiveEntries / nEntries)%) in snapshot into database." )
-
-        # for ii in eachindex( colNames )
-        #     if colNames[ ii ] ∉ systemAttrs
-        #         counts = StatsBase.countmap( contents[ :, ii ] )
-        #         println( "Attribute '$(colNames[ ii ])':" )
-        #         foreach( val -> println( "   $val: $(counts[ val ])  ($(100.0 * counts[ val ] / nEffectiveEntries )%)" ), keys( counts ) )
-        #     end  # if colNames( ii ) ∉ [ mpSim.idKey, ...
-        # end  # for ii in eachindex( colNames )
+        if mpSim.showOutput
+            println( "Entered ", nEffectiveEntries, " of ", nEntries,
+                " persons (", 100.0 * nEffectiveEntries / nEntries,
+                "%) in snapshot into database." )
+        end  # if mpSim.showOutput
     end  # XLSX.openxlsx( tmpSnapName ) do xf
 
     # Generate a pie chart of the composition of the snapshot.
@@ -412,7 +408,10 @@ function validateContents( dataMatrix::Array, attrNames::Vector{String},
         end  # for attrName in attrNames
     end  # XLSX.openxlsx( catalogueName ) do xf
 
-    println( nEntries - sum( isEntryOkay ), " entries contained attribute values not defined in the catalogue." )
+    if nEntries > sum( isEntryOkay )
+        warn( nEntries - sum( isEntryOkay ),
+            " entries contained attribute values not defined in the catalogue." )
+    end  # if nEntries > sum( isEntryOkay )
 
     return isEntryOkay
 
@@ -467,10 +466,12 @@ function readSnapshot( mpSim::ManpowerSimulation )::Void
         uploadSnapshot( mpSim, snapName, idCol, colsToImport, mpSim.catFileName,
             recCol = recCol, isRecDate = isRecDate, ageCol = ageCol,
             isBirthDate = isBirthDate, stateCol = stateCol )
-    end  # XLSX.openXLSX( mpSim.parFileName) do xf
 
-    println( "Processing initial population snapshot took ",
-        ( now() - tStart ).value / 1000, " seconds." )
+        if mpSim.showOutput
+            println( "Processing initial population snapshot took ",
+                ( now() - tStart ).value / 1000, " seconds." )
+        end  # if mpSim.showOutput
+    end  # XLSX.openXLSX( mpSim.parFileName) do xf
 
     return
 

@@ -607,8 +607,10 @@ end  # attritionProcess( sim, id, timeOfRetirement, mpSim )
     end  # while now( sim ) < mpSim.simLength
 
     processTime += now() - tStart
-    println( "Attrition check process took ", processTime.value / 1000,
-        " seconds." )
+    if mpSim.showOutput
+        println( "Attrition check process took ", processTime.value / 1000,
+            " seconds." )
+    end  # if mpSim.showOutput
 
 end  # checkAttritionProcess( sim, mpSim )
 

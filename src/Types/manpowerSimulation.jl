@@ -121,9 +121,8 @@ type ManpowerSimulation
     # The start date of the simulation.
     simStartDate::Date
 
-    # The generated reports of the simulation.
-    # simReports::Dict{Float64, SimulationReport}
-
+    # Show timing results and end of sim population plot?
+    showOutput::Bool
 
     function ManpowerSimulation( ; dbName::String = "",
         simName::String = "testSim" )
@@ -197,22 +196,22 @@ type ManpowerSimulation
             :attrition => 50 )
         newMPsim.simLength = 1.0
         newMPsim.simStartDate = Date( now() )
-        # newMPsim.simReports = Dict{Float64, SimulationReport}()
+        newMPsim.showOutput = true
         return newMPsim
 
     end  # ManpowerSimulation( ; dbName, simName )
 
-    function ManpowerSimulation( configFileName::String )
+    function ManpowerSimulation( configFileName::String;
+        showOutput::Bool = true )
 
         newMPsim = ManpowerSimulation()
+        newMPsim.showOutput = showOutput
         tmpPath = Base.source_path()
         tmpPath = tmpPath isa Void ? "" : dirname( tmpPath )
-        # newMPsim.parFileName = joinpath( tmpPath, configFileName )
-        newMPsim.parFileName = configFileName  # XXX good idea?
-        initialiseFromExcel( newMPsim, configFileName )
-        # initialise( newMPsim )
+        newMPsim.parFileName = configFileName
+        initialiseFromExcel( newMPsim, configFileName, showOutput = showOutput )
         return newMPsim
 
-    end  # ManpowerSimulation( configFileName )
+    end  # ManpowerSimulation( configFileName, showOutput )
 
 end  # type ManpowerSimulation

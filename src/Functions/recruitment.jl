@@ -543,9 +543,13 @@ end  # recruitmentCycle( mpSim, recScheme )
     end  # while now( sim ) + timeToWait <= mpSim.simLength
 
     processTime += now() - tStart
-    println( "Recruitment process for '$(recScheme.name)' took $(processTime.value / 1000) seconds." )
 
-end
+    if mpSim.showOutput
+        println( "Recruitment process for '", recScheme.name,
+            "' took ", processTime.value / 1000, " seconds." )
+    end  # if mpSim.showOutput
+
+end  # recruitProcess( sim::Simulation, schemeNr, mpSim )
 
 
 function Base.show( io::IO, recScheme::Recruitment )

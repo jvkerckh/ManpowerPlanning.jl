@@ -778,11 +778,13 @@ include( joinpath( funcPath, "snapshot.jl" ) )
 # This function runs the manpower simulation if it has been properly
 #   initialised.
 # function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
-function SimJulia.run( mpSim::ManpowerSimulation )
+function SimJulia.run( mpSim::ManpowerSimulation; showOutput::Bool = true )
 
     if !mpSim.isInitialised
         error( "Simulation not properly initialised. Cannot run." )
     end  # if !mpSim.isInitialised
+
+    mpSim.showOutput = showOutput
 
     # Set up the recruitment processes and read initial population snapshot.
     if mpSim.isVirgin
@@ -832,15 +834,21 @@ function SimJulia.run( mpSim::ManpowerSimulation )
     saveSimConfigToDatabase( mpSim )
 
     mpSim.simTimeElapsed += now() - startTime
-    println( "Attrition execution process took $(mpSim.attrExecTimeElapsed.value / 1000) seconds." )
+
+    if mpSim.showOutput
+        println( "Attrition execution process took ",
+            mpSim.attrExecTimeElapsed.value / 1000, " seconds." )
+    end  # if mpSim.showOutput
 
     # Generation of basic info and plots.
-    plotSimulationResults( mpSim, 12, true, false, "personnel", "flux in",
-        "flux out", "net flux" )
+    if showOutput
+        plotSimulationResults( mpSim, 12, true, false, "personnel", "flux in",
+            "flux out", "net flux" )
+    end  # if showOutput
 
     return
 
-end  # run( mpSim, toTime )
+end  # run( mpSim, showOutput )
 
 
 # This function runs the simulation from file.

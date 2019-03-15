@@ -652,7 +652,11 @@ end  # initiateTransitionProcesses( mpSim )
     end  # while timeOfCheck <= mpSim.simLength
 
     processTime += now() - tStart
-    println( "Transition process for '$(trans.name)' took $(processTime.value / 1000) seconds." )
+
+    if mpSim.showOutput
+        println( "Transition process for '", trans.name, "' took ",
+            processTime.value / 1000, " seconds." )
+    end  # if mpSim.showOutput
 
 end  # transitionProcess( sim, trans, mpSim )
 
