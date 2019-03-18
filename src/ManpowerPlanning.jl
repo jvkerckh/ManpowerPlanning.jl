@@ -24,7 +24,7 @@ module ManpowerPlanning
     using XLSX
     # using ExcelWrapper
 
-    version = v"1.1.3"
+    version = v"1.1.4"
 
     export versionMP
     versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )

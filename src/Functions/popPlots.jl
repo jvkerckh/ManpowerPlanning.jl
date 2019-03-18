@@ -47,7 +47,7 @@ function showPlotsFromFile( mpSim::ManpowerSimulation, fName::String )::Void
         reportFileName = reportFileName == "" ? "" :
             joinpath( mpSim.parFileName[ 1:(end-5) ], reportFileName )
 
-        if !showPlots && ( reportFileName == "" )
+        if !showPlots && !savePlots && ( reportFileName == "" )
             return
         end  # if !showPlots && ...
 
@@ -278,7 +278,7 @@ function plotSimResults( node::String, timeGrid::Vector{Float64},
         yMin = minimum( counts[ 2:end, 4 ] )
     end  # if "net flux" ∈ validPlots
 
-    yMax = maximum( counts[ :, 1 ] )
+    yMax = max( maximum( counts[ :, 1 ] ), target )
 
     if "personnel" ∉ toShow
         yMax = maximum( counts[ 2:end, 2:4 ] )
