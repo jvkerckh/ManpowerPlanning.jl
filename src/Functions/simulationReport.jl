@@ -270,7 +270,7 @@ function will issue warnings to that effect.
 function generateCountReport( mpSim::ManpowerSimulation, timeRes::T,
     stateName::String = "" )::DataFrame where T <: Real
 
-    resultReport = DataFrame( Array{Float64}( 0, 1 ), [ :timePoint ] )
+    resultReport = DataFrame( Array{Float64}( 0, 1 ), [ :timePoints ] )
 
     # Issue warning if time resolution is negative.
     if timeRes <= 0
@@ -327,7 +327,7 @@ function generateCountReport( mpSim::ManpowerSimulation, stateName::String,
     counts = cumsum( fluxInCount[ end ] - fluxOutCount[ end ] ) + initPop
 
     return DataFrame( hcat( timeGrid, counts ),
-        [ :timePoint, Symbol( stateName ) ] )
+        [ :timePoints, Symbol( stateName ) ] )
 
 end  # generateCountReport( mpSim, stateName, fluxInCounts, fluxOutCounts )
 

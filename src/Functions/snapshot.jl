@@ -294,7 +294,7 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     # Generate a pie chart of the composition of the snapshot.
     snapshotStates = collect( keys( snapshotComp ) )
     snapshotVals = get.( Ref( snapshotComp ), snapshotStates, 0 )
-    gui( pie( string.( snapshotStates, ": ", snapshotVals ), snapshotVals,
+    gui( Plots.pie( string.( snapshotStates, ": ", snapshotVals ), snapshotVals,
         labels = "", title = "Composition of snapshot", lw = 2,
         size = ( 960, 540 ) ) )
 

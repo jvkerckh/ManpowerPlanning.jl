@@ -48,7 +48,7 @@ function plotTransitionMap( mpSim::ManpowerSimulation, isShow::Bool,
         sFun = sTypes[ saveType ][ 1 ]
         tmpSaveName = string( tmpFileName, endswith( tmpFileName, sType ) ?
             "" : sType )
-        draw( sFun( tmpSaveName, 20cm, 20cm ), graphPlot )
+        draw( sFun( tmpSaveName, 20Gadfly.cm, 20Gadfly.cm ), graphPlot )
     end  # if saveType !== :none
 
     # Generate the graphml file if requested.

@@ -15,6 +15,7 @@ module ManpowerPlanning
     using GraphPlot
     using Compose
     using Gadfly
+    using Luxor
     using Distributions
     using Polynomials
     using FileIO
@@ -46,6 +47,7 @@ module ManpowerPlanning
 #        "prerequisiteGroup",
         "recruitment",
         "retirement",
+        "subpopulation",
         # "simulationReport",
         "manpowerSimulation"
     ]

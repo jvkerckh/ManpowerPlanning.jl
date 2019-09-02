@@ -282,7 +282,7 @@ function generateCountReport( mpSim::ManpowerSimulation, nodeName::String,
     counts = cumsum( fluxInCount[ end ] - fluxOutCount[ end ] ) + initPop
 
     return DataFrame( hcat( timeGrid, counts ),
-        [ :timePoint, Symbol( nodeName ) ] )
+        [ :timePoints, Symbol( nodeName ) ] )
 
 end  # generateCountReport( mpSim, nodeName, fluxInCounts, fluxOutCounts )
 

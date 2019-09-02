@@ -270,6 +270,30 @@ function generateValidTransitionLists( mpSim::ManpowerSimulation,
 end  # generateValidTransitionLists( mpSim, transList )
 
 
+"""
+```
+generateFluxData( mpSim::ManpowerSimulation,
+                  timeRes::Real,
+                  tmpTransList::Vector{String},
+                  tmpPairList::Vector{Tuple{String, String}},
+                  tmpTripleList::Vector{Tuple{String, String, String}} )
+```
+This function generates flux data for the manpower simulation `mpSim` for each
+of the requested transitions for a grid with time resolution `timeRes`. The
+transitions are requested in 3 ways:
+* Vector `tmpTransList`: transitions requested by type. This gives the
+  cumulative flux for all transitions of this type.
+* vector `tmpPairList`: transitions requested by source/target node pair. This
+  gives the cumulative flux for all transitions from the source to the target
+  node.
+* Vector `tmpTripleList`: transitions requested by type + source/target pair.
+
+The function returns a `Tuple` consisting of 3 elements: an `Array{Int}` with
+the fluxes, where each column is the evolutino of the flux, and the columns are
+ordered by `tmpTransList`, `tmpPairList`, and then `tmpTripleList`; a
+`Vector{String}` with the labels for all transitions in `tmpPairList`; a
+`Vector{String}` with the labels for all transitions in `tmpTripleList`.
+"""
 function generateFluxData( mpSim::ManpowerSimulation, timeRes::Real,
     tmpTransList::Vector{String}, tmpPairList::Vector{Tuple{String, String}},
     tmpTripleList::Vector{Tuple{String, String, String}} )

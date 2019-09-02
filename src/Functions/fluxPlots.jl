@@ -56,7 +56,7 @@ function showFluxPlotsFromFile( mpSim::ManpowerSimulation,
         reportFileName = reportFileName == "" ? "" :
             joinpath( mpSim.parFileName[ 1:(end-5) ], reportFileName )
 
-        if !showPlots && ( reportFileName == "" )
+        if !showPlots && !savePlots && ( reportFileName == "" )
             return
         end  # if !showPlots && ...
 
