@@ -4,64 +4,66 @@ __precompile__()
 #   methods for the manpower planning project.
 
 module ManpowerPlanning
-    using IterTools
-    using SimJulia
-    using ResumableFunctions
-    using Plots
-    using LightGraphs
-    using MetaGraphs
-    using GraphIO
-    using EzXML
-    using GraphPlot
-    using Compose
-    using Gadfly
-    using Luxor
-    using Distributions
-    using Polynomials
-    using FileIO
-    using SQLite
-    using DataFrames
-    using StatsBase
-    using XLSX
+    # using IterTools
+    # using SimJulia
+    # using ResumableFunctions
+    # using Plots
+    # using LightGraphs
+    # using MetaGraphs
+    # using GraphIO
+    # using EzXML
+    # using GraphPlot
+    # using Compose
+    # using Gadfly
+    # using Luxor
+    # using Distributions
+    # using Polynomials
+    # using FileIO
+    # using SQLite
+    # using DataFrames
+    # using StatsBase
+    # using XLSX
     # using ExcelWrapper
 
-    version = v"1.1.4"
+    version = v"2.0.1"
 
     export versionMP
     versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )
 
-    include( "Functions/XLSXfix.jl")
+    # include( "Functions/XLSXfix.jl")
 
     types = [
+        "attrition"
 #        "historyEntry",
 #        "history",
-        "attrition",
-        "personnelAttribute",
-        "state",
-        "compoundState",
-        "condition",
-        "transition",
+        # "attrition",
+        # "personnelAttribute",
+        # "state",
+        # "compoundState",
+        # "condition",
+        # "transition",
 #        "personnel",
 #        "personnelDatabase",
 #        "prerequisite",
 #        "prerequisiteGroup",
-        "recruitment",
-        "retirement",
-        "subpopulation",
+        # "recruitment",
+        # "retirement",
+        # "subpopulation",
         # "simulationReport",
-        "manpowerSimulation"
+        # "manpowerSimulation"
     ]
 
     rootPath = Base.source_path()
-    rootPath = rootPath isa Void ? "" : dirname( rootPath )
+    rootPath = rootPath isa Nothing ? "" : dirname( rootPath )
     funcPath = joinpath( rootPath, "Functions" )
+    privPath = joinpath( funcPath, "private" )
     typePath = joinpath( rootPath, "Types" )
 
     # The types
     map( mpType -> include( joinpath( typePath, mpType * ".jl" ) ), types )
 
     # Some union type aliases
-    include( joinpath( typePath, "typeAliases.jl" ) )
+    # include( joinpath( typePath, "typeAliases.jl" ) )
 
     # The functions
     map( mpType -> include( joinpath( funcPath, mpType * ".jl" ) ), types )
