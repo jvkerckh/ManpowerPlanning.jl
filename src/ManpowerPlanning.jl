@@ -26,7 +26,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.2"
+    version = v"2.0.3"
 
     export versionMP
     versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )
@@ -35,12 +35,12 @@ module ManpowerPlanning
 
     types = [
         "attrition",
-        "attribute"
+        "attribute",
+        "condition"
 #        "historyEntry",
 #        "history",
         # "state",
         # "compoundState",
-        # "condition",
         # "transition",
 #        "personnel",
 #        "personnelDatabase",
