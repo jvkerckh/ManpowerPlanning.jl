@@ -4,6 +4,8 @@ __precompile__()
 #   methods for the manpower planning project.
 
 module ManpowerPlanning
+
+    using Distributions
     # using IterTools
     # using SimJulia
     # using ResumableFunctions
@@ -16,7 +18,6 @@ module ManpowerPlanning
     # using Compose
     # using Gadfly
     # using Luxor
-    # using Distributions
     # using Polynomials
     # using FileIO
     # using SQLite
@@ -25,7 +26,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.1"
+    version = v"2.0.2"
 
     export versionMP
     versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )
@@ -33,11 +34,10 @@ module ManpowerPlanning
     # include( "Functions/XLSXfix.jl")
 
     types = [
-        "attrition"
+        "attrition",
+        "attribute"
 #        "historyEntry",
 #        "history",
-        # "attrition",
-        # "personnelAttribute",
         # "state",
         # "compoundState",
         # "condition",

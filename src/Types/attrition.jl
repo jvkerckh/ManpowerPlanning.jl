@@ -80,7 +80,7 @@ mutable struct Attrition
 
         newAttr = Attrition( name )
         newAttr.period = period
-        setAttritionCurve( newAttr, curve )
+        setAttritionCurve!( newAttr, curve )
         return newAttr
 
     end  # Attrition( name, curve, period )

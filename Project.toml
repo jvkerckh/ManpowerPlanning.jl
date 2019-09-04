@@ -1,9 +1,10 @@
 name = "ManpowerPlanning"
 uuid = "6098a329-8c96-5c9c-9c97-4012e2806895"
 authors = ["Johan Van Kerckhoven <johan.vankerckhoven@gmail.com>"]
-version = "2.0.1"
+version = "2.0.2"
 
 [deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 SimJulia = "428bdadb-6287-5aa5-874b-9969638295fd"
 
 [extras]

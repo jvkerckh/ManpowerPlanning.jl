@@ -1,9 +1,28 @@
 # This file holds the definition of the functions pertaining to the Attrition
 #   type.
 
-export  setAttritionRate!,
+export  setAttritionName!,
+        setAttritionRate!,
         setAttritionPeriod!,
         setAttritionCurve!
+
+
+"""
+```
+setAttritionName!(
+    attrition::Attrition,
+    name::String )
+```
+This function sets the name of the attrition scheme `attrition` to `name`.
+
+This function returns `true`, indicating the name has been set successfully.
+"""
+function setAttritionName!( attrition::Attrition, name::String )::Bool
+
+    attrition.name = name
+    return true
+
+end  # setAttritionName!( attrition, name )
 
 
 """
@@ -39,7 +58,6 @@ end  # setAttritionRate!( attrition, rate )
 setAttritionPeriod!(
     attrition::Attrition,
     period::Real )
-    where T <: Real
 ```
 This function sets the attrition period of the attrition scheme `attrition` to `period`. If the given period is ⩽ 0, the function doesn't make a change and gives a warning.
 

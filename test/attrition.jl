@@ -58,4 +58,15 @@ end  # @testset "function setAttritionRate!"
     @test !setAttritionCurve!( attrition, [ 0.0 0.05; 18.0 0.03; 18.0 0.02 ] )
 end  # @testset "function setAttritionCurve!"
 
+@testset "Constructor part II" begin
+    attrition = Attrition( "Attr",
+        Dict( 6.0 => 0.01, 12.0 => 0.015, 36.0 => 0.03 ), 12.0 )
+    @test all( [ attrition.name == "Attr",
+        attrition.rates == [ 0.0, 0.01, 0.015, 0.03 ],
+        attrition.curvePoints == [ 0.0, 6.0, 12.0, 36.0 ],
+        attrition.period == 12.0 ] )
+end  # @testset "Constructor part II"
+
 end  # @testset "Attrition"
+
+println()
