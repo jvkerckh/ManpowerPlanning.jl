@@ -82,6 +82,3 @@ end  # type Attribute
 # ? Is the `isFixed` field still used anywhere? Not really.
 # * `isOrdinal::Bool`: a flag that indicates if the attribute has ordinal values, that is, string values that have a hierarchical ordering.
 # If the field `isOrdinal` is `true`, these values must be ordered from lowest to highest in the hierarchy.
-
-
-@deprecate( PersonnelAttribute, Attribute )

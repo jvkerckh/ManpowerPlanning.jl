@@ -1,7 +1,11 @@
 name = "ManpowerPlanning"
 uuid = "6098a329-8c96-5c9c-9c97-4012e2806895"
+license = "MIT"
 authors = ["Johan Van Kerckhoven <johan.vankerckhoven@gmail.com>"]
-version = "2.0.3"
+version = "2.0.4"
+
+[compat]
+julia = ">=0.7"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"

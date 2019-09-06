@@ -10,7 +10,7 @@ The `Attrition` type represents an attrition scheme to make it possible for pers
 An object of this type has the following fields:
 * `name::String`: the name of the attrition scheme.
 * `period::Float64`: the period which the attrition rate covers, e.g. percentage per month, quarter, or year.
-* `curvePoints::Vector{Float64}`: the time points, in periods, of the attrition curve. This curve is always sorted, and the first element is always 0.0.
+* `curvePoints::Vector{Float64}`: the time points of the attrition curve. This curve is always sorted, and the first element is always 0.0.
 * `rates::Vector{Float64}`: the attrition rates in (average) percentage per period undergoing attrition for each time point of the attrition curve.
 
 Additional fields of the type, which are computed based on the above fields, and used to compute the distribution of the time to attrition and sample from it:

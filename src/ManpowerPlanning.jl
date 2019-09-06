@@ -26,7 +26,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.3"
+    version = v"2.0.4"
 
     export versionMP
     versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )
@@ -35,6 +35,7 @@ module ManpowerPlanning
 
     types = [
         "attrition",
+        "basenode",
         "attribute",
         "condition"
 #        "historyEntry",
@@ -67,5 +68,8 @@ module ManpowerPlanning
 
     # The functions
     map( mpType -> include( joinpath( funcPath, mpType * ".jl" ) ), types )
+
+    # Deprecated functions
+    include( joinpath( funcPath, "deprecated.jl" ) )
 
 end  # module ManpowerPlanning

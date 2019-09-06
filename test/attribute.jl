@@ -1,6 +1,7 @@
 @testset "Attribute" begin
 
 @testset "Constructor" begin
+    @test_deprecated PersonnelAttribute( "Attribute" )
     attribute = Attribute( "Attribute" )
     @test all( [ attribute.name == "Attribute",
         isempty( attribute.possibleValues ), isempty( attribute.initValues ) ] )

@@ -34,16 +34,16 @@ end  # setAttributeName!( attribute, name )
 ```
 addPossibleAttributeValue!(
     attribute::Attribute,
-    vals::String... )
+    values::String... )
 ```
-This function adds the values in `vals` to the list of possible attribute values of the personnel attribute `attribute`, assuming they aren't in the list already.
+This function adds the values in `values` to the list of possible attribute values of the personnel attribute `attribute`, assuming they aren't in the list already.
 
 This function returns `true` if any of the values has been added successfully, `false` if all of them were already in the list.
 """
 function addPossibleAttributeValue!( attribute::Attribute,
-    vals::String... )::Bool
+    values::String... )::Bool
 
-    tmpVals = unique( collect( vals ) )
+    tmpVals = unique( collect( values ) )
     inList = map( val -> val ∈ attribute.possibleValues, tmpVals )
 
     if all( inList )
@@ -53,23 +53,23 @@ function addPossibleAttributeValue!( attribute::Attribute,
     append!( attribute.possibleValues, tmpVals[ .!inList ] )
     return true
 
-end  # addPossibleAttributeValue!( attribute, vals )
+end  # addPossibleAttributeValue!( attribute, values )
 
 
 """
 ```
 removePossibleAttributeValue!(
     attribute::Attribute,
-    vals::String... )
+    values::String... )
 ```
-This function removes the values in `vals` from the list of possible attribute values of the personnel attribute `attribute`, assuming they are in the list. This function will also remove these values from the initialisation values if necessary.
+This function removes the values in `values` from the list of possible attribute values of the personnel attribute `attribute`, assuming they are in the list. This function will also remove these values from the initialisation values if necessary.
 
 This function returns `true` if any of the values has been removed successfully, `false` if none of them were in the list to begin with.
 """
 function removePossibleAttributeValue!( attribute::Attribute,
-    vals::String... )::Bool
+    values::String... )::Bool
 
-    toDelete = map( val -> val ∈ vals, attribute.possibleValues )
+    toDelete = map( val -> val ∈ values, attribute.possibleValues )
 
     if !any( toDelete )
         return false
@@ -78,7 +78,7 @@ function removePossibleAttributeValue!( attribute::Attribute,
     deleteat!( attribute.possibleValues, toDelete )
     return true
 
-end  # removePossibleAttributeValue!( attribute, vals )
+end  # removePossibleAttributeValue!( attribute, values )
 
 
 """
@@ -101,29 +101,26 @@ end  # clearPossibleAttributeValues!( attribute::Attribute )
 ```
 setPossibleAttributeValues!(
     attribute::Attribute,
-    vals::Vector{String} )
+    values::Vector{String} )
 ```
-This function sets the list of possible values of the personnel attribute `attribute` to the list given in `vals`. This function will also remove those entries among the initialisation values that aren't found in the new list of possible values.
+This function sets the list of possible values of the personnel attribute `attribute` to the list given in `values`. This function will also remove those entries among the initialisation values that aren't found in the new list of possible values.
 
 This function returns `true`, indicating the possible values have been set successfully.
 """
 function setPossibleAttributeValues!( attribute::Attribute,
-    vals::Vector{String} )::Bool
+    values::Vector{String} )::Bool
 
-    attribute.possibleValues = unique( vals )
+    attribute.possibleValues = unique( values )
     return true
 
-end  # setPossibleAttributeValues!( attribute, vals )
-
-@deprecate( setPossibleValues!( attribute::Attribute, vals::Vector{String} ),
-    setPossibleAttributeValues!( attribute, vals ) )
+end  # setPossibleAttributeValues!( attribute, values )
 
 
 """
 ```
 addInitialAttributeValue!(
     attribute::Attribute,
-    valWeights::Tuple{String, T}... )
+    valWeights::Tuple{String, Float64}... )
 ```
 This function adds each value/weight pair in `valWeights` to the initial values of the personnel attribute `attribute`. Values that aren't in the list of possible values get added as well.
 
@@ -187,24 +184,21 @@ addInitialAttributeValue!( attribute::Attribute, val::String,
     weight::Real )::Bool = addInitialAttributeValue!( attribute,
     (val, Float64( weight )) )
 
-@deprecate( addValueToAttr!( attribute::Attribute, val::String, weight::Real ),
-    addInitialAttributeValue!( attribute, val, weight ) )
-
 
 """
 ```
 removeInitialAttributeValue!(
     attribute::Attribute,
-    vals::String... )
+    values::String... )
 ```
-This function removes the values in `vals` from the list of initial values of the personnel attribute `attribute`, insofar as those values are on the list.
+This function removes the values in `values` from the list of initial values of the personnel attribute `attribute`, insofar as those values are on the list.
 
 This function returns `true` if any values have been successfully removed from the list of initial values, and `false` if none were removed.
 """
 function removeInitialAttributeValue!( attribute::Attribute,
-    vals::String... )::Bool
+    values::String... )::Bool
 
-    removeVals = map( val -> val ∈ vals, attribute.initValues )
+    removeVals = map( val -> val ∈ values, attribute.initValues )
 
     if !any( removeVals )
         return false
@@ -215,10 +209,7 @@ function removeInitialAttributeValue!( attribute::Attribute,
     createInitialValueDistribution( attribute )
     return true
 
-end  # removeInitialAttributeValue!( attribute, vals )
-
-@deprecate( removeValueFromAttr!( attribute::Attribute, val::String ),
-    removeInitialAttributeValue!( attribute, val ) )
+end  # removeInitialAttributeValue!( attribute, values )
 
 
 """
@@ -306,11 +297,11 @@ end  # setInitialAttributeValues!( attribute, valWeights )
 ```
 setInitialAttributeValues!(
     attribute::Attribute,
-    vals::Vector{String},
+    values::Vector{String},
     weights::Vector{T} )
     where T <: Real
 ```
-This function sets the list of interval values, with associated weights, of the personnel attribute `attribute` to the list in `vals`. The weights associated with each value are given through the vector `weights`.
+This function sets the list of interval values, with associated weights, of the personnel attribute `attribute` to the list in `values`. The weights associated with each value are given through the vector `weights`.
 
 If the vector of initial values and weights are of unequal length, the function will issue a warning and not make any changes.
 
@@ -320,33 +311,29 @@ All remarks associated with the version of this function with a `Dict` are valid
 
 This function returns `true` if the list of initial values is successfully set, and `false` if the list of initial values contained no valid entries.
 """
-function setInitialAttributeValues!( attribute::Attribute, vals::Vector{String},
-    weights::Vector{T} )::Bool where T <: Real
+function setInitialAttributeValues!( attribute::Attribute,
+    values::Vector{String}, weights::Vector{T} )::Bool where T <: Real
 
-    if length( vals ) != length( weights )
+    if length( values ) != length( weights )
         @warn "Mismatched lengths of vector of initial values and weights, not making any changes."
         return false
-    end  # if length( vals ) != length( weights )
+    end  # if length( values ) != length( weights )
 
-    if length( vals ) != length( unique( vals ) )
+    if length( values ) != length( unique( values ) )
         @warn "Duplicate entries in the initial value list, not making any changes."
         return false
-    end  # if length( vals ) != length( unique( vals ) )
+    end  # if length( values ) != length( unique( values ) )
 
     # Convert the val/weight pairs to a dictionary.
     valWeightDict = Dict{String, Float64}()
 
-    for ii in eachindex( vals )
-        valWeightDict[ vals[ ii ] ] = weights[ ii ]
-    end  # for ii in eachindex( vals )
+    for ii in eachindex( values )
+        valWeightDict[ values[ ii ] ] = weights[ ii ]
+    end  # for ii in eachindex( values )
 
     return setInitialAttributeValues!( attribute, valWeightDict )
 
-end  # setInitialAttributeValues!( attribute, vals, weights )
-
-@deprecate( setAttrValues!( attribute::Attribute,
-    valWeights::Dict{String, Float64} ), setInitialAttributeValues!( attribute,
-    valWeights ) )
+end  # setInitialAttributeValues!( attribute, values, weights )
 
 
 function Base.show( io::IO, attribute::Attribute )::Nothing

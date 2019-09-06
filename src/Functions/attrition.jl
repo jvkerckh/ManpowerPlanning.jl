@@ -49,9 +49,6 @@ function setAttritionRate!( attrition::Attrition, rate::Real )::Bool
 
 end  # setAttritionRate!( attrition, rate )
 
-@deprecate( setAttritionRate( attrition::Attrition, rate::Real ),
-    setAttritionRate!( attrition, rate ) )
-
 
 """
 ```
@@ -75,9 +72,6 @@ function setAttritionPeriod!( attrition::Attrition, period::Real )::Bool
     return true
 
 end  # setAttritionPeriod!( attrition, period )
-
-@deprecate( setAttritionPeriod( attrition::Attrition, period::Real ),
-    setAttritionPeriod!( attrition, period ) )
 
 
 """
@@ -175,12 +169,6 @@ function setAttritionCurve!( attrition::Attrition,
     return setAttritionCurve!( attrition, curveDict )
 
 end  # setAttritionCurve!( attrition, curve )
-
-# TODO: make sure these deprecations covers all bases.
-@deprecate( setAttritionCurve( attrition::Attrition,
-    curve::Dict{Float64, Float64} ), setAttritionCurve!( attrition, curve ) )
-@deprecate( setAttritionCurve( attrition::Attrition,
-    curve::Array{Float64, 2} ), setAttritionCurve!( attrition, curve ) )
 
 
 function Base.show( io::IO, attrition::Attrition )::Nothing

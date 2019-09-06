@@ -8,5 +8,6 @@ MP = ManpowerPlanning
 include( "attrition.jl" )
 include( "attribute.jl" )
 include( "condition.jl" )
+include( "basenode.jl" )
 
 end  # @testset "Basic test of types"
