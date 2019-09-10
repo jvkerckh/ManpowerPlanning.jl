@@ -23,7 +23,7 @@ Condition(
 ```
 This constructor creates a `Condition` object of the form `attribute` `operator` `value`.
 """
-mutable struct Condition
+struct Condition
 
     attribute::String
     value::Union{Real, String, Vector{String}}
@@ -41,12 +41,8 @@ mutable struct Condition
             error( "A vector of string values permits only ∈ and ∉ as operators." )
         end  # if ( value isa Real ) && ...
 
-        newCond = new()
-        newCond.attribute = attribute
-        newCond.value = value
-        newCond.operator = operator
-        return newCond
+        return new( attribute, value, operator )
 
     end  # Condition( attribute, operator, value )
 
-end  # mutable struct Condition
+end  # struct Condition

@@ -1,3 +1,6 @@
+const dummyNode = BaseNode( "Dummy" )
+
+
 """
 ```
 isPersonnelOfNode(

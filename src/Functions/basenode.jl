@@ -1,4 +1,4 @@
-# This file holds the definition of the functions pertaining to the Attribute
+# This file holds the definition of the functions pertaining to the BaseNode
 #   type.
 
 export  setNodeName!,

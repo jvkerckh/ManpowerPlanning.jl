@@ -39,3 +39,34 @@
     removeNodeRequirement!( node, attribute ) )
 @deprecate( clearRequirements!( node::BaseNode ),
     clearNodeRequirements!( node::BaseNode ) )
+
+
+# Transition
+@deprecate( setName( transition::Transition, name::String ),
+    setTransitionName!( transition, name ) )
+@deprecate( setState( transition::Transition, node::BaseNode,
+    isTargetNode::Bool = false ), setTransitionNode!( transition, node,
+    isTargetNode ) )
+@deprecate( setIsOutTrans!( transition::Transition, isOutTrans::Bool ),
+    setTransitionIsOut!( transition, isOutTrans ) )
+@deprecate( setSchedule( transition::Transition, freq::Real, offset::Real = 0 ),
+    setTransitionSchedule!( transition, freq, offset ) )
+@deprecate( setMaxAttempts( transition::Transition, maxAttempts::Integer ),
+    setTransitionMaxAttempts!( transition, maxAttempts ) )
+@deprecate( setFluxBounds( transition::Transition, minFlux::Integer,
+    maxFlux::Integer ), setTransitionFluxLimits!( transition, minFlux,
+    maxFlux ) )
+@deprecate( setHasPriority( transition::Transition, hasPriority::Bool ),
+    setTransitionHasPriority!( transition, hasPriority ) )
+@deprecate( addCondition!( transition::Transition, condition::Condition ),
+    addTransitionCondition!( transition, condition ) )
+@deprecate( clearConditions!( transition::Transition ),
+    clearTransitionConditions!( transition ) )
+@deprecate( addAttributeChange!( transition::Transition, attribute::String,
+    value::String ), addTransitionAttributeChange!( transition,
+    (attribute, value) ) )
+@deprecate( clearAttributeChanges!( transition::Transition ),
+    clearTransitionAttributeChanges!( transition ) )
+@deprecate( setTransProbabilities( transition::Transition,
+    probabilities::Vector{Float64} ), setTransitionProbabilities!( transition,
+    probabilities ) )

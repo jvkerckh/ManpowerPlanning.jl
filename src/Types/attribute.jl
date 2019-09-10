@@ -17,12 +17,31 @@ An additional field is used to speed up computations:
 
 Constructors:
 ```
-Attribute(
-    name::String )
+Attribute( name::String )
 ```
 This constructor generates an `Attribute` object with name `name`. The list of possible values for the attribute is set to empty.
 
+```
+Attribute(
+    name::String,
+    vals::Vector{String} )
+```
+This constructor generates an `Attribute` object with name `name` and list of possible attribute values `vals`.
 
+```
+Attribute(
+    name::String,
+    valWeights::Dict{String, T} )
+```
+This constructor generates an `Attribute` object with name `name` and list of initial attribute values and weights `valWeights`.
+
+```
+Attribute(
+    name::String,
+    vals::Vector{String},
+    valWeights::Dict{String, T} )
+```
+This constructor generates an `Attribute` object with name `name`, list of possible attribute values `vals`, and list of inital attribute values and weights `valWeights`.
 """
 mutable struct Attribute
 
