@@ -292,11 +292,13 @@ function uploadSnapshot( mpSim::ManpowerSimulation, snapName::String,
     end  # XLSX.openxlsx( tmpSnapName ) do xf
 
     # Generate a pie chart of the composition of the snapshot.
-    snapshotStates = collect( keys( snapshotComp ) )
-    snapshotVals = get.( Ref( snapshotComp ), snapshotStates, 0 )
-    gui( pie( string.( snapshotStates, ": ", snapshotVals ), snapshotVals,
-        labels = "", title = "Composition of snapshot", lw = 2,
-        size = ( 960, 540 ) ) )
+    if mpSim.showOutput
+        snapshotStates = collect( keys( snapshotComp ) )
+        snapshotVals = get.( Ref( snapshotComp ), snapshotStates, 0 )
+        gui( pie( string.( snapshotStates, ": ", snapshotVals ), snapshotVals,
+            labels = "", title = "Composition of snapshot", lw = 2,
+            size = ( 960, 540 ) ) )
+    end
 
     return
 

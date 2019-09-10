@@ -53,6 +53,22 @@ type Recruitment
     # The distribution function of the age of a single recruit.
     ageDist::Function
 
+    #___________________________________________________________________________
+    # This section is used by the optimizer
+    # We define a recruitment flow and age for each year
+
+    # The recruitment flow is defined by the RecFlowArray
+    UseRecFlowArray::Bool
+
+    # Recruitment flow array
+    RecFlowArray::Array{Int}
+
+    # The recruitment age is defined by the RecAgeArray
+    UseRecAgeArray::Bool
+
+    # Recruitment age array
+    RecAgeArray::Array{Int}
+    #___________________________________________________________________________
 
     function Recruitment( name::String, freq::T1, offset::T2 = 0.0 ) where T1 <: Real where T2 <: Real
 
@@ -74,6 +90,8 @@ type Recruitment
         newRec.ageDistType = :disc
         newRec.ageDistNodes = Dict( 0.0 => 1.0 )
         newRec.ageDist = function() return 0.0 end
+        newRec.UseRecFlowArray = false
+        newRec.UseRecAgeArray = false
         return newRec
 
     end  # Recruitment( freq, offset )

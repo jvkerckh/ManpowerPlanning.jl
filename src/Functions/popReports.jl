@@ -2,7 +2,7 @@
 #   reports from the simulation results database.
 
 export  generateExcelReport
-
+export  generateCountReport
 
 """
 ```

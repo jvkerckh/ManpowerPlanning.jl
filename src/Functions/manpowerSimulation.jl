@@ -647,7 +647,7 @@ include( joinpath( funcPath, "dbManagement.jl" ) )
 
 export configureSimFromGraph
 function configureSimFromGraph( mpSim::ManpowerSimulation, graphFile::String,
-    showPlot::Bool = true,
+    showPlot::Bool = false,
     exportFileName::String = "networkExport.graphml" )::Void
 
     if !ispath( graphFile )
@@ -778,7 +778,7 @@ include( joinpath( funcPath, "snapshot.jl" ) )
 # This function runs the manpower simulation if it has been properly
 #   initialised.
 # function SimJulia.run( mpSim::ManpowerSimulation, toTime::T = 0.0 ) where T <: Real
-function SimJulia.run( mpSim::ManpowerSimulation; showOutput::Bool = true )
+function SimJulia.run( mpSim::ManpowerSimulation; showOutput::Bool = false )
 
     if !mpSim.isInitialised
         error( "Simulation not properly initialised. Cannot run." )

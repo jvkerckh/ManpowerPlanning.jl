@@ -374,7 +374,11 @@ function generatePoolSize( mpSim::ManpowerSimulation, recScheme::Recruitment,
         nrToRecruit = max( min( persToOrgTarget, persToStateTarget,
             nrToRecruit ), recScheme.minRecruit )
     elseif !recScheme.isAdaptive
-        nrToRecruit = recScheme.recDist()
+        if recScheme.UseRecFlowArray
+            nrToRecruit = recScheme.RecFlowArray[Int(now(mpSim)/12) + 1]
+        else
+            nrToRecruit = recScheme.recDist()
+        end
     end  # if ( mpSim.personnelTarget > 0 ) && ...
 
     return nrToRecruit
@@ -389,7 +393,12 @@ function createPerson( mpSim::ManpowerSimulation, recScheme::Recruitment,
 
     # Create the person in the database.
     id = "Sim" * string( mpSim.resultSize + 1 )
-    ageAtRecruitment = recScheme.ageDist()
+    ageAtRecruitment =  0
+    if recScheme.UseRecAgeArray
+        ageAtRecruitment = recScheme.RecAgeArray[Int(now(mpSim)/12) + 1]*12
+    else
+        ageAtRecruitment = recScheme.ageDist()
+    end
 
     # Generate initial values.
     initVals = Dict{String, Any}()
