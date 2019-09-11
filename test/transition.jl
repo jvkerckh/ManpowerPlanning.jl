@@ -69,11 +69,11 @@ end  # @testset "function setTransitionFluxLimits!"
 end  # @testset "function setTransitionHasPriority!"
 
 @testset "function addTransitionCondition!" begin
-    cond = MP.Condition( "rank", ==, "captain" )
+    cond = MP.MPCondition( "rank", ==, "captain" )
     @test_deprecated addCondition!( transition, cond )
     @test ( length( transition.extraConditions ) == 1 ) &&
         ( cond ∈ transition.extraConditions )
-    cond = MP.Condition( "branch", ∈, [ "air", "navy" ] )
+    cond = MP.MPCondition( "branch", ∈, [ "air", "navy" ] )
     addTransitionCondition!( transition, cond )
     @test cond ∈ transition.extraConditions 
 end  # @testset "function addTransitionCondition!"
@@ -84,8 +84,8 @@ end  # @testset "function addTransitionCondition!"
 end  # @testset "function clearTransitionCondition!"
 
 @testset "function setTransitionConditions!" begin
-    cond1 = MP.Condition( "rank", ==, "adjutant" )
-    cond2 = MP.Condition( "branch", ∈, [ "air", "medical" ] )
+    cond1 = MP.MPCondition( "rank", ==, "adjutant" )
+    cond2 = MP.MPCondition( "branch", ∈, [ "air", "medical" ] )
     setTransitionConditions!( transition, [ cond1, cond2 ] )
     @test ( length( transition.extraConditions ) == 2 ) &&
         ( [ cond1, cond2 ] ⊆ transition.extraConditions )
@@ -143,8 +143,6 @@ end  # @testset "function setTransitionAttributeChanges!"
     @test transition.probabilityList == [ 0.2, 0.5, 1.0 ]
     @test !setTransitionProbabilities!( transition, [ 1.2, 1.3, -0.5 ] )
 end  # @testset "function setTransitionProbabilities!"
-
-println( transition )
 
 end  # @testset "Transition"
 

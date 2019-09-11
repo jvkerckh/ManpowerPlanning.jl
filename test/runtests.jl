@@ -10,5 +10,6 @@ include( "attribute.jl" )
 include( "condition.jl" )
 include( "basenode.jl" )
 include( "transition.jl" )
+include( "retirement.jl" )
 
 end  # @testset "Basic test of types"

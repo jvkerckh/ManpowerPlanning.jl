@@ -101,8 +101,6 @@ end  # @testset "function setNodeRequirements!"
     @test !MP.isPersonnelOfNode( Dict( "rank" => "corporal" ), node )
 end  # @testset "function isPersonnelOfNode" begin
 
-println( node )
-
 end  # @testset "BaseNode"
 
 println()

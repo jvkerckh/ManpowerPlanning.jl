@@ -187,14 +187,14 @@ end  # setTransitionHasPriority!( transition, hasPriority )
 ```
 addTransitionCondition!(
     transition::Transition,
-    conditions::Condition... )
+    conditions::MPCondition... )
 ```
 This function adds the conditions in  `conditions` as extra conditions to the transition `transition`. This function does NOT check if these conditions are contradictory with each other, with the existing ones, or with the source node.
 
 This function returns `true`, indicating that the condition has been successfully added.
 """
 function addTransitionCondition!( transition::Transition,
-    conditions::Condition... )::Bool
+    conditions::MPCondition... )::Bool
 
     append!( transition.extraConditions, collect( conditions ) )
     return true
@@ -222,12 +222,12 @@ end  # clearTransitionConditions!( transition )
 ```
 setTransitionConditions!(
     transition::Transition,
-    conditions::Vector{Condition} )
+    conditions::Vector{MPCondition} )
 ```
 This function sets the extra conditions for the transition `transition` to the list of conditions `conditions`. This function does NOT check if these conditions are contradictory with each other or with the source node.
 """
 function setTransitionConditions!( transition::Transition,
-    conditions::Vector{Condition} )::Bool
+    conditions::Vector{MPCondition} )::Bool
 
     transition.extraConditions = conditions
     return true

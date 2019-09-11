@@ -364,7 +364,7 @@ function Base.show( io::IO, attribute::Attribute )::Nothing
 
     return
 
-end  # show( io, attr )
+end  # show( io, attribute )
 
 
 include( joinpath( privPath, "attribute.jl" ) )
