@@ -19,29 +19,7 @@ Constructors:
 ```
 Attribute( name::String )
 ```
-This constructor generates an `Attribute` object with name `name`. The list of possible values for the attribute is set to empty.
-
-```
-Attribute(
-    name::String,
-    vals::Vector{String} )
-```
-This constructor generates an `Attribute` object with name `name` and list of possible attribute values `vals`.
-
-```
-Attribute(
-    name::String,
-    valWeights::Dict{String, T} )
-```
-This constructor generates an `Attribute` object with name `name` and list of initial attribute values and weights `valWeights`.
-
-```
-Attribute(
-    name::String,
-    vals::Vector{String},
-    valWeights::Dict{String, T} )
-```
-This constructor generates an `Attribute` object with name `name`, list of possible attribute values `vals`, and list of inital attribute values and weights `valWeights`.
+This constructor generates an `Attribute` object with name `name` and no defined possible values.
 """
 mutable struct Attribute
 
@@ -67,34 +45,6 @@ mutable struct Attribute
         return newAttr
 
     end  # Attribute( name )
-
-    # Other constructors.
-    function Attribute( name::String, vals::Vector{String} )::Attribute
-
-        newAttr = Attribute( name )
-        setPossibleAttributeValues!( newAttr, vals )
-        return newAttr
-
-    end  # Attribute( name, vals )
-
-    function Attribute( name::String,
-            valWeights::Dict{String, T} )::Attribute where T <: Real
-
-        newAttr = Attribute( name )
-        setInitialAttributeValues!( newAttr, valWeights )
-        return newAttr
-
-    end  # Attribute( name, valWeights )
-
-    function Attribute( name::String, vals::Vector{String},
-        valWeights::Dict{String, T} )::Attribute where T <: Real
-
-        newAttr = Attribute( name )
-        setPossibleAttributeValues!( newAttr, vals )
-        setInitialAttributeValues!( newAttr, valWeights )
-        return newAttr
-
-    end  # Attribute( name, vals, valWeights )
 
 end  # type Attribute
 

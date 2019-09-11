@@ -34,14 +34,9 @@ Transition(
 This constructor creates a `Transition` object with source node `sourceNode` and target node `targetNode`.
 
 ```
-Transition( name::String,
-    sourceNode::BaseNode;
-    freq::Real = 1.0,
-    offset::Real = 0.0,
-    maxAttempts::Integer = 1,
-    minFlux::Integer = 0,
-    maxFlux::Integer = -1,
-    hasPriority::Bool = false )
+Transition(
+    name::String,
+    sourceNode::BaseNode )
 ```
 This constructor creates a `Transition` object with source node `sourceNode` and `isOutTrransition` flag to `true`.
 """

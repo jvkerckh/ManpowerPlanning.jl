@@ -10,8 +10,6 @@
     curve::Array{Float64, 2} ), setAttritionCurve!( attrition, curve ) )
 
 
-
-
 # Attribute
 @deprecate( PersonnelAttribute, Attribute )
 @deprecate( setPossibleValues!( attribute::Attribute, vals::Vector{String} ),
@@ -70,3 +68,19 @@
 @deprecate( setTransProbabilities( transition::Transition,
     probabilities::Vector{Float64} ), setTransitionProbabilities!( transition,
     probabilities ) )
+
+
+# CompoundNode
+@deprecate( CompoundState, CompoundNode )
+@deprecate( setName!( compoundNode::CompoundNode, name::String ),
+    setCompoundNodeName!( compoundNode, name ) )
+@deprecate( addStateToCompound!( compoundNode::CompoundNode,
+    nodeList::String... ), addCompoundNodeComponent!( compoundNode,
+    nodeList... ) )
+@deprecate( removeStateFromCompound!( compoundNode::CompoundNode,
+    nodeList::String... ), removeCompoundNodeComponent!( compoundNode,
+    nodeList... ) )
+@deprecate( clearStatesFromCompound!( compoundNode::CompoundNode ),
+    clearCompoundNodeComponents!( compoundNode ) )
+@deprecate( setStateTarget!( compoundNode::CompoundNode, target::Integer ),
+    setCompoundNodeTarget!( compoundNode, target ) )

@@ -5,10 +5,6 @@
     node = BaseNode( "Node" )
     @test all( [ node.name == "Node", node.target == 0,
         isempty( node.requirements ) ] )
-    node = BaseNode( "Node", 500 )
-    @test node.target == 500
-    node = BaseNode( "Node", -500 )
-    @test node.target == -1
 end  # @testset "Constructor"
 
 node = BaseNode( "State" )
@@ -30,10 +26,15 @@ end  # @testset "function setNodeName!"
 end  # @testset "function setNodeTarget!"
 
 @testset "function setNodeAttritionScheme!" begin
-    attrition1 = Attrition( "Attrition", 0.025, 12 )
+    attrition1 = Attrition( "Attrition" )
+    setAttritionPeriod!( attrition1, 12 )
+    setAttritionRate!( attrition1, 0.025 )
     @test_deprecated setStateAttritionScheme!( node, attrition1 )
     @test node.attrition === attrition1
-    attrition2 = Attrition( "Attrition", Dict( 0.0 => 0.03, 12.0 => 0.025, 60.0 => 0.02 ), 12 )
+    attrition2 = Attrition( "Attrition" )
+    setAttritionPeriod!( attrition2, 12 )
+    setAttritionCurve!( attrition2, Dict( 0.0 => 0.03, 12.0 => 0.025,
+        60.0 => 0.02 ) )
     setNodeAttritionScheme!( node, attrition2 )
     @test ( node.attrition !== attrition1 ) && ( node.attrition === attrition2 )
 end  # @testset "function setNodeAttritionScheme!"

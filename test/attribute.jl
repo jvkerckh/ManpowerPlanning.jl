@@ -4,7 +4,8 @@
     @test_deprecated PersonnelAttribute( "Attribute" )
     attribute = Attribute( "Attribute" )
     @test all( [ attribute.name == "Attribute",
-        isempty( attribute.possibleValues ), isempty( attribute.initValues ) ] )
+        isempty( attribute.possibleValues ), isempty( attribute.initValues ),
+        isempty( attribute.initValueWeights ) ] )
 end  # @testset "Constructor"
 
 attribute = Attribute( "Attribute" )
@@ -93,22 +94,6 @@ end  # @testset "function clearInitialAttributeValues!"
     @test !setInitialAttributeValues!( attribute, [ "foo", "boop", "foo" ],
         [ 3.0, 4.0, 2.0 ] )
 end  # @testset "function setInitialAttributeValues!"
-
-@testset "Constructor part II" begin
-    attribute = Attribute( "Attribute", [ "foo", "bar" ] )
-    @test attribute.possibleValues == [ "foo", "bar" ]
-    attribute = Attribute( "Attribute", Dict( "boop" => 1.5, "beep" => 2.5 ) )
-    @test all( [ [ "boop", "beep" ] ⊆ attribute.possibleValues,
-        [ "boop", "beep" ] ⊆ attribute.initValues,
-        length( attribute.possibleValues ) == 2,
-        length( attribute.initValues ) == 2 ] )
-    attribute = Attribute( "Attribute", [ "bar", "foo" ],
-        Dict( "boop" => 1.5, "beep" => 2.5 ) )
-    @test all( [ [ "bar", "foo", "boop", "beep" ] ⊆ attribute.possibleValues,
-        [ "boop", "beep" ] ⊆ attribute.initValues,
-        length( attribute.possibleValues ) == 4,
-        length( attribute.initValues ) == 2 ] )
-    end  # @testset "Constructor part II"
 
 end  # @testset "Attribute"
 

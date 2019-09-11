@@ -26,10 +26,11 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.6"
+    version = v"2.0.7"
 
     export versionMP
-    versionMP() = info( "Running version ", version, " of ManpowerPlanning module" )
+    versionMP() = @info string( "Running version ", version,
+        " of ManpowerPlanning module" )
 
     # include( "Functions/XLSXfix.jl")
 
@@ -39,14 +40,8 @@ module ManpowerPlanning
         "attribute",
         "condition",
         "transition",
-        "retirement"
-#        "historyEntry",
-#        "history",
-        # "compoundState",
-#        "personnel",
-#        "personnelDatabase",
-#        "prerequisite",
-#        "prerequisiteGroup",
+        "retirement",
+        "compoundnode"
         # "recruitment",
         # "subpopulation",
         # "simulationReport",

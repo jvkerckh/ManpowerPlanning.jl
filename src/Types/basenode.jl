@@ -7,8 +7,8 @@ The `BaseNode` type defines a node that a personnel member in the simulation can
 
 The type contains the following fields:
 * `name::String`: the name of the node.
-* `target::Int`: the target number of personnel members in this node.
-* `attrition::Attrition`: The attrition scheme attached to this node.
+* `target::Int`: the target number of personnel members in this node. Default = 0
+* `attrition::Attrition`: The attrition scheme attached to this node. Default = no attrition
 * `requirements::Dict{String, String}`: the attributes (key) and the value(s) these attributes must have (value) for the personnel member to have this particular node.
 
 The type also contains one other field, used only during the simulation:
@@ -16,9 +16,7 @@ The type also contains one other field, used only during the simulation:
 
 Constructor:
 ```
-BaseNode(
-    name::String,
-    target::Integer = 0 )
+BaseNode( name::String )
 ```
 This constructor generates a `BaseNode` with name `name` and population target `target`. If the entered population target is < 0, this will be interpreted as no target.
 """
@@ -33,11 +31,11 @@ mutable struct BaseNode
 
 
     # Basic constructor.
-    function BaseNode( name::String, target::Integer = 0 )::BaseNode
+    function BaseNode( name::String )::BaseNode
         
         newNode = new()
         newNode.name = name
-        newNode.target = max( target, -1 )
+        newNode.target = 0
         newNode.attrition = Attrition()
         newNode.requirements = Dict{String, String}()
         newNode.inStateSince = Dict{String, Float64}()
