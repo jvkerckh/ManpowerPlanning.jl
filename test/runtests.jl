@@ -3,10 +3,10 @@ using Test
 
 MP = ManpowerPlanning
 
-@testset "Basic test of types" begin
-
 versionMP()
 println()
+
+@testset "Basic test of types" begin
 
 include( "attrition.jl" )
 include( "attribute.jl" )
@@ -15,5 +15,6 @@ include( "basenode.jl" )
 include( "transition.jl" )
 include( "retirement.jl" )
 include( "compoundnode.jl")
+include( "recruitment.jl" )
 
 end  # @testset "Basic test of types"

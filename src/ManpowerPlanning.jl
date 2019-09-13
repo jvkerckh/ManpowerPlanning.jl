@@ -26,7 +26,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.7"
+    version = v"2.0.8"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -40,10 +40,10 @@ module ManpowerPlanning
         "attribute",
         "condition",
         "transition",
+        "recruitment",
         "retirement",
         "compoundnode"
-        # "recruitment",
-        # "subpopulation",
+         # "subpopulation",
         # "simulationReport",
         # "manpowerSimulation"
     ]

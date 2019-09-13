@@ -84,3 +84,16 @@
     clearCompoundNodeComponents!( compoundNode ) )
 @deprecate( setStateTarget!( compoundNode::CompoundNode, target::Integer ),
     setCompoundNodeTarget!( compoundNode, target ) )
+
+
+# Recruitment
+@deprecate( setRecruitmentSchedule( recruitment::Recruitment, freq::Real,
+    offset::Real = 0 ), setRecruitmentSchedule!( recruitment, freq, offset ) )
+@deprecate( setRecruitmentLimits( recruitment::Recruitment, minRec::Integer,
+    maxRec::Integer = -1 ), setRecruitmentAdaptiveRange!( recruitment, minRec,
+    maxRec ) )
+@deprecate( setRecruitmentFixed( recruitment::Recruitment, amount::Integer ),
+    setRecruitmentFixed!( recruitment, amount ) )
+@deprecate( setRecruitmentDistribution( recruitment::Recruitment,
+    distNodes::Dict{Int, Float64}, distType::Symbol ),
+    setRecruitmentDist!( recruitment, distType, distNodes ) )
