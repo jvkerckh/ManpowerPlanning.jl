@@ -3,7 +3,7 @@
 @testset "Constructor" begin
     recruitment = Recruitment( "Recruitment" )
     @test all( [ recruitment.name == "Recruitment", recruitment.freq == 1.0,
-        recruitment.offset == 0.0, recruitment.targetNode === MP.dummyNode,
+        recruitment.offset == 0.0, recruitment.targetNode == "dummy",
         recruitment.minRecruitment == 0, recruitment.maxRecruitment == -1,
         !recruitment.isAdaptive,
         recruitment.recruitmentDistType === :disc,
@@ -25,9 +25,8 @@ recruitment = Recruitment( "Recruitment" )
 end  # @testset "setRecruitmentSchedule!"
 
 @testset "setRecruitmentTarget!" begin
-    node = BaseNode( "Officer" )
-    setRecruitmentTarget!( recruitment, node )
-    @test recruitment.targetNode === node
+    setRecruitmentTarget!( recruitment, "Officer" )
+    @test recruitment.targetNode == "Officer"
 end  # @testset "setRecruitmentTarget!"
 
 @testset "setRecruitmentAdaptiveRange!" begin
@@ -117,6 +116,8 @@ end  # @testset "setRecruitmentDist!"
     @test !setRecruitmentAgeDist!( recruitment, :pUnif,
         Dict( 20.0 => 0.0, 50.0 => 5.0 ) )
 end  # @testset "setRecruitmentAgeDist!"
+
+println( recruitment )
 
 end  # @testset "Recruitment"
 

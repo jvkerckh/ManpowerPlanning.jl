@@ -16,5 +16,6 @@ include( "transition.jl" )
 include( "retirement.jl" )
 include( "compoundnode.jl")
 include( "recruitment.jl" )
+include( "manpowersimulation.jl" )
 
 end  # @testset "Basic test of types"

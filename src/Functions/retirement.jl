@@ -115,7 +115,7 @@ function Base.show( io::IO, retirement::Retirement )::Nothing
     end  # if ( retirement.retirementAge == 0.0 ) && ...
 
     print( io, "\n  Retirement check occurs with a period of ",
-        retirement.retirementFreq, " (offset", retirement.retirementOffset,
+        retirement.retirementFreq, " (offset ", retirement.retirementOffset,
         ")" )
 
     print( io, "\n  Retirement occurs " )

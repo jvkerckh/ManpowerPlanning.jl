@@ -13,3 +13,17 @@ function createInitialValueDistribution( attribute::Attribute )::Nothing
     return
 
 end  # createInitialValueDistribution( attribute )
+
+
+"""
+```
+isAttributeValuePossible(
+    attribute::Attribute,
+    value::String )
+```
+This function checks if the attribute `attribute` van have the value `value`.
+
+This function returns a `Bool`, the result of the check.
+"""
+isAttributeValuePossible( attribute::Attribute, value::String )::Bool =
+    value ∈ attribute.possibleValues

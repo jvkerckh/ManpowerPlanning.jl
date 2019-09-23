@@ -26,17 +26,11 @@ end  # @testset "function setNodeName!"
 end  # @testset "function setNodeTarget!"
 
 @testset "function setNodeAttritionScheme!" begin
-    attrition1 = Attrition( "Attrition" )
-    setAttritionPeriod!( attrition1, 12 )
-    setAttritionRate!( attrition1, 0.025 )
+    attrition1 = Attrition( "Attrition 1" )
     @test_deprecated setStateAttritionScheme!( node, attrition1 )
-    @test node.attrition === attrition1
-    attrition2 = Attrition( "Attrition" )
-    setAttritionPeriod!( attrition2, 12 )
-    setAttritionCurve!( attrition2, Dict( 0.0 => 0.03, 12.0 => 0.025,
-        60.0 => 0.02 ) )
-    setNodeAttritionScheme!( node, attrition2 )
-    @test ( node.attrition !== attrition1 ) && ( node.attrition === attrition2 )
+    @test node.attrition === "Attrition 1"
+    setNodeAttritionScheme!( node, "Attrition 2" )
+    @test node.attrition === "Attrition 2"
 end  # @testset "function setNodeAttritionScheme!"
 
 @testset "function addNodeRequirement!" begin

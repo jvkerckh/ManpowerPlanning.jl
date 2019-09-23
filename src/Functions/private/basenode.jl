@@ -1,4 +1,4 @@
-const dummyNode = BaseNode( "Dummy" )
+const dummyNode = BaseNode( "dummy" )
 
 
 """

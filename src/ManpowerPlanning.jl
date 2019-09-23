@@ -5,10 +5,13 @@ __precompile__()
 
 module ManpowerPlanning
 
+    using Dates
     using Distributions
+    using SimJulia
+    using SQLite
+    
     # using IterTools
-    # using SimJulia
-    # using ResumableFunctions
+     # using ResumableFunctions
     # using Plots
     # using LightGraphs
     # using MetaGraphs
@@ -20,13 +23,12 @@ module ManpowerPlanning
     # using Luxor
     # using Polynomials
     # using FileIO
-    # using SQLite
     # using DataFrames
     # using StatsBase
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.8"
+    version = v"2.0.9"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -42,23 +44,24 @@ module ManpowerPlanning
         "transition",
         "recruitment",
         "retirement",
-        "compoundnode"
-         # "subpopulation",
+        "compoundnode",
+        "manpowersimulation"
+        # "subpopulation",
         # "simulationReport",
         # "manpowerSimulation"
     ]
 
     rootPath = Base.source_path()
     rootPath = rootPath isa Nothing ? "" : dirname( rootPath )
+    typePath = joinpath( rootPath, "Types" )
     funcPath = joinpath( rootPath, "Functions" )
     privPath = joinpath( funcPath, "private" )
-    typePath = joinpath( rootPath, "Types" )
 
     # The types
     map( mpType -> include( joinpath( typePath, mpType * ".jl" ) ), types )
 
     # Some union type aliases
-    # include( joinpath( typePath, "typeAliases.jl" ) )
+    include( joinpath( typePath, "typeAliases.jl" ) )
 
     # The functions
     map( mpType -> include( joinpath( funcPath, mpType * ".jl" ) ), types )

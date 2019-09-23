@@ -61,13 +61,13 @@ end  # setRecruitmentSchedule!( recruitment, freq, offset )
 ```
 setRecruitmentTarget!(
     recruitment::Recruitment,
-    node::BaseNode )
+    node::String )
 ```
 This function sets the target node of the recruitment scheme `recruitment` to `node`. Note that this function does NOT check if the node actually exists in the simulation.
 
 This function returns `true`, indicating that the target node has been successfully set.
 """
-function setRecruitmentTarget!( recruitment::Recruitment, node::BaseNode )::Bool
+function setRecruitmentTarget!( recruitment::Recruitment, node::String )::Bool
 
     recruitment.targetNode = node
     return true
@@ -166,7 +166,8 @@ setRecruitmentAgeDist!( recruitment::Recruitment, distType::Symbol, distNodes::D
 
 function Base.show( io::IO, recruitment::Recruitment )::Nothing
 
-    print( io, "Recruitment scheme '", recruitment.name, "'" )
+    print( io, "Recruitment scheme '", recruitment.name, "' to node '", 
+        recruitment.targetNode, "'" )
     print( io, "\n  Recruitment schedule: ", recruitment.freq, " (offset ",
         recruitment.offset, ")" )
 

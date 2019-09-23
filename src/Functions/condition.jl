@@ -16,3 +16,6 @@ function Base.show( io::IO, condition::MPCondition )::Nothing
     return
 
 end  # show( io, condition )
+
+
+include( joinpath( privPath, "condition.jl" ) )

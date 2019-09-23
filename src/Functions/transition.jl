@@ -39,20 +39,22 @@ end  # setTransitionName!( trans, name )
 ```
 setTransitionNode!(
     transition::Transition,
-    node::BaseNode,
+    node::String,
     isTargetNode::Bool = false )
 ```
 This function sets one of the nodes (source/target) of the transition `transitoin` to `node`. If `istargetNode` is `true`, the target node will be set, otherwise the source state will be set. Note that the target node will be ignored if the transition's `isOutTransition` flag is set to `true`.
 
 This function returns `true`, indicating that the node has been successfully set.
 """
-function setTransitionNode!( transition::Transition, node::BaseNode,
+function setTransitionNode!( transition::Transition, node::String,
     isTargetNode::Bool = false )::Bool
 
+    tmpNode = lowercase( node ) == "dummy" ? "dummy" : node
+
     if isTargetNode
-        transition.targetNode = node
+        transition.targetNode = tmpNode
     else
-        transition.sourceNode = node
+        transition.sourceNode = tmpNode
     end  # if isTargetNode
 
     return true
@@ -406,8 +408,8 @@ end  # setTransitionProbabilities!( trans, probs )
 function Base.show( io::IO, transition::Transition )
 
     print( io, "Transition '", transition.name, "': '",
-        transition.sourceNode.name, "' to '",
-        transition.isOutTransition ? "external" : transition.targetNode.name, "'" )
+        transition.sourceNode, "' to '",
+        transition.isOutTransition ? "external" : transition.targetNode, "'" )
     print( io, "\n  Occurs with period ", transition.freq, " (offset ",
         transition.offset, ")" )
 

@@ -1,28 +1,25 @@
 @testset "Transition" begin
 
-node1 = BaseNode( "Node A" )
-node2 = BaseNode( "Node B" )
-
 @testset "Constructor" begin
-    transition = Transition( "Transition", node1, node2 )
+    transition = Transition( "Transition", "Node A", "Node B" )
     @test all( [ transition.name == "Transition",
-        transition.sourceNode === node1, transition.targetNode === node2,
+        transition.sourceNode == "Node A", transition.targetNode == "Node B",
         !transition.isOutTransition, transition.freq == 1.0,
         transition.offset == 0.0, transition.maxAttempts == 1,
         transition.minFlux == 0, transition.maxFlux == -1,
         !transition.hasPriority ] )
-    transition = Transition( "Transition", node1 )
-    @test ( transition.sourceNode === node1 ) &&
-        ( transition.targetNode === MP.dummyNode )
+    transition = Transition( "Transition", "Node A" )
+    @test ( transition.sourceNode == "Node A" ) &&
+        ( transition.targetNode == "dummy" ) && transition.isOutTransition
 end  # @testset "Constructor"
 
-transition = Transition( "transition", MP.dummyNode, MP.dummyNode )
+transition = Transition( "Transition", "dummy", "dummy" )
 
 @testset "function setTransitionNode!" begin
-    @test_deprecated setState( transition, node1 )
-    @test transition.sourceNode === node1
-    setTransitionNode!( transition, node2, true )
-    @test transition.targetNode === node2
+    @test_deprecated setState( transition, BaseNode( "Node A" ) )
+    @test transition.sourceNode == "Node A"
+    setTransitionNode!( transition, "Node B", true )
+    @test transition.targetNode == "Node B"
 end  # @testset "function setTransitionNode!"
 
 @testset "function setTransitionIsOut!" begin

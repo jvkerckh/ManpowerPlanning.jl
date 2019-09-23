@@ -29,7 +29,7 @@ mutable struct Recruitment
     name::String
     freq::Float64
     offset::Float64
-    targetNode::BaseNode
+    targetNode::String
     minRecruitment::Int
     maxRecruitment::Int
     isAdaptive::Bool
@@ -48,7 +48,7 @@ mutable struct Recruitment
         newRec.name = name
         newRec.freq = 1.0
         newRec.offset = 0.0
-        newRec.targetNode = dummyNode
+        newRec.targetNode = "dummy"
         newRec.minRecruitment = 0
         newRec.maxRecruitment = -1
         newRec.isAdaptive = false

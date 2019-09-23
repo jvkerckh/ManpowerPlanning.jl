@@ -30,7 +30,7 @@
 @deprecate( setStateTarget!( node::BaseNode, target::Integer ),
     setNodeTarget!( node, target ) )
 @deprecate( setStateAttritionScheme!( node::BaseNode, attrition::Attrition ),
-    setNodeAttritionScheme!( node, attrition ) )
+    setNodeAttritionScheme!( node, attrition.name ) )
 @deprecate( addRequirement!( node::BaseNode, attribute::String, value::String ),
     addNodeRequirement!( node, attribute, value ) )
 @deprecate( removeRequirement!( node::BaseNode, attribute::String ),
@@ -43,7 +43,7 @@
 @deprecate( setName( transition::Transition, name::String ),
     setTransitionName!( transition, name ) )
 @deprecate( setState( transition::Transition, node::BaseNode,
-    isTargetNode::Bool = false ), setTransitionNode!( transition, node,
+    isTargetNode::Bool = false ), setTransitionNode!( transition, node.name,
     isTargetNode ) )
 @deprecate( setIsOutTrans!( transition::Transition, isOutTrans::Bool ),
     setTransitionIsOut!( transition, isOutTrans ) )
@@ -97,3 +97,38 @@
 @deprecate( setRecruitmentDistribution( recruitment::Recruitment,
     distNodes::Dict{Int, Float64}, distType::Symbol ),
     setRecruitmentDist!( recruitment, distType, distNodes ) )
+
+
+# ManpowerSimulation
+@deprecate( setKey( mpSim::MPsim, idKey::KeyType ),
+    setSimulationKey!( mpSim, idKey ) )
+@deprecate( addAttribute!( mpSim::MPsim, attribute::Attribute ),
+    addSimulationAttribute!( mpSim, attribute ) )
+@deprecate( clearAttributes!( mpSim::MPsim ),
+    clearSimulationAttributes!( mpSim ) )
+@deprecate( addState!( mpSim::MPsim, node::BaseNode ),
+    addSimulationBaseNode!( mpSim, node ) )
+@deprecate( removeState!( mpSim::MPsim, node::String ),
+    removeSimulationBaseNode!( mpSim, node ) )
+@deprecate( clearStates!( mpSim::MPsim ), clearSimulationBaseNodes!( mpSim ) )
+@deprecate( addCompoundState!( mpSim::MPsim, compoundNode::CompoundNode ),
+    addSimulationCompoundNode!( mpSim, compoundNode ) )
+@deprecate( addCompoundState!( mpSim::MPsim, nodeName::String,
+    nodeTarget::Integer, baseNodeList::String... ),
+    addSimulationCompoundNode!( mpSim, nodeName, nodeTarget, baseNodeList... ) )
+@deprecate( removeCompoundState!( mpSim::MPsim, nodes::String... ),
+    removeSimulationCompoundNode!( mpSim, nodes... ) )
+@deprecate( clearCompoundStates!( mpSim::MPsim ),
+    clearSimulationCompoundNodes!( mpSim ) )
+@deprecate( addRecruitmentScheme!( mpSim::MPsim, recruitment::Recruitment ),
+    addSimulationRecruitment!( mpSim, recruitment ) )
+@deprecate( clearRecruitmentSchemes!( mpSim::MPsim ),
+    clearSimulationRecruitment!( mpSim ) )
+@deprecate( addTransition!( mpSim::MPsim, transition::Transition ),
+    addSimulationTransition!( mpSim, transition ) )
+@deprecate( clearTransitions!( mpSim::MPsim ),
+    clearSimulationTransitions!( mpSim ) )
+@deprecate( setSimulationLength( mpSim::MPsim, simLength::Real ), 
+    setSimulationLength!( mpSim, simLength ) )
+@deprecate( setPersonnelCap( mpSim::MPsim, personnelTarget::Integer ),
+    setSimulationPersonnelTarget!( mpSim, personnelTarget ) )

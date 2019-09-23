@@ -8,8 +8,8 @@ This type defines a transition between two nodes that a personnel member can per
 
 The type contains the following fields:
 * `name::string`: the name of the transition.
-* `sourceNode::BaseNode`: the node that the personnel member is currently in.
-* `targetNode::BaseNode`: the node that the personnel member can attain.
+* `sourceNode::String`: the name of the node that the personnel member is currently in.
+* `targetNode::String`: the name of the node that the personnel member can attain.
 * `isOutTransition::Bool`: a flag to indicate if this is a transition out of the organisation. If this is `true`, the end node gets ignored.
 * `freq::Float64`: the time between two checks in the transition's schedule. Default = 1.0
 * `offset::Float64`: the offset of the transition's schedule with respect to the start of the simulation. Default = 0.0
@@ -28,23 +28,23 @@ Constructors:
 ```
 Transition(
     name::String,
-    sourceNode::BaseNode,
-    targetNode::BaseNode )
+    sourceNode::String,
+    targetNode::String )
 ```
 This constructor creates a `Transition` object with source node `sourceNode` and target node `targetNode`.
 
 ```
 Transition(
     name::String,
-    sourceNode::BaseNode )
+    sourceNode::String )
 ```
 This constructor creates a `Transition` object with source node `sourceNode` and `isOutTrransition` flag to `true`.
 """
 mutable struct Transition
 
     name::String
-    sourceNode::BaseNode
-    targetNode::BaseNode
+    sourceNode::String
+    targetNode::String
     isOutTransition::Bool
     freq::Float64
     offset::Float64
@@ -60,13 +60,15 @@ mutable struct Transition
 
 
     # Basic constructor.
-    function Transition( name::String, sourceNode::BaseNode,
-        targetNode::BaseNode )::Transition
+    function Transition( name::String, sourceNode::String,
+        targetNode::String )::Transition
 
         newTrans = new()
         newTrans.name = name
-        newTrans.sourceNode = sourceNode
-        newTrans.targetNode = targetNode
+        newTrans.sourceNode = lowercase( sourceNode ) == "dummy" ?
+            "dummy" : sourceNode
+        newTrans.targetNode = lowercase( targetNode ) == "dummy" ?
+            "dummy" : targetNode
         newTrans.isOutTransition = false
         newTrans.freq = 1.0
         newTrans.offset = 0.0
@@ -83,9 +85,9 @@ mutable struct Transition
     end  # Transition( name, sourceNode, targetNode, freq, offset, maxAttempts,
          #   minFlux, maxFlux, hasPriority )
 
-    function Transition( name::String, sourceNode::BaseNode )::Transition
+    function Transition( name::String, sourceNode::String )::Transition
 
-        newTrans = Transition( name, sourceNode, dummyNode )
+        newTrans = Transition( name, sourceNode, "dummy" )
         newTrans.isOutTransition = true
         return newTrans
 

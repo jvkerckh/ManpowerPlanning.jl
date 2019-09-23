@@ -51,15 +51,16 @@ end  # setNodeTarget!( node, target )
 ```
 setNodeAttritionScheme!(
     node::BaseNode,
-    attrition::Attrition )
+    attrition::String )
 ```
-This function sets the attrition scheme of the node `node` to `attrition`.
+This function sets the name of the attrition scheme of the node `node` to `attrition`. The user must make sure that an attrition scheme with this name exists in the simulation.
 
 This function returns `true`, indicating the attrition scheme is successfully set.
 """
-function setNodeAttritionScheme!( node::BaseNode, attrition::Attrition )::Bool
+function setNodeAttritionScheme!( node::BaseNode, attrition::String )::Bool
 
-    node.attrition = attrition
+    node.attrition = lowercase( attrition ) ∈ [ "", "default" ] ? "default" :
+        attrition
     return true
 
 end  # setNodeAttritionScheme!( node, attrition )
