@@ -8,14 +8,22 @@ println()
 
 @testset "Basic test of types" begin
 
-include( "attrition.jl" )
-include( "attribute.jl" )
-include( "condition.jl" )
-include( "basenode.jl" )
-include( "transition.jl" )
-include( "retirement.jl" )
-include( "compoundnode.jl")
-include( "recruitment.jl" )
-include( "manpowersimulation.jl" )
+include( "basic/attrition.jl" )
+include( "basic/attribute.jl" )
+include( "basic/condition.jl" )
+include( "basic/basenode.jl" )
+include( "basic/transition.jl" )
+include( "basic/retirement.jl" )
+include( "basic/compoundnode.jl")
+include( "basic/recruitment.jl" )
+include( "basic/manpowersimulation.jl" )
 
 end  # @testset "Basic test of types"
+
+@testset "Test of simulation reports" begin
+
+include( "reports/simconfig.jl" )
+include( "reports/fluxes.jl" )
+include( "reports/nodepopulation.jl" )
+
+end  # @testset "Test of simulation reports"

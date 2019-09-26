@@ -32,7 +32,8 @@ export  isSimulationFresh,
         setSimulationAttrition!,
         setSimulationLength!,
         setSimulationPersonnelTarget!,
-        setSimulationDatabaseName!
+        setSimulationDatabaseName!,
+        setSimulationDatabase!
 
 
 """
@@ -765,6 +766,25 @@ function setSimulationDatabaseName!( mpSim::MPsim, dbName::String = "" )::Bool
     return true
 
 end  # setSimulationDatabaseName!( mpSim, dbName )
+
+
+"""
+```
+setSimulationDatabase!(
+    mpSim::MPsim,
+    dbName::String = "" )
+```
+This function sets the results database of the manpower simulation `mpSim` to a database with name `dbName`, adding the extension `.sqlite` if needed. If the name is the empty string `""`, the database will be stored in memory instead.
+
+This function returns `true`, indicating that the database is successfully set.
+"""
+function setSimulationDatabase!( mpSim::MPsim, dbName::String = "" )::Bool
+
+    setSimulationDatabaseName!( mpSim, dbName )
+    mpSim.simDB = SQLite.DB( mpSim.dbName )
+    return true
+
+end  # setSimulationDatabase!( mpSim, dbName )
 
 
 include( joinpath( privPath, "manpowersimulation.jl" ) )

@@ -2,9 +2,10 @@ name = "ManpowerPlanning"
 uuid = "6098a329-8c96-5c9c-9c97-4012e2806895"
 license = "MIT"
 authors = ["Johan Van Kerckhoven <johan.vankerckhoven@gmail.com>"]
-version = "2.0.9"
+version = "2.0.10"
 
 [deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"

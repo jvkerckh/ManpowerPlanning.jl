@@ -117,8 +117,6 @@ end  # @testset "setRecruitmentDist!"
         Dict( 20.0 => 0.0, 50.0 => 5.0 ) )
 end  # @testset "setRecruitmentAgeDist!"
 
-println( recruitment )
-
 end  # @testset "Recruitment"
 
 println()

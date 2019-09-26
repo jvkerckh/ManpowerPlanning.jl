@@ -424,3 +424,6 @@ function setSimAttrition!( mpSim::MPsim, attritionList::Vector{Attrition},
     return true
 
 end  # setSimAttrition!( mpSim, attritionList, wipeConfig )
+
+
+Dates.now( mpSim::MPsim ) = min( now( mpSim.sim ), mpSim.simLength )

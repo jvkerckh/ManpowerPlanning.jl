@@ -5,6 +5,7 @@ __precompile__()
 
 module ManpowerPlanning
 
+    using DataFrames
     using Dates
     using Distributions
     using SimJulia
@@ -28,7 +29,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.9"
+    version = v"2.0.10"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -56,6 +57,8 @@ module ManpowerPlanning
     typePath = joinpath( rootPath, "Types" )
     funcPath = joinpath( rootPath, "Functions" )
     privPath = joinpath( funcPath, "private" )
+    repPath = joinpath( funcPath, "reports" )
+    repPrivPath = joinpath( repPath, "private" )
 
     # The types
     map( mpType -> include( joinpath( typePath, mpType * ".jl" ) ), types )
@@ -65,6 +68,7 @@ module ManpowerPlanning
 
     # The functions
     map( mpType -> include( joinpath( funcPath, mpType * ".jl" ) ), types )
+    include( joinpath( funcPath, "reports.jl" ) )
 
     # Deprecated functions
     include( joinpath( funcPath, "deprecated.jl" ) )
