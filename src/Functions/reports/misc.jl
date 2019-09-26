@@ -35,3 +35,15 @@ function generateTimeGrid( mpSim::MPsim, timeRes::Real,
     return timeGrid
 
 end  # generateTimeGrid( mpSim, timeRes, addCurrentTime )
+
+
+function generateTimeFork( startTime::Real, endTime::Real )
+
+    if startTime == endTime
+        return string( "timeIndex IS ", startTime )
+    end  # if startTime == endTime
+
+    return string( "timeIndex > ", startTime, " AND",
+        "\n    timeIndex <= ", endTime )
+
+end  # generateTimeFork( startTime, endTime )

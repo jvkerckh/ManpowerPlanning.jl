@@ -41,6 +41,41 @@ end  # @testset "Time grid generation"
         26, 21, 16, 16, 26 ] )
 end  # @testset "function nodeFluxReport"
 
+@testset "transitionFluxReport" begin
+    @test isempty( transitionFluxReport( mpSim, [ -12.0, -8.0 ], "Promotion",
+        ("A junior", "A senior"), ("Reserve", "Reserve junior", "B senior") ) )
+    @test isempty( transitionFluxReport( mpSim, [ 12.0, 24.0 ], "Blook",
+        ("Foo", "Bar"), ("A senior", "B junior"), ("Blook", "Foo", "Bar"),
+        ("Reserve", "A junior", "A senior") ) )
+    @test isempty( transitionFluxReport( mpSim, -12.0, "Promotion",
+        ("A junior", "A senior"), ("Reserve", "Reserve junior", "B senior") ) )
+    report = transitionFluxReport( mpSim, 12, "attrition", "Promotion", "EW",
+        "B-" )
+    @test all( report[ :attrition ] .== 0 )
+    @test all( report[ :Promotion ] .== [ 0, 0, 16, 16, 16, 26, 26, 21, 16, 16,
+        26, 26, 21, 16, 16, 26, 26, 21, 16, 16, 26, 26, 21, 16, 16, 26 ] )
+    @test all( report[ :EW ] .== 30 )
+    @test all( report[ Symbol( "B-" ) ] .== vcat( 0, 0, 6, 6, fill( 14, 22 ) ) )
+    
+    report = transitionFluxReport( mpSim, 12, ("external", "A junior"),
+        ("B senior", ""), ("Reserve junior", "A senior") )
+    @test all( report[ Symbol( "external => A junior" ) ] .== 10 )
+    @test all( report[ Symbol( "B senior => external" ) ] .==
+        vcat( fill( 0, 10 ), 7, 7, 8, 8, 8, 3, 3, 8, 8, 8, 3, 3, 8, 8, 8, 3 ) )
+    @test all( report[ Symbol( "Reserve junior => A senior" ) ] .==
+        vcat( 0, 0, 4, 4, fill( 0, 22 ) ) ) 
+
+    report = transitionFluxReport( mpSim, 12, ("attrition", "Master", "out"),
+        ("PE", "A senior", ""), ("EW", "OUT", "A junior"),
+        ("Reserve", "Reserve junior", "B senior") )
+    @test all( report[ Symbol( "attrition: Master => external" ) ] .== 0 )
+    @test all( report[ Symbol( "PE: A senior => external" ) ] .==
+        vcat( fill( 0, 10 ), 7, 7, 3, 8, 8, 3, 3, 3, 8, 8, 3, 3, 3, 8, 8, 3 ) )
+    @test all( report[ Symbol( "EW: external => A junior" ) ] .== 10 )
+    @test all( report[ Symbol( "Reserve: Reserve junior => B senior" ) ] .==
+        vcat( 0, 0, 4, 4, fill( 0, 22 ) ) )
+end  # @testset "transitionFluxReport"
+
 println()
 
 end  # @testset "Flux reports"

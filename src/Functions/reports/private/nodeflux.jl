@@ -18,8 +18,8 @@ end  # generateNodeFluxReport( mpSim, timeGrid, fluxType, node )
 function generatePopFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     fluxType::Symbol )
 
-    queryPartCmd = string( "SELECT *, count( id ) counts FROM `",
-        mpSim.transDBname, "` WHERE" )
+    queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
+        "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
 
     # ! Change startState and endState to sourceNode and targetNode, and remove the IS NOT 'active' clause.
     # Construct (part of) the query.
@@ -63,8 +63,8 @@ end  # generatePopFluxReport( mpSim, timeGrid, fluxType )
 function generateBaseNodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     fluxType::Symbol, node::String )
 
-    queryPartCmd = string( "SELECT *, count( id ) counts FROM `",
-    mpSim.transDBname, "` WHERE" )
+    queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
+        "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
 
     # ! Change startState and endState to sourceNode and targetNode, and remove the IS NOT 'active' clause.
     # Construct (part of) the query.
@@ -102,8 +102,8 @@ end  # generateBaseNodeFluxReport( mpSim, timeGrid, fluxType, node )
 function generateCompoundNodeFluxReport( mpSim::MPsim,
     timeGrid::Vector{Float64}, fluxType::Symbol, node::String )
 
-    queryPartCmd = string( "SELECT *, count( id ) counts FROM `",
-        mpSim.transDBname, "` WHERE" )
+    queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
+        "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
     
     compoundNode = mpSim.compoundNodeList[ node ]
     nodeList = compoundNode.baseNodeList
@@ -178,12 +178,8 @@ function performFluxCounts( mpSim::MPsim, queryPartCmd::String, timeGrid::Vector
     queryPartCmd = string( queryPartCmd, " AND\n    " )
 
     for ii in eachindex( timeGrid )
-        queryCmd = string( queryPartCmd, "timeIndex <= ", timeGrid[ ii ] )
-
-        if ii > 1
-            queryCmd = string( queryCmd, " AND timeIndex > ",
-                timeGrid[ ii - 1 ] )
-        end  # if ii > 1
+        queryCmd = string( queryPartCmd, generateTimeFork( ii == 1 ?
+            timeGrid[ 1 ] : timeGrid[ ii - 1 ], timeGrid[ ii ] ) )
 
         queryCmd = string( queryCmd,
             "\n   GROUP BY transition, startState, endState" )

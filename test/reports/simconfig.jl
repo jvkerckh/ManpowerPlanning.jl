@@ -38,12 +38,22 @@ cnode4 = CompoundNode( "Career" )
 setCompoundNodeComponents!( cnode4, [ "A senior", "B senior", "Master" ] )
 setSimulationCompoundNodes!( mpSim, [ cnode1, cnode2, cnode3, cnode4 ] )
 
+# Setting recruitment.
+rec1 = Recruitment( "EW" )
+setRecruitmentTarget!( rec1, "A junior" )
+rec2 = Recruitment( "EW" )
+setRecruitmentTarget!( rec2, "B junior" )
+rec3 = Recruitment( "EW" )
+setRecruitmentTarget!( rec3, "Reserve junior" )
+
+setRecruitmentSchedule!.( [ rec1, rec2, rec3 ], 12 )
+setRecruitmentFixed!.( [ rec1, rec2, rec3 ], 10 )
+addSimulationRecruitment!( mpSim, rec1, rec2, rec3 )
+
 # Setting THROUGH Transitions.
 ttrans1 = Transition( "Promotion", "A junior", "A senior" )
-setTransitionSchedule!( ttrans1, 12 )
 addTransitionCondition!( ttrans1, MPCondition( "time in node", ==, 24 ) )
 ttrans2 = Transition( "Promotion", "B junior", "B senior" )
-setTransitionSchedule!( ttrans2, 12 )
 addTransitionCondition!( ttrans1, MPCondition( "time in node", ==, 24 ) )
 ttrans3 = Transition( "Promotion", "A senior", "Master" )
 addTransitionCondition!( ttrans1, MPCondition( "time in node", ==, 36 ) )
