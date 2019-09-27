@@ -148,10 +148,10 @@ function setAttritionCurve!( attrition::Attrition,
     curve::Array{T, 2} )::Bool where T <: Real
 
     # Check for correct dimensions.
-    if size( curve )[ 2 ] != 2
+    if size( curve, 2 ) != 2
         @warn "Invalid array given to define attrition curve, not making any changes."
         return false
-    end  # if size( curve )[ 2 ] != 2
+    end  # if size( curve, 2 ) != 2
 
     # Check for duplicate terms.
     if length( curve[ :, 1 ] ) != length( unique( curve[ :, 1 ] ) )

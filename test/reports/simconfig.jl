@@ -33,10 +33,13 @@ setCompoundNodeComponents!( cnode1, [ "A junior", "A senior" ] )
 cnode2 = CompoundNode( "Branch B" )
 setCompoundNodeComponents!( cnode2, [ "B junior", "B senior" ] )
 cnode3 = CompoundNode( "Junior" )
-setCompoundNodeComponents!( cnode3, [ "A junior", "B junior", "Reserve junior" ] )
+setCompoundNodeComponents!( cnode3,
+    [ "A junior", "B junior", "Reserve junior" ] )
 cnode4 = CompoundNode( "Career" )
 setCompoundNodeComponents!( cnode4, [ "A senior", "B senior", "Master" ] )
-setSimulationCompoundNodes!( mpSim, [ cnode1, cnode2, cnode3, cnode4 ] )
+cnode5 = CompoundNode( "Empty" )
+setSimulationCompoundNodes!( mpSim,
+    [ cnode1, cnode2, cnode3, cnode4 , cnode5 ] )
 
 # Setting recruitment.
 rec1 = Recruitment( "EW" )
@@ -92,3 +95,10 @@ setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )
 setSimulationLength!( mpSim, 300 )
 
 @test verifySimulation!( mpSim )
+
+@testset "Time grid generation" begin
+    @test isempty( MP.generateTimeGrid( mpSim, -12 ) )
+    @test MP.generateTimeGrid( mpSim, 12 ) == [ 0.0 ]
+    run( mpSim.sim )
+    @test MP.generateTimeGrid( mpSim, 12 ) == collect( 0.0:12.0:300.0 )
+end  # @testset "Time grid generation"

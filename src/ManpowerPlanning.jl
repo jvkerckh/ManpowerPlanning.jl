@@ -29,11 +29,11 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.11"
+    version = v"2.0.12"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
-        " of ManpowerPlanning module" )
+        " of ManpowerPlanning module in Julia v", VERSION )
 
     # include( "Functions/XLSXfix.jl")
 

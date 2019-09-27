@@ -163,7 +163,7 @@ function determineTransitionTypes( mpSim::MPsim, queryCmd::String,
         "\n   GROUP BY transition, startState, endState" ) ) )
     countDict = Dict{Tuple, Vector{Int}}()
 
-    for ii in eachindex( result[ :transition ] )
+    for ii in eachindex( result[ :, :transition ] )
         countDict[ (result[ ii, :transition ], result[ ii, :startState ],
             result[ ii, :endState ]) ] = zeros( Int, nTimePoints )
     end  # for ii in eachindex( result[ :transition ] )
@@ -185,7 +185,7 @@ function performFluxCounts( mpSim::MPsim, queryPartCmd::String, timeGrid::Vector
             "\n   GROUP BY transition, startState, endState" )
         result = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
 
-        for jj in eachindex( result[ :transition ] )
+        for jj in eachindex( result[ :, :transition ] )
             countDict[ (result[ jj, :transition ], result[ jj, :startState ],
                 result[ jj, :endState ]) ][ ii ] = result[ jj, :counts ]
         end  # for jj in eachindex( result[ :transition ] )
