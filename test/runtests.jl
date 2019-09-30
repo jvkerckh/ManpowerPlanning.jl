@@ -22,13 +22,13 @@ include( "basic/manpowersimulation.jl" )
 
 end  # @testset "Basic test of types"
 
-
 @testset "Test of simulation reports" begin
 
 include( "reports/simconfig.jl" )
 include( "reports/fluxes.jl" )
 include( "reports/nodepopulation.jl" )
 include( "reports/nodecomposition.jl" )
+include( "reports/careerprogression.jl" )
 
 end  # @testset "Test of simulation reports"
 

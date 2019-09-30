@@ -1,7 +1,23 @@
 export  nodeCompositionReport
 
 
-function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64}, nodes::String... )::Dict{String, DataFrame}
+"""
+```
+nodeCompositionReport(
+    mpSim::MPsim,
+    timeGrid::Vector{Float64},
+    nodes::String... )
+```
+This function generates a report on the composition of the nodes in `nodes` of the manpower simulation `mpSim`. The reports are generated on the grid of time points `timeGrid`, and the nodes can be any base or compound node.
+
+This function will issue a warning and not generate any report in the following two cases:
+1. There are no positive time points in the time grid;
+2. None of the entered nodes are actual nodes in the simulation.
+
+This function returns a `Dict{String, DataFrame}`, where the keys are the valid nodes, and the value is the composition report for that node. The base nodes are bundled in a single report with name `"Base nodes"`. In case the function issues a warning, its return value will be an empty dictionary.
+"""
+function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64},
+    nodes::String... )::Dict{String, DataFrame}
 
     timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
     timeGrid = unique( sort( timeGrid, rev = true ) )
@@ -54,6 +70,21 @@ function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64}, nodes::
 
 end  # nodeCompositionReport( mpSim, timeGrid, nodes )
 
+"""
+```
+nodeCompositionReport(
+    mpSim::MPsim,
+    timeRes::Real,
+    nodes::String... )
+```
+This function generates a report on the composition of the nodes in `nodes` of the manpower simulation `mpSim`. The reports are generated on a grid of time points with resolution `timeRes`, and the nodes can be any base or compound node.
+
+This function will issue a warning and not generate any report in the following two cases:
+1. The resolution of the time grid is ⩽ 0;
+2. None of the entered nodes are actual nodes in the simulation.
+
+This function returns a `Dict{String, DataFrame}`, where the keys are the valid nodes, and the value is the composition report for that node. The base nodes are bundled in a single report with name `"Base nodes"`. In case the function issues a warning, its return value will be an empty dictionary.
+"""
 nodeCompositionReport( mpSim::MPsim, timeRes::Real, nodes::String... ) =
     nodeCompositionReport( mpSim, generateTimeGrid( mpSim, timeRes ), nodes... )
 
