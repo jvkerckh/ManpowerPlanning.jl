@@ -1,7 +1,7 @@
-# This file holds the definition of the functions pertaining to the MPCondition
+# This file holds the definition of the functions pertaining to the MPcondition
 #   type.
 
-function Base.show( io::IO, condition::MPCondition )::Nothing
+function Base.show( io::IO, condition::MPcondition )::Nothing
 
     print( io, condition.attribute, " ", condition.operator, " " )
 

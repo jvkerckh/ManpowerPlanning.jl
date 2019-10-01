@@ -66,11 +66,11 @@ end  # @testset "function setTransitionFluxLimits!"
 end  # @testset "function setTransitionHasPriority!"
 
 @testset "function addTransitionCondition!" begin
-    cond = MP.MPCondition( "rank", ==, "captain" )
+    cond = MP.MPcondition( "rank", ==, "captain" )
     @test_deprecated addCondition!( transition, cond )
     @test ( length( transition.extraConditions ) == 1 ) &&
         ( cond ∈ transition.extraConditions )
-    cond = MP.MPCondition( "branch", ∈, [ "air", "navy" ] )
+    cond = MP.MPcondition( "branch", ∈, [ "air", "navy" ] )
     addTransitionCondition!( transition, cond )
     @test cond ∈ transition.extraConditions 
 end  # @testset "function addTransitionCondition!"
@@ -81,8 +81,8 @@ end  # @testset "function addTransitionCondition!"
 end  # @testset "function clearTransitionCondition!"
 
 @testset "function setTransitionConditions!" begin
-    cond1 = MP.MPCondition( "rank", ==, "adjutant" )
-    cond2 = MP.MPCondition( "branch", ∈, [ "air", "medical" ] )
+    cond1 = MP.MPcondition( "rank", ==, "adjutant" )
+    cond2 = MP.MPcondition( "branch", ∈, [ "air", "medical" ] )
     setTransitionConditions!( transition, [ cond1, cond2 ] )
     @test ( length( transition.extraConditions ) == 2 ) &&
         ( [ cond1, cond2 ] ⊆ transition.extraConditions )

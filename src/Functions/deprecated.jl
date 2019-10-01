@@ -56,7 +56,7 @@
     maxFlux ) )
 @deprecate( setHasPriority( transition::Transition, hasPriority::Bool ),
     setTransitionHasPriority!( transition, hasPriority ) )
-@deprecate( addCondition!( transition::Transition, condition::MPCondition ),
+@deprecate( addCondition!( transition::Transition, condition::MPcondition ),
     addTransitionCondition!( transition, condition ) )
 @deprecate( clearConditions!( transition::Transition ),
     clearTransitionConditions!( transition ) )

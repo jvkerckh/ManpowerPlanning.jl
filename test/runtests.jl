@@ -16,7 +16,7 @@ include( "basic/condition.jl" )
 include( "basic/basenode.jl" )
 include( "basic/transition.jl" )
 include( "basic/retirement.jl" )
-include( "basic/compoundnode.jl")
+include( "basic/compoundnode.jl" )
 include( "basic/recruitment.jl" )
 include( "basic/manpowersimulation.jl" )
 
@@ -29,6 +29,7 @@ include( "reports/fluxes.jl" )
 include( "reports/nodepopulation.jl" )
 include( "reports/nodecomposition.jl" )
 include( "reports/careerprogression.jl" )
+include( "basic/subpopulation.jl" )
 
 end  # @testset "Test of simulation reports"
 

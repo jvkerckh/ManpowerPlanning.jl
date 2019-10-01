@@ -242,15 +242,15 @@ transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
     setTransitionNode!( transition3, "Base Node 2", true )
     setTransitionNode!( transition5, "Base Node 1" )
     addTransitionCondition!( transition1,
-        MPCondition( "Attribute 1", ==, "Stubber" ) )
+        MPcondition( "Attribute 1", ==, "Stubber" ) )
     addTransitionCondition!( transition2,
-        MPCondition( "Attribute 2", ==, "Shuriken Gun" ) )
+        MPcondition( "Attribute 2", ==, "Shuriken Gun" ) )
     addTransitionCondition!( transition3,
-        MPCondition( "Attribute 1", !=, "Lascannon" ) )
+        MPcondition( "Attribute 1", !=, "Lascannon" ) )
     addTransitionCondition!( transition4,
-        MPCondition( "Attribute 1", ∈, [ "Stubber", "Gauss Rifle" ] ) )
+        MPcondition( "Attribute 1", ∈, [ "Stubber", "Gauss Rifle" ] ) )
     addTransitionCondition!( transition5,
-        MPCondition( "Attribute 3", ∉, [ "Stubber", "Assault Cannon" ] ) )
+        MPcondition( "Attribute 3", ∉, [ "Stubber", "Assault Cannon" ] ) )
     addSimulationTransition!( mpSim, transition1, transition2, transition3,
         transition4, transition5, transition6 )
     @test all( [ haskey( mpSim.transitionsByName, "Transition 1" ),

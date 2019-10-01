@@ -521,12 +521,12 @@ function setSimulationRetirement!( mpSim::MPsim, retirement::Retirement, node::S
         
         if retirement.maxCareerLength > 0.0
             addTransitionCondition!( transition,
-                MPCondition( "tenure", >=, retirement.maxCareerLength ) )
+                MPcondition( "tenure", >=, retirement.maxCareerLength ) )
         end  # if retirement.maxCareerLength > 0.0
 
         if retirement.retirementAge > 0.0
             addTransitionCondition!( transition,
-                MPCondition( "age", >=, retirement.retirementAge ) )
+                MPcondition( "age", >=, retirement.retirementAge ) )
         end  # if retirement.retirementAge > 0.0
 
         addSimulationTransition!( mpSim, transition )
@@ -539,7 +539,7 @@ function setSimulationRetirement!( mpSim::MPsim, retirement::Retirement, node::S
         setTransitionSchedule!( transition, retirement.retirementFreq,
             retirement.retirementOffset )
         addTransitionCondition!( transition,
-            MPCondition( "tenure", >=, retirement.maxCareerLength ) )
+            MPcondition( "tenure", >=, retirement.maxCareerLength ) )
         addSimulationTransition!( mpSim, transition )
     end  # if retirement.maxCareerLength > 0.0
 
@@ -548,7 +548,7 @@ function setSimulationRetirement!( mpSim::MPsim, retirement::Retirement, node::S
         setTransitionSchedule!( transition, retirement.retirementFreq,
             retirement.retirementOffset )
         addTransitionCondition!( transition,
-            MPCondition( "age", >=, retirement.retirementAge ) )
+            MPcondition( "age", >=, retirement.retirementAge ) )
         addSimulationTransition!( mpSim, transition )
     end  # if retirement.retirementAge > 0.0
 

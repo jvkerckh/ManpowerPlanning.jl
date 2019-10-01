@@ -1,9 +1,9 @@
-# This file defines the MPCondition type, used to define the extra conditions on
+# This file defines the MPcondition type, used to define the extra conditions on
 #   transitions.
 
-export MPCondition
+export MPcondition
 """
-The `MPCondition` type defines a condition on a single attribute of a personnel member, to be used for checking if a transition will take place.
+The `MPcondition` type defines a condition on a single attribute of a personnel member, to be used for checking if a transition will take place.
 
 The type contains the following fields:
 * `attribute::String`: the attribute upon which the prerequisite is defined.
@@ -17,22 +17,22 @@ A condition is always of the form `attribute operator value`. For example, if a 
 
 Constructor:
 ```
-MPCondition(
+MPcondition(
     attribute::String,
     operator::Function,
     value::Union{Real, String, Vector{String}} )
 ```
-This constructor creates a `MPCondition` object of the form `attribute` `operator` `value`.
+This constructor creates a `MPcondition` object of the form `attribute` `operator` `value`.
 """
-struct MPCondition
+struct MPcondition
 
     attribute::String
     value::Union{Real, String, Vector{String}}
     operator::Function
 
     # Constructor
-    function MPCondition( attribute::String, operator::Function,
-        value::Union{Real, String, Vector{String}} )::MPCondition
+    function MPcondition( attribute::String, operator::Function,
+        value::Union{Real, String, Vector{String}} )::MPcondition
 
         if ( value isa Real ) && ( operator ∉ [ ==, !=, <, <=, >, >= ] )
             error( "A numeric value permits only ==, !=, <, <=, >, and >= as operators." )
@@ -44,6 +44,6 @@ struct MPCondition
 
         return new( attribute, value, operator )
 
-    end  # MPCondition( attribute, operator, value )
+    end  # MPcondition( attribute, operator, value )
 
-end  # struct MPCondition
+end  # struct MPcondition
