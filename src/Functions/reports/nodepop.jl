@@ -37,7 +37,7 @@ function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     reverse!( timeGrid )
 
     nodes = filter( collect( nodes ) ) do nodeName
-        return ( lowercase( nodeName ) == "active" ) ||
+        return ( lowercase( nodeName ) ∈ [ "active", "" ] ) ||
             haskey( mpSim.baseNodeList, nodeName ) ||
             haskey( mpSim.compoundNodeList, nodeName )
     end  # filter( nodes ) do nodeName

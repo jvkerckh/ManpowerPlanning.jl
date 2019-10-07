@@ -6,7 +6,7 @@ This function filters the bad nodes from the list of distribution nodes in `dist
 
 The function returns a `Dict{T, Float64}`, the filtered list of distribution nodes.
 """
-function filterProperNodes( distNodes::Dict{T, Float64} )::Dict{T, Float64} where T <: Union{Int, Float64}
+function filterProperNodes( distNodes::Dict{T, Float64} ) where T <: Union{Int, Float64}
 
     tmpNodes = deepcopy( distNodes )
 
@@ -22,7 +22,7 @@ end  # filterProperNodes( distNodes )
 
 
 function setRecDist!( recruitment::Recruitment, distType::Symbol,
-    distNodes::Dict{T, Float64} )::Bool where T <: Union{Int, Float64}
+    distNodes::Dict{T, Float64} ) where T <: Union{Int, Float64}
 
     # Check if the distribution type is known.
     if !haskey( recruitmentDists, distType )
@@ -66,8 +66,7 @@ function setRecDist!( recruitment::Recruitment, distType::Symbol,
 end  # setRecDist!( recruitment, distType, distNodes )
 
 
-function recDiscDist( distNodes::Dict{Int, Float64},
-    nodes::Vector{Int} )::Function
+function recDiscDist( distNodes::Dict{Int, Float64}, nodes::Vector{Int} )
 
     # No need to involve a distribution if there's only one node.
     if length( nodes ) == 1
@@ -85,8 +84,7 @@ function recDiscDist( distNodes::Dict{Int, Float64},
 end  # recDiscDist( distNodes, nodes )
 
 
-function recPUnifDist( distNodes::Dict{Int, Float64},
-    nodes::Vector{Int} )::Function
+function recPUnifDist( distNodes::Dict{Int, Float64}, nodes::Vector{Int} )
 
     if length( nodes ) == 2
         intLength = nodes[ 2 ] - nodes[ 1 ]
@@ -119,8 +117,7 @@ function recPUnifDist( distNodes::Dict{Int, Float64},
 end  # recPUnifDist( distNodes, nodes )
 
 
-function recPLinDist( distNodes::Dict{Int, Float64},
-    nodes::Vector{Int} )::Function
+function recPLinDist( distNodes::Dict{Int, Float64}, nodes::Vector{Int} )
 
     # Get the point probabilities of the intervals.
     pointWeights = map( node -> distNodes[ node ], nodes )
@@ -176,7 +173,7 @@ end  # recPLinDist( distNodes, nodes )
 
 
 function ageDiscDist( distNodes::Dict{Float64, Float64},
-    nodes::Vector{Float64} )::Function
+    nodes::Vector{Float64} )
 
     # No need to involve a distribution if there's only one node.
     if length( nodes ) == 1
@@ -195,7 +192,7 @@ end  # ageDiscDist( distNodes, nodes )
 
 
 function agePUnifDist( distNodes::Dict{Float64, Float64},
-    nodes::Vector{Float64} )::Function
+    nodes::Vector{Float64} )
 
     if length( nodes ) == 2
         intLength = nodes[ 2 ] - nodes[ 1 ]
@@ -219,7 +216,7 @@ end  # agePUnifDist( distNodes, nodes )
 
 
 function agePLinDist( distNodes::Dict{Float64, Float64},
-    nodes::Vector{Float64} )::Function
+    nodes::Vector{Float64} )
 
     # Get the probabilities of each interval.
     pointWeights = map( node -> distNodes[ node ], nodes )

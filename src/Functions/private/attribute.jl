@@ -6,7 +6,7 @@ This function initialises the `initValueDist` field of the personnel attribute `
 
 This function returns `nothing`.
 """
-function createInitialValueDistribution( attribute::Attribute )::Nothing
+function createInitialValueDistribution( attribute::Attribute )
 
     probs = attribute.initValueWeights / sum( attribute.initValueWeights )
     attribute.initValueDist = Categorical( probs )
@@ -25,5 +25,5 @@ This function checks if the attribute `attribute` van have the value `value`.
 
 This function returns a `Bool`, the result of the check.
 """
-isAttributeValuePossible( attribute::Attribute, value::String )::Bool =
+isAttributeValuePossible( attribute::Attribute, value::String ) =
     value ∈ attribute.possibleValues

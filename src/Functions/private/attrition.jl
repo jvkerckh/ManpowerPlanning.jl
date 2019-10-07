@@ -7,7 +7,7 @@ the time to attrition of the attrition scheme `attrition`.
 
 This function returns `nothing`.
 """
-function computeDistPars( attrition::Attrition )::Nothing
+function computeDistPars( attrition::Attrition )
 
     attrition.lambdas = - log.( 1 .- attrition.rates ) / attrition.period
     gammas = attrition.curvePoints[ 2:end ] -

@@ -30,6 +30,7 @@ include( "reports/nodepopulation.jl" )
 include( "reports/nodecomposition.jl" )
 include( "reports/careerprogression.jl" )
 include( "basic/subpopulation.jl" )
+include( "reports/subpopulationpop.jl" )
 
 end  # @testset "Test of simulation reports"
 

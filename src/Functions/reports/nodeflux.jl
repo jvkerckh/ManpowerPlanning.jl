@@ -47,7 +47,7 @@ function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64}, fluxType::KeyT
     end  # if fluxType ∉ fluxTypes
 
     nodes = filter( collect( nodes ) ) do nodeName
-        return ( lowercase( nodeName ) == "active" ) ||
+        return ( lowercase( nodeName ) ∈ [ "active", "" ] ) ||
             ( fluxType === :within ? false :
                 haskey( mpSim.baseNodeList, nodeName ) ) ||
             haskey( mpSim.compoundNodeList, nodeName )

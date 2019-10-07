@@ -4,13 +4,13 @@ const fluxTypes = [ :in, :out, :within ]
 function generateNodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     fluxType::Symbol, node::String )
 
-    if lowercase( node ) == "active"
+    if lowercase( node ) ∈ [ "active", "" ]
         return generatePopFluxReport( mpSim, timeGrid, fluxType )
     elseif haskey( mpSim.baseNodeList, node )
         return generateBaseNodeFluxReport( mpSim, timeGrid, fluxType, node )
     else
         return generateCompoundNodeFluxReport( mpSim, timeGrid, fluxType, node )
-    end  # if lowercase( node ) == "active"
+    end  # if lowercase( node ) ∈ [ "active", "" ]
 
 end  # generateNodeFluxReport( mpSim, timeGrid, fluxType, node )
 

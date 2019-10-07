@@ -143,8 +143,9 @@ function Base.show( io::IO, subpopulation::Subpopulation )
     if !all( [ isempty( subpopulation.timeConds ),
         isempty( subpopulation.historyConds ),
         isempty( subpopulation.attributeConds ) ] )
-        print( io, "\n  Conditions\n    ", join( vcat( subpop.timeConds,
-            subpop.historyConds, subpop.attributeConds ), "\n    " ) )
+        print( io, "\n  Conditions\n    ", join( vcat( subpopulation.timeConds,
+            subpopulation.historyConds, subpopulation.attributeConds ),
+            "\n    " ) )
     end  # if !all( [ ... ] )
 
     return

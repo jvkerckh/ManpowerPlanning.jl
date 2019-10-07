@@ -15,7 +15,7 @@ If the node has a requirement on an attribute which isn't in the list of attribu
 This function returns a `Bool` with the result of the test.
 """
 function isPersonnelOfNode( persAttrVals::Dict{String, String},
-    node::BaseNode )::Bool
+    node::BaseNode )
 
     for attribute in keys( node.requirements )
         # If the attribute isn't initialised for the personnel member, the
