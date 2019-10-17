@@ -26,7 +26,8 @@
     @test isempty( subpopulationPopReport( mpSim, -12, subpop1, subpop2,
         subpop3, subpop4, subpop5, subpop6, subpop7 ) )
 
-    nodeReport = nodePopReport( mpSim, 12, "A junior", "B junior", "Reserve junior", "A senior", "B senior", "Master", "" )
+    nodeReport = nodePopReport( mpSim, 12, "A junior", "B junior",
+        "Reserve junior", "A senior", "B senior", "Master", "" )
     
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3,
         subpop4, subpop5, subpop6, subpop7 )
