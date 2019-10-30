@@ -11,19 +11,25 @@ setSimulationAttributes!( mpSim, [ attribute1, attribute2, attribute3 ] )
 
 # Setting Base Nodes.
 node1 = BaseNode( "A junior" )
-setNodeRequirements!( node1, ("level", "Junior"), ("branch", "A"), ("isCareer", "no") )
+setNodeRequirements!( node1, ("level", "Junior"), ("branch", "A"),
+    ("isCareer", "no") )
 node2 = BaseNode( "B junior" )
-setNodeRequirements!( node2, ("level", "Junior"), ("branch", "B"), ("isCareer", "no") )
+setNodeRequirements!( node2, ("level", "Junior"), ("branch", "B"),
+    ("isCareer", "no") )
 node3 = BaseNode( "Reserve junior" )
-setNodeRequirements!( node3, ("level", "Junior"), ("branch", "reserve"), ("isCareer", "no") )
+setNodeRequirements!( node3, ("level", "Junior"), ("branch", "reserve"),
+    ("isCareer", "no") )
 node4 = BaseNode( "A senior" )
-setNodeRequirements!( node4, ("level", "Senior"), ("branch", "A"), ("isCareer", "yes") )
+setNodeRequirements!( node4, ("level", "Senior"), ("branch", "A"),
+    ("isCareer", "yes") )
 setNodeTarget!( node4, 30 )
 node5 = BaseNode( "B senior" )
-setNodeRequirements!( node5, ("level", "Senior"), ("branch", "B"), ("isCareer", "yes") )
+setNodeRequirements!( node5, ("level", "Senior"), ("branch", "B"),
+    ("isCareer", "yes") )
 setNodeTarget!( node5, 30 )
 node6 = BaseNode( "Master" )
-setNodeRequirements!( node6, ("level", "Master"), ("branch", "none"), ("isCareer", "yes") )
+setNodeRequirements!( node6, ("level", "Master"), ("branch", "none"),
+    ("isCareer", "yes") )
 setNodeTarget!( node6, 25 )
 setSimulationBaseNodes!( mpSim, [ node1, node2, node3, node4, node5, node6 ] )
 
@@ -67,10 +73,14 @@ addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 24 ) )
 ttrans6 = Transition( "Reserve", "Reserve junior", "B senior" )
 addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 24 ) )
 
-setTransitionSchedule!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5, ttrans6 ], 12 )
-setTransitionMaxAttempts!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5, ttrans6 ], 1 )
-setTransitionFluxLimits!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5, ttrans6 ], 0, [ 8, 8, 5, 5, 4, 4 ] )
-addSimulationTransition!( mpSim, ttrans1, ttrans2, ttrans3, ttrans4, ttrans5, ttrans6 )
+setTransitionSchedule!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5,
+    ttrans6 ], 12 )
+setTransitionMaxAttempts!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5,
+    ttrans6 ], 1 )
+setTransitionFluxLimits!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5,
+    ttrans6 ], 0, [ 8, 8, 5, 5, 4, 4 ] )
+addSimulationTransition!( mpSim, ttrans1, ttrans2, ttrans3, ttrans4, ttrans5,
+    ttrans6 )
 
 # Setting OUT Transitions.
 otrans1 = Transition( "B-", "A junior" )
@@ -86,9 +96,12 @@ addTransitionCondition!( otrans1, MPcondition( "tenure", ==, 120 ) )
 otrans6 = Transition( "PE", "Master" )
 addTransitionCondition!( otrans1, MPcondition( "tenure", ==, 120 ) )
 
-setTransitionMaxAttempts!.( [ otrans1, otrans2, otrans3, otrans4, otrans5, otrans6 ], 1 )
-setTransitionFluxLimits!.( [ otrans1, otrans2, otrans3, otrans4, otrans5, otrans6 ], 0, -1 )
-addSimulationTransition!( mpSim, otrans1, otrans2, otrans3, otrans4, otrans5, otrans6 )
+setTransitionMaxAttempts!.( [ otrans1, otrans2, otrans3, otrans4, otrans5,
+    otrans6 ], 1 )
+setTransitionFluxLimits!.( [ otrans1, otrans2, otrans3, otrans4, otrans5,
+    otrans6 ], 0, -1 )
+addSimulationTransition!( mpSim, otrans1, otrans2, otrans3, otrans4, otrans5,
+    otrans6 )
 
 # Miscellaneous configs.
 setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )

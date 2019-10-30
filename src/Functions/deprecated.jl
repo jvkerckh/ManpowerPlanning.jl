@@ -89,6 +89,8 @@
 # Recruitment
 @deprecate( setRecruitmentSchedule( recruitment::Recruitment, freq::Real,
     offset::Real = 0 ), setRecruitmentSchedule!( recruitment, freq, offset ) )
+@deprecate( setRecruitmentState( recScheme::Recruitment, nodeName::String ),
+    setRecruitmentTarget!( recruitment, node ) )
 @deprecate( setRecruitmentLimits( recruitment::Recruitment, minRec::Integer,
     maxRec::Integer = -1 ), setRecruitmentAdaptiveRange!( recruitment, minRec,
     maxRec ) )
@@ -97,6 +99,9 @@
 @deprecate( setRecruitmentDistribution( recruitment::Recruitment,
     distNodes::Dict{Int, Float64}, distType::Symbol ),
     setRecruitmentDist!( recruitment, distType, distNodes ) )
+@deprecate( setAgeDistribution( recScheme::Recruitment,
+    distNodes::Dict{Float64, Float64}, distType::Symbol ),
+    setRecruitmentAgeDist!( recruitment, distType, distNodes ) )
 
 
 # ManpowerSimulation
@@ -132,3 +137,30 @@
     setSimulationLength!( mpSim, simLength ) )
 @deprecate( setPersonnelCap( mpSim::MPsim, personnelTarget::Integer ),
     setSimulationPersonnelTarget!( mpSim, personnelTarget ) )
+
+
+# Subpopulation
+@deprecate( setName!( subpopulation::Subpopulation, name::String ),
+    setSubpopulationName!( subpopulation, name ) )
+@deprecate( addCondition!( subpopulation::Subpopulation,
+    conditions::MPcondition... ), addSubpopulationCondition!( subpopulation,
+    conditions ) )
+@deprecate( clearConditions!( subpopulation::Subpopulation ),
+    clearSubpopulationConditions!( subpopulation ) )
+
+
+# Reports
+@deprecate( generateNodeFluxReport( mpSim::MPsim, timeRes::Real, isIn::Bool,
+    nodes::String... ), nodeFluxReport( mpSim, timeRes, isIn ? :in : :out,
+    fluxType::KeyType, nodes ) )
+@deprecate( generateFluxReport( mpSim::MPsim, timeRes::Real,
+    transitions::TransitionType... ), transitionFluxReport( mpSim, timeRes,
+    transitions ) )
+@deprecate( generateCompositionReport( mpSim::MPsim, timeRes::Real,
+    nodes::String... ), nodeCompositionReport( mpSim, timeRes, nodes ) )
+@deprecate( generateSubpopulationReport( mpSim::MPsim, timeRes::Real,
+    subpopulations::Subpopulation... ), subpopulationPopReport( mpSim, timeRes,
+    subpopulations ) )
+@deprecate( generateAgeDistributionReport( mpSim::MPsim, timeRes::Real,
+    ageRes::Real, ageType::Symbol, subpopulations::Subpopulation... ),
+    subpopulationAgeReport( mpSim, timeRes, ageRes, ageType, subpopulations ) )

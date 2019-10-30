@@ -29,7 +29,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.16"
+    version = v"2.0.17"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -59,6 +59,8 @@ module ManpowerPlanning
     privPath = joinpath( funcPath, "private" )
     repPath = joinpath( funcPath, "reports" )
     repPrivPath = joinpath( repPath, "private" )
+    simPath = joinpath( funcPath, "sim" )
+    simPrivPath = joinpath( simPath, "private" )
 
     # The types
     map( mpType -> include( joinpath( typePath, mpType * ".jl" ) ), types )

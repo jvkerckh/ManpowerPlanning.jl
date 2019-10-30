@@ -189,7 +189,7 @@ function getSubpopulationStateAtTime!( activeAtTime::DataFrame, mpSim::MPsim,
 
         # activeAtTime[ !, Symbol( attribute ) ] =
         #     currentAttributeVals[ attributeInds, :strValue ]
-        # ! This formation is best for DataFrames v0.19+
+        # ! This formulation is best for DataFrames v0.19+
         activeAtTime[ :, Symbol( attribute ) ] =
             currentAttributeVals[ attributeInds, :strValue ]
         # ! This formulation gives a deprecation warning for DataFrames v0.19+

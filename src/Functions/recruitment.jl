@@ -7,6 +7,7 @@ export  setRecruitmentName!,
         setRecruitmentAdaptiveRange!,
         setRecruitmentFixed!,
         setRecruitmentDist!,
+        setRecruitmentAgeFixed!,
         setRecruitmentAgeDist!
 
 
@@ -146,6 +147,34 @@ If the entered distribution type is unknown, if there are insufficient proper no
 The function returns `true` if the distribution of the number of people to recruit is successfully set, and `false` if any problems arose.
 """
 setRecruitmentDist!( recruitment::Recruitment, distType::Symbol, distNodes::Dict{Int, Float64} )::Bool = setRecDist!( recruitment, distType, distNodes )
+
+
+"""
+```
+setRecruitmentAgeFixed!(
+    recruitment::Recruitment,
+    age::Real )
+```
+This function sets the recruitment age of the recruitment scheme `recruitment` to a fixed `age`.
+
+If the entered age < 0, the function issues a warning and makes no changes.
+
+The function returns `true` if recruitment age has been successfully set, and `false` if the entered age < 0.
+"""
+function setRecruitmentAgeFixed!( recruitment::Recruitment, age::Real )::Bool
+
+    if age < 0
+        @warn "Negative recruitment age entered, not making any changes."
+        return false
+    end  # if age < 0
+
+    recruitment.ageDistType = :disc
+    recruitment.ageDistNodes = Dict( Float64( age ) => 1.0 )
+    recruitment.ageDist = function() return Float64( age ) end
+    return true
+
+end  # setRecruitmentAgeFixed!( recruitment, age )
+
 
 
 """

@@ -22,7 +22,7 @@ The type contains the following fields:
 * `simLength::Float64`: the length of the simulation (in internal time units). Default = 0.0
 * `personnelTarget:Int`: the target number of personnel members in the simulation. Default = 0
 * `dbName::String`: the name of the SQLite databases holding the simulation results. Default = `""`, indicating the database is kept in memory only.
-* `showExecTimes::Bool`: a flag indicating whether execution times of the various processes should be shown. Default = `false`
+* `showInfo::Bool`: a flag indicating whether execution times of the various processes and other information should be shown. Default = `false`
 
 Several additional fields are used to speed up computations, retain extra information, etcetera:
 * `sim::Simulation`: the `SimJulia.Simulation` object driving the simulation.
@@ -69,7 +69,7 @@ mutable struct ManpowerSimulation
     simLength::Float64
     personnelTarget::Int
     dbName::String
-    showExecTimes::Bool
+    showInfo::Bool
 
     sim::Simulation
     nRecruitment::Int
@@ -94,7 +94,7 @@ mutable struct ManpowerSimulation
     # parFileName::String
 
     # The states.
-    preferredStateOrder::Vector{String}
+    # preferredStateOrder::Vector{String}
 
     # The compound states. The first is for the compound states from catalogue,
     #   so they can be properly processed at runtime and inserted into the
@@ -103,9 +103,6 @@ mutable struct ManpowerSimulation
     # compoundStatesCat::Dict{String, BaseNode}
     # compoundStatesCustom::Dict{String, CompoundNode}
     # compoundStateList::Dict{String, CompoundNode}
-
-    # A flag to track if the system is well defined.
-    # isWellDefined::Bool
 
     # The priorities of the various simulation phases.
     # phasePriorities::Dict{Symbol, Int}
@@ -132,7 +129,7 @@ mutable struct ManpowerSimulation
         newMPsim.simLength = 0.0
         newMPsim.personnelTarget = 0
         newMPsim.dbName = ""
-        newMPsim.showExecTimes = false
+        newMPsim.showInfo = false
         
         newMPsim.sim = Simulation()
         newMPsim.nRecruitment = 0

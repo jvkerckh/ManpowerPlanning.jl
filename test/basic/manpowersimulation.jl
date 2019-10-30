@@ -2,20 +2,20 @@
 
 mpSim = MPsim()
 
-@testset "isSimulationFresh" begin
+@testset "function isSimulationFresh" begin
     @test isSimulationFresh( mpSim )
-end  # @testset "isSimulationFresh"
+end  # @testset "function isSimulationFresh"
 
-@testset "isSimulationConsistent" begin
+@testset "function isSimulationConsistent" begin
     @test isSimulationConsistent( mpSim )
-end  # @testset "isSimulationConsistent"
+end  # @testset "function isSimulationConsistent"
 
-@testset "verifySimulation!" begin
+@testset "function verifySimulation!" begin
     @test verifySimulation!( mpSim )
     @test verifySimulation!( mpSim, true )
-end  # @testset "verifySimulation!"
+end  # @testset "function verifySimulation!"
 
-@testset "setSimulationKey!" begin
+@testset "function setSimulationKey!" begin
     @test_deprecated setKey( mpSim, "testKey" )
     @test mpSim.idKey == "testKey"
     setSimulationKey!( mpSim, :testKey2 )
@@ -23,7 +23,7 @@ end  # @testset "verifySimulation!"
     setSimulationKey!( mpSim )
     @test mpSim.idKey == "id"
     @test verifySimulation!( mpSim, true )
-end  # @testset "setSimulationKey!"
+end  # @testset "function setSimulationKey!"
 
 attribute1 = Attribute( "Attribute 1" )
 setPossibleAttributeValues!( attribute1,
@@ -38,7 +38,7 @@ attribute4 = Attribute( "Attribute 1" )
 setPossibleAttributeValues!( attribute4,
     [ "Gauss rifle", "Necrodermis", "Tesla rifle"] )
 
-@testset "addSimulationAttribute!" begin
+@testset "function addSimulationAttribute!" begin
     @test_deprecated addAttribute!( mpSim, attribute1 )
     @test haskey( mpSim.attributeList, "Attribute 1" ) &&
         ( mpSim.attributeList[ "Attribute 1" ] === attribute1 )
@@ -51,24 +51,24 @@ setPossibleAttributeValues!( attribute4,
     @test !addSimulationAttribute!( mpSim, attribute1, attribute3, attribute4 )
     @test !haskey( mpSim.attributeList, "Attribute 3" )
     @test verifySimulation!( mpSim )
-end  # @testset "addSimulationAttribute!"
+end  # @testset "function addSimulationAttribute!"
 
-@testset "removeSimulationAttribute!" begin
+@testset "function removeSimulationAttribute!" begin
     removeSimulationAttribute!( mpSim, "Attribute 2", "Attribute 3" )
     @test !haskey( mpSim.attributeList, "Attribute 2" )
     @test !isSimulationConsistent( mpSim )
     @test !removeSimulationAttribute!( mpSim, "Attribute 2", "Attribute &" )
     @test verifySimulation!( mpSim )
-end  # @testset "removeSimulationAttribute!"
+end  # @testset "function removeSimulationAttribute!"
 
-@testset "clearSimulationAttributes!" begin
+@testset "function clearSimulationAttributes!" begin
     @test_deprecated clearAttributes!( mpSim )
     @test isempty( mpSim.attributeList )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @testset "clearSimulationAttributes!"
+end  # @testset "function clearSimulationAttributes!"
 
-@testset "setSimulationAttributes!" begin
+@testset "function setSimulationAttributes!" begin
     setSimulationAttributes!( mpSim, [ attribute1, attribute3 ] )
     @test all( [ length( mpSim.attributeList ) == 2,
         haskey( mpSim.attributeList, "Attribute 1" ),
@@ -77,14 +77,14 @@ end  # @testset "clearSimulationAttributes!"
     @test !setSimulationAttributes!( mpSim,
         [ attribute4, attribute2, attribute1 ] )
     @test verifySimulation!( mpSim )
-end  # @testset "setSimulationAttributes!"
+end  # @testset "function setSimulationAttributes!"
 
 node1 = BaseNode( "Base Node 1" )
 node2 = BaseNode( "Base Node 2" )
 node3 = BaseNode( "Base Node 3" )
 node4 = BaseNode( "Base Node 1" )
 
-@testset "addSimulationBaseNode!" begin
+@testset "function addSimulationBaseNode!" begin
     @test_deprecated addState!( mpSim, node1 )
     @test haskey( mpSim.baseNodeList, "Base Node 1" ) &&
         ( mpSim.baseNodeList[ "Base Node 1" ] === node1 )
@@ -103,24 +103,24 @@ node4 = BaseNode( "Base Node 1" )
     addNodeRequirement!( node4, ("Attribute 1", "Gauss rifle") )
     @test !verifySimulation!( mpSim, true )
     clearNodeRequirements!( node4 )
-end  # @testset "addSimulationBaseNode!"
+end  # @testset "function addSimulationBaseNode!"
 
-@testset "removeSimulationBaseNode!" begin
+@testset "function removeSimulationBaseNode!" begin
     removeSimulationBaseNode!( mpSim, "Base Node 1", "Base Node 3" )
     @test !haskey( mpSim.attributeList, "Base Node 1" )
     @test !isSimulationConsistent( mpSim )
     @test !removeSimulationBaseNode!( mpSim, "Base Node 3", "Attribute &" )
     @test verifySimulation!( mpSim )
-end  # @testset "removeSimulationBaseNode!"
+end  # @testset "function removeSimulationBaseNode!"
 
-@testset "clearSimulationBaseNodes!" begin
+@testset "function clearSimulationBaseNodes!" begin
     @test_deprecated clearStates!( mpSim )
     @test isempty( mpSim.baseNodeList )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @testset "clearSimulationBaseNodes!"
+end  # @testset "function clearSimulationBaseNodes!"
 
-@testset "setSimulationBaseNodes!" begin
+@testset "function setSimulationBaseNodes!" begin
     setSimulationBaseNodes!( mpSim, [ node1, node3 ] )
     @test all( [ length( mpSim.baseNodeList ) == 2,
         haskey( mpSim.baseNodeList, "Base Node 1" ),
@@ -129,13 +129,13 @@ end  # @testset "clearSimulationBaseNodes!"
     @test !setSimulationBaseNodes!( mpSim,
         [ node4, node2, node1 ] )
     @test verifySimulation!( mpSim )
-end  # @testset "setSimulationBaseNodes!"
+end  # @testset "function setSimulationBaseNodes!"
 
 node5 = CompoundNode( "Compound Node 1" )
 node6 = CompoundNode( "Compound Node 2" )
 node7 = CompoundNode( "Compound Node 1" )
 
-@testset "addSimulationCompoundNode!" begin
+@testset "function addSimulationCompoundNode!" begin
     @test_deprecated addCompoundState!( mpSim, node5 )
     @test haskey( mpSim.compoundNodeList, "Compound Node 1" ) &&
         ( mpSim.compoundNodeList[ "Compound Node 1" ] === node5 )
@@ -146,25 +146,25 @@ node7 = CompoundNode( "Compound Node 1" )
     @test !addSimulationCompoundNode!( mpSim, node5, node6, node7 )
     @test !haskey( mpSim.compoundNodeList, "Compound Node 2" )
     @test !verifySimulation!( mpSim, true )
-end  # @testset "addSimulationCompoundNode!"
+end  # @testset "function addSimulationCompoundNode!"
 
-@testset "removeSimulationCompoundNode!" begin
+@testset "function removeSimulationCompoundNode!" begin
     @test_deprecated removeCompoundState!( mpSim, "Compound Node 1" )
     @test !haskey( mpSim.compoundNodeList, "Compound Node 1" )
     @test !isSimulationConsistent( mpSim )
     @test !removeSimulationCompoundNode!( mpSim, "Compound Node 2",
         "Compound Node 3" )
     @test verifySimulation!( mpSim )
-end  # @testset "removeSimulationCompoundNode!"
+end  # @testset "function removeSimulationCompoundNode!"
 
-@testset "clearSimulationCompoundNodes!" begin
+@testset "function clearSimulationCompoundNodes!" begin
     @test_deprecated clearCompoundStates!( mpSim )
     @test isempty( mpSim.compoundNodeList )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @testset "clearSimulationCompoundNodes!"
+end  # @testset "function clearSimulationCompoundNodes!"
 
-@testset "setSimulationCompoundNodes!" begin
+@testset "function setSimulationCompoundNodes!" begin
     setSimulationCompoundNodes!( mpSim, [ node5, node6 ] )
     @test all( [ length( mpSim.compoundNodeList ) == 2,
         haskey( mpSim.compoundNodeList, "Compound Node 1" ),
@@ -174,14 +174,14 @@ end  # @testset "clearSimulationCompoundNodes!"
     @test !isSimulationConsistent( mpSim )
     @test !setSimulationCompoundNodes!( mpSim, [ node7, node6, node5 ] )
     @test verifySimulation!( mpSim )
-end  # @testset "setSimulationCompoundNodes!"
+end  # @testset "function setSimulationCompoundNodes!"
 
 recruitment1 = Recruitment( "Recruitment 1" )
 recruitment2 = Recruitment( "Recruitment 2" )
 recruitment3 = Recruitment( "Recruitment 3" )
 recruitment4 = Recruitment( "Recruitment 1" )
 
-@testset "addSimulationRecruitment!" begin
+@testset "function addSimulationRecruitment!" begin
     @test_deprecated addRecruitmentScheme!( mpSim, recruitment1 )
     @test !addSimulationRecruitment!( mpSim, recruitment1, recruitment2,
         recruitment3 )
@@ -204,16 +204,16 @@ recruitment4 = Recruitment( "Recruitment 1" )
     @test verifySimulation!( mpSim )
     addSimulationRecruitment!( mpSim, recruitment2 )
     @test !verifySimulation!( mpSim )
-end  # @testset "addSimulationRecruitment!"
+end  # @testset "function addSimulationRecruitment!"
 
-@testset "clearSimulationRecruitment!" begin
+@testset "function clearSimulationRecruitment!" begin
     @test_deprecated clearRecruitmentSchemes!( mpSim )
     @test isempty( mpSim.recruitmentByName ) &&
         isempty( mpSim.recruitmentByTarget )
     @test verifySimulation!( mpSim )
-end  # @testset "clearSimulationRecruitment!"
+end  # @testset "function clearSimulationRecruitment!"
 
-@testset "setSimulationRecruitment!" begin
+@testset "function setSimulationRecruitment!" begin
     setRecruitmentTarget!( recruitment2, "Base Node 3" )
     setSimulationRecruitment!( mpSim, [ recruitment1, recruitment2,
         recruitment3, recruitment4 ] )
@@ -224,7 +224,7 @@ end  # @testset "clearSimulationRecruitment!"
         length( mpSim.recruitmentByTarget[ "Base Node 3" ] ) == 3 ] )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @test "setSimulationRecruitment!"
+end  # @testset "function setSimulationRecruitment!"
 
 transition1 = Transition( "Transition 1", "dummy" )
 transition2 = Transition( "Transition 2", "Base Node 1", "Base Node 3" )
@@ -233,7 +233,7 @@ transition4 = Transition( "Transition 4", "Base Node 2", "Base Node 3" )
 transition5 = Transition( "Transition 5", "dummy", "Base Node 1" )
 transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
 
-@testset "addSimulationTransition!" begin
+@testset "function addSimulationTransition!" begin
     @test_deprecated addTransition!( mpSim, transition1 )
     @test !addSimulationTransition!( mpSim, transition1, transition3,
         transition5 )
@@ -278,9 +278,9 @@ transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
         length( mpSim.transitionsByTarget[ "Base Node 3" ] ) == 2 ] )
     @test !isSimulationConsistent( mpSim )
     @test !verifySimulation!( mpSim )
-end  # @testset "addSimulationTransition!"
+end  # @testset "function addSimulationTransition!"
 
-@testset "clearSimulationTransitions!" begin
+@testset "function clearSimulationTransitions!" begin
     @test_deprecated clearTransitions!( mpSim )
     @test all( [ isempty( mpSim.transitionsByName ),
         isempty( mpSim.transitionsBySource ),
@@ -288,9 +288,9 @@ end  # @testset "addSimulationTransition!"
         haskey( mpSim.transitionsByTarget, "OUT" ) ] )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @testset "clearSimulationTransitions!"
+end  # @testset "function clearSimulationTransitions!"
 
-@testset "setSimulationTransitions!" begin
+@testset "function setSimulationTransitions!" begin
     setTransitionNode!( transition4, "Base Node 1" )
     setTransitionNode!( transition3, "Base Node 3", true )
     clearTransitionConditions!( transition2 )
@@ -299,9 +299,9 @@ end  # @testset "clearSimulationTransitions!"
         transition4, transition5, transition6 ] )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @testset "setSimulationTransitions!"
+end  # @testset "function setSimulationTransitions!"
 
-@testset "setSimulationRetirement!" begin
+@testset "function setSimulationRetirement!" begin
     retirement = Retirement()
     setRetirementSchedule!( retirement, 12 )
     setRetirementAge!( retirement, 240 )
@@ -321,25 +321,25 @@ end  # @testset "setSimulationTransitions!"
     setSimulationRetirement!( mpSim, retirement, "Base Node 1" )
     @test length( mpSim.transitionsByTarget[ "OUT" ] ) == 3
     @test !setSimulationRetirement!( mpSim, retirement, "Base Node 4" )
-end  # @testset "setSimulationRetirement!"
+end  # @testset "function setSimulationRetirement!"
 
-@testset "removeSimulationRetirement!" begin
+@testset "function removeSimulationRetirement!" begin
     removeSimulationRetirement!( mpSim, "Base Node 3" )
     @test length( mpSim.transitionsByTarget[ "OUT" ] ) == 2
     @test !removeSimulationRetirement!( mpSim, "Base Node 4" )
-end  # @testset "removeSimulationRetirement!"
+end  # @testset "function removeSimulationRetirement!"
 
-@testset "clearSimulationRetirement!" begin
+@testset "function clearSimulationRetirement!" begin
     clearSimulationRetirement!( mpSim )
     @test isempty( mpSim. transitionsByTarget[ "OUT" ] )
-end  # @testset "clearSimulationRetirement!"
+end  # @testset "function clearSimulationRetirement!"
 
 attrition1 = Attrition()
 attrition2 = Attrition( "Attrition" )
 attrition3 = Attrition( "" )
 setAttritionRate!( attrition3, 0.01 )
 
-@testset "addSimulationAttrition!" begin
+@testset "function addSimulationAttrition!" begin
     addSimulationAttrition!( mpSim, attrition1, attrition2 )
     @test !isSimulationConsistent( mpSim )
     @test all( [ length( mpSim.attritionSchemes ) == 2,
@@ -351,9 +351,9 @@ setAttritionRate!( attrition3, 0.01 )
         ( mpSim.attritionSchemes[ "default" ].rates == [ 0.01 ] )
     @test !addSimulationAttrition!( mpSim, attrition1, attrition3 )
     @test verifySimulation!( mpSim )
-end  # @testset "addSimulationAttrition!"
+end  # @testset "function addSimulationAttrition!"
 
-@testset "removeSimulationAttrition!" begin
+@testset "function removeSimulationAttrition!" begin
     removeSimulationAttrition!( mpSim, "Attrition", "Devil" )
     @test length( mpSim.attritionSchemes ) == 1
     @test !isSimulationConsistent( mpSim )
@@ -362,9 +362,9 @@ end  # @testset "addSimulationAttrition!"
         ( mpSim.attritionSchemes[ "default" ].rates == [ 0.0 ] )
     @test !removeSimulationAttrition!( mpSim, "Attrition" )
     @test verifySimulation!( mpSim )
-end  # @testset "removeSimulationAttrition!"
+end  # @testset "function removeSimulationAttrition!"
 
-@testset "clearSimulationAttrition!" begin
+@testset "function clearSimulationAttrition!" begin
     addSimulationAttrition!( mpSim, attrition3, attrition2 )
     @test length( mpSim.attritionSchemes ) == 2
     clearSimulationAttrition!( mpSim )
@@ -372,33 +372,33 @@ end  # @testset "removeSimulationAttrition!"
         ( mpSim.attritionSchemes[ "default" ].rates == [ 0.0 ] )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
-end  # @testset "clearSimulationAttrition!"
+end  # @testset "function clearSimulationAttrition!"
 
-@testset "setSimulationAttrition!" begin
+@testset "function setSimulationAttrition!" begin
     setNodeAttritionScheme!( node3, "Attrition" )
     @test !verifySimulation!( mpSim, true )
     setSimulationAttrition!( mpSim, [ attrition2 ] )
     @test verifySimulation!( mpSim )
-end  # @testset "setSimulationAttrition!"
+end  # @testset "function setSimulationAttrition!"
 
-@testset "setSimulationLength!" begin
+@testset "function setSimulationLength!" begin
     @test_deprecated setSimulationLength( mpSim, 300 )
     @test mpSim.simLength == 300.0
     @test !setSimulationLength!( mpSim, -240 )
     @test mpSim.simLength == 300.0
-end  # @testset "setSimulationLength!"
+end  # @testset "function setSimulationLength!"
 
-@testset "setSimulationPersonnelTarget!" begin
+@testset "function setSimulationPersonnelTarget!" begin
     @test_deprecated setPersonnelCap( mpSim, 1000 )
     @test mpSim.personnelTarget == 1000
     setSimulationPersonnelTarget!( mpSim,  -2000 )
     @test mpSim.personnelTarget == 0
-end  # @testset "setSimulationPersonnelTarget!"
+end  # @testset "function setSimulationPersonnelTarget!"
 
-@testset "setSimulationDatabaseName!" begin
+@testset "function setSimulationDatabaseName!" begin
     setSimulationDatabaseName!( mpSim, "testDB" )
     @test mpSim.dbName == "testDB.sqlite"
-end  # @testset "setSimulationDatabaseName!"
+end  # @testset "function setSimulationDatabaseName!"
 
 end  # @testset "ManpowerSimulation"
 

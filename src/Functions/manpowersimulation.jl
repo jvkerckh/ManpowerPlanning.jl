@@ -787,4 +787,14 @@ function setSimulationDatabase!( mpSim::MPsim, dbName::String = "" )::Bool
 end  # setSimulationDatabase!( mpSim, dbName )
 
 
+"""
+```
+Dates.now( mpSim::MPsim )
+```
+This function returns the current simulation time in the manpower simulation `mpSim`.
+"""
+Dates.now( mpSim::MPsim ) = min( now( mpSim.sim ), mpSim.simLength )
+
+
 include( joinpath( privPath, "manpowersimulation.jl" ) )
+include( joinpath( simPath, "manpowersimulation.jl" ) )

@@ -1,6 +1,6 @@
 @testset "Recruitment" begin
 
-@testset "Constructor" begin
+@testset "function Constructor" begin
     recruitment = Recruitment( "Recruitment" )
     @test all( [ recruitment.name == "Recruitment", recruitment.freq == 1.0,
         recruitment.offset == 0.0, recruitment.targetNode == "dummy",
@@ -10,11 +10,11 @@
         recruitment.recruitmentDistNodes == Dict( 0 => 1.0 ),
         recruitment.ageDistType === :disc,
         recruitment.ageDistNodes == Dict( 0 => 1.0 ) ] )
-end  # @testset "Constructor"
+end  # @testset "function Constructor"
 
 recruitment = Recruitment( "Recruitment" )
 
-@testset "setRecruitmentSchedule!" begin
+@testset "function setRecruitmentSchedule!" begin
     @test_deprecated setRecruitmentSchedule( recruitment, 12 )
     @test ( recruitment.freq == 12.0 ) && ( recruitment.offset == 0.0 )
     setRecruitmentSchedule!( recruitment, 6, 8 )
@@ -22,14 +22,14 @@ recruitment = Recruitment( "Recruitment" )
     setRecruitmentSchedule!( recruitment, 12, -9 )
     @test ( recruitment.freq == 12.0 ) && ( recruitment.offset == 3.0 )
     @test !setRecruitmentSchedule!( recruitment, -12, 6 )
-end  # @testset "setRecruitmentSchedule!"
+end  # @testset "function setRecruitmentSchedule!"
 
-@testset "setRecruitmentTarget!" begin
+@testset "function setRecruitmentTarget!" begin
     setRecruitmentTarget!( recruitment, "Officer" )
     @test recruitment.targetNode == "Officer"
-end  # @testset "setRecruitmentTarget!"
+end  # @testset "function setRecruitmentTarget!"
 
-@testset "setRecruitmentAdaptiveRange!" begin
+@testset "function setRecruitmentAdaptiveRange!" begin
     @test_deprecated setRecruitmentLimits( recruitment, 20 )
     @test all( [ recruitment.isAdaptive, recruitment.minRecruitment == 20,
         recruitment.maxRecruitment == -1 ] )
@@ -42,9 +42,9 @@ end  # @testset "setRecruitmentTarget!"
     @test !setRecruitmentAdaptiveRange!( recruitment, 50, 30 )
     @test ( recruitment.minRecruitment == 50 ) &&
         ( recruitment.maxRecruitment == 100 )
-end  # @testset "setRecruitmentAdaptiveRange!"
+end  # @testset "function setRecruitmentAdaptiveRange!"
 
-@testset "setRecruitmentFixed!" begin
+@testset "function setRecruitmentFixed!" begin
     @test_deprecated setRecruitmentFixed( recruitment, 50 )
     @test all( [ !recruitment.isAdaptive,
         recruitment.recruitmentDistType === :disc,
@@ -53,9 +53,9 @@ end  # @testset "setRecruitmentAdaptiveRange!"
     @test recruitment.recruitmentDistNodes == Dict( 200 => 1.0 )
     @test !setRecruitmentFixed!( recruitment, -500 )
     @test recruitment.recruitmentDistNodes == Dict( 200 => 1.0 )
-end  # @testset "setRecruitmentFixed!"
+end  # @testset "function setRecruitmentFixed!"
 
-@testset "setRecruitmentDist!" begin
+@testset "function setRecruitmentDist!" begin
     @test_deprecated setRecruitmentDistribution( recruitment,
         Dict( 50 => 1.0, 75 => 2.0, 100 => 1.0 ), :disc )
     @test ( recruitment.recruitmentDistType === :disc ) &&
@@ -85,9 +85,16 @@ end  # @testset "setRecruitmentFixed!"
         Dict( 50 => 0.0, 100 => 0.0 ) )
     @test !setRecruitmentDist!( recruitment, :pUnif,
         Dict( 50 => 0.0, 100 => 5.0 ) )
-end  # @testset "setRecruitmentDist!"
+end  # @testset "function setRecruitmentDist!"
 
-@testset "setRecruitmentAgeDist!" begin
+@testset "function setRecruitmentAgeFixed!" begin
+    setRecruitmentAgeFixed!( recruitment, 60 )
+    @test ( recruitment.ageDistType === :disc ) &&
+        ( recruitment.ageDistNodes == Dict( 60.0 => 1 ) )
+    @test !setRecruitmentAgeFixed!( recruitment, -60 )
+end  # @testset "function setRecruitmentAgeFixed!"
+
+@testset "function setRecruitmentAgeDist!" begin
     setRecruitmentAgeDist!( recruitment, :disc,
         Dict( 20.0 => 1.0, 30.0 => 2.0, 45.0 => 1.0 ) )
     @test ( recruitment.ageDistType === :disc ) &&
@@ -115,7 +122,7 @@ end  # @testset "setRecruitmentDist!"
         Dict( 20.0 => 0.0, 50.0 => 0.0 ) )
     @test !setRecruitmentAgeDist!( recruitment, :pUnif,
         Dict( 20.0 => 0.0, 50.0 => 5.0 ) )
-end  # @testset "setRecruitmentAgeDist!"
+end  # @testset "function setRecruitmentAgeDist!"
 
 end  # @testset "Recruitment"
 

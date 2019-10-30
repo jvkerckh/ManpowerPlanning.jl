@@ -137,7 +137,7 @@ function recPLinDist( distNodes::Dict{Int, Float64}, nodes::Vector{Int} )
 
         posProbs = ( pointWeights[ intInd + 1 ] - pointWeights[ intInd ] ) /
             ( nodeDiffs[ intInd ] + 1 )
-        posProbs *= 0:nodeDiffs[ intInd ]
+        posProbs *= collect( 0:nodeDiffs[ intInd ] )
         posProbs = posProbs .+ pointWeights[ intInd ]
         posProbs /= bracketWeights[ intInd ]
         return nodes[ intInd ] + rand( Categorical( posProbs ) ) - 1

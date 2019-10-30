@@ -149,7 +149,6 @@ function setCompoundNodeTarget!( compoundNode::CompoundNode,
 end  # setCompoundNodeTarget!( compoundNode, target )
     
 
-
 function Base.show( io::IO, compoundNode::CompoundNode )::Nothing
 
     print( io, "Compound node: ", compoundNode.name )
