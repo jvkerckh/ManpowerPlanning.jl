@@ -424,3 +424,22 @@ function setSimAttrition!( mpSim::MPsim, attritionList::Vector{Attrition},
     return true
 
 end  # setSimAttrition!( mpSim, attritionList, wipeConfig )
+
+
+function validateDatabaseAge!( mpSim::MPsim )
+
+    if mpSim.persDBname ∈ SQLite.tables( mpSim.simDB )[ :, :name ]
+        mpSim.isOldDB = "startState" ∈ SQLite.columns( mpSim.simDB,
+            mpSim.transDBname )[ :, :name ]
+    else
+        mpSim.isOldDB = false
+    end  # mpSim.persDBname ∈ SQLite.tables( mpSim.simDB )[ :, :name ]
+
+    if mpSim.isOldDB
+        @warn "Old style simulation results database. This style will be deprecated in a future version."
+    end  # if mpSim.isOldDB
+
+    mpSim.sNode = mpSim.isOldDB ? "startState" : "sourceNode"
+    mpSim.tNode = mpSim.isOldDB ? "endState" : "targetNode"
+
+end  # validateDatabaseAge!( mpSim )

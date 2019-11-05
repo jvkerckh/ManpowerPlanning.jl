@@ -5,7 +5,7 @@ const relationEntries = Dict{Function, String}( Base.:(==) => "IS",
     Base.:> => ">", Base.:(>=) => ">=", Base.:< => "<", Base.:(<=) => "<=" )
 
 
-function conditionToSQLite( condition::MPcondition )
+function conditionToSQLite( condition::MPcondition, mpSim::MPsim )
 
     sqlValue = ""
 
@@ -23,10 +23,10 @@ function conditionToSQLite( condition::MPcondition )
         sqlCond = string( " AND transition ",
             relationEntries[ condition.operator ], " ", sqlValue )
     elseif condition.attribute == "started as"
-        sqlCond = string( " AND startState IS NULL AND endState ",
-            relationEntries[ condition.operator ], " ", sqlValue )
+        sqlCond = string( " AND ", mpSim.sNode, " IS NULL AND ", mpSim.tNode,
+            " ", relationEntries[ condition.operator ], " ", sqlValue )
     elseif condition.attribute == "was"
-        sqlCond = string( " AND startState ",
+        sqlCond = string( " AND ", mpSim.sNode, " ",
             relationEntries[ condition.operator ], " ", sqlValue )
     else  # Regular conditions.
         sqlCond = string( "`", condition.attribute, "` ",
@@ -35,4 +35,4 @@ function conditionToSQLite( condition::MPcondition )
 
     return sqlCond
 
-end  # conditionToSQLite( condition )
+end  # conditionToSQLite( condition, mpSim )

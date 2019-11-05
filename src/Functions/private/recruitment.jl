@@ -210,7 +210,7 @@ function agePUnifDist( distNodes::Dict{Float64, Float64},
         intInds = rand( Categorical( pInts ), n )
         intLengths = nodes[ intInds .+ 1 ] - nodes[ intInds ]
         return rand( n ) .* intLengths + nodes[ intInds ]
-    end  # anonymous function()
+    end  # anonymous function( n )
 
 end  # agePUnifDist( distNodes, nodes )
 
@@ -226,7 +226,7 @@ function agePLinDist( distNodes::Dict{Float64, Float64},
 
     return function( n::Integer )
         intInds = rand( Categorical( bracketProbs ), n )
-        isDiffWeights = pointWeights[ intInds .+ 1 ] .== pointWeights[ intInds ]
+        isDiffWeights = pointWeights[ intInds .+ 1 ] .!= pointWeights[ intInds ]
         diffInds = intInds[ isDiffWeights ]
         diffIndsP = diffInds .+ 1
         sameInds = intInds[ .!isDiffWeights ]
@@ -239,14 +239,14 @@ function agePLinDist( distNodes::Dict{Float64, Float64},
             ( nodes[ sameInds .+ 1 ] - nodes[ sameInds ] )
 
         # Then, do the same for the other entries.
-        a = ( pointWeights[ diffInds ] + pointWeights[ diffIndsP ] ) / 2
+        a = ( pointWeights[ diffIndsP ] - pointWeights[ diffInds ] ) / 2
         b = pointWeights[ diffInds ] .* nodes[ diffIndsP ] -
             pointWeights[ diffIndsP ] .* nodes[ diffInds ]
-        c = a .* nodes[ diffInds ].^2 - pointWeights[ diffInds ] .*
+        c = ( pointWeights[ diffInds ] + pointWeights[ diffIndsP ] ) .*
+            nodes[ diffInds ].^2 / 2 - pointWeights[ diffInds ] .*
             nodes[ diffInds ] .* nodes[ diffIndsP ] -
-            bracketWeights[ diffInds ] .*
-            ( nodes[ diffIndsP ] - nodes[ diffInds ] ) .*
-            result[ isDiffWeights ]
+            bracketWeights[ diffInds ] .* result[ isDiffWeights ] .*
+            ( nodes[ diffIndsP ] - nodes[ diffInds ] )
         d = b.^2 - 4 * a .* c
         result[ isDiffWeights ] = ( sqrt.( d ) - b ) ./ ( 2 * a )
 

@@ -1,10 +1,7 @@
-
-mpSim = ManpowerSimulation( "sim" )
-setSimulationLength!( mpSim, 300 )
-setSimulationDatabase!( mpSim, joinpath( "sim", "simDB" ) )
-
-
 @testset "Basic simulation run tests" begin
+    mpSim = ManpowerSimulation( "sim" )
+    setSimulationLength!( mpSim, 300 )
+
     node = BaseNode( "A junior" )
     setNodeRequirements!( node, ("level", "Junior"), ("branch", "A"),
         ("isCareer", "no") )

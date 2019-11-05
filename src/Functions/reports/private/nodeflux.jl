@@ -21,20 +21,22 @@ function generatePopFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
         "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
 
-    # ! Change startState and endState to sourceNode and targetNode, and remove the IS NOT 'active' clause.
     # Construct (part of) the query.
     if fluxType === :in
-        queryPartCmd = string( queryPartCmd, "\n    startState IS NULL AND",
-            "\n    endState IS NOT NULL AND",
-            "\n    endState IS NOT 'active'" )
+        queryPartCmd = string( queryPartCmd,
+            "\n    ", mpSim.sNode, " IS NULL AND",
+            "\n    ", mpSim.tNode, " IS NOT NULL AND",
+            "\n    ", mpSim.tNode, " IS NOT 'active'" )
     elseif fluxType === :out
-        queryPartCmd = string( queryPartCmd, "\n    startState IS NOT NULL AND",
-            "\n    endState IS NULL AND",
-            "\n    startState IS NOT 'active'" )
+        queryPartCmd = string( queryPartCmd,
+            "\n    ", mpSim.sNode, " IS NOT NULL AND",
+            "\n    ", mpSim.tNode, " IS NULL AND",
+            "\n    ", mpSim.sNode, " IS NOT 'active'" )
     else
-        queryPartCmd = string( queryPartCmd, "\n    startState IS NOT NULL AND",
-            "\n    endState IS NOT NULL AND ",
-            "\n    startState IS NOT endState" )
+        queryPartCmd = string( queryPartCmd,
+            "\n    ", mpSim.sNode, " IS NOT NULL AND",
+            "\n    ", mpSim.tNode, " IS NOT NULL AND ",
+            "\n    ", mpSim.sNode, " IS NOT ", mpSim.tNode )
     end  # if fluxType === :in
 
     countDict = determineTransitionTypes( mpSim, queryPartCmd,
@@ -66,16 +68,15 @@ function generateBaseNodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
         "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
 
-    # ! Change startState and endState to sourceNode and targetNode, and remove the IS NOT 'active' clause.
     # Construct (part of) the query.
     if fluxType === :in
         queryPartCmd = string( queryPartCmd,
-            "\n    startState IS NOT '", node, "' AND",
-            "\n    endState IS '", node, "'" )
+            "\n    ", mpSim.sNode, " IS NOT '", node, "' AND",
+            "\n    ", mpSim.tNode, " IS '", node, "'" )
     else
         queryPartCmd = string( queryPartCmd,
-            "\n    startState IS '", node, "' AND",
-            "\n    endState IS NOT '", node, "'" )
+            "\n    ", mpSim.sNode, " IS '", node, "' AND",
+            "\n    ", mpSim.tNode, " IS NOT '", node, "'" )
     end  # if fluxType === :in
 
     countDict = determineTransitionTypes( mpSim, queryPartCmd,
@@ -111,24 +112,26 @@ function generateCompoundNodeFluxReport( mpSim::MPsim,
     results = zeros( Int, length( timeGrid ) )
 
     if !isempty( nodeList )
-        # ! Change startState and endState to sourceNode and targetNode, and remove the IS NOT 'active' clause.
         if fluxType === :in
-            # The clause "OR startState IS NULL" is needed because the SQL
-            # statement "field NOT IN (values)" gives FALSE for missing values.
+            # The clause "OR ", mpSim.sNode, " IS NULL" is needed because the SQL statement "field NOT IN (values)" gives FALSE for missing values.
             queryPartCmd = string( queryPartCmd,
-                "\n    (startState NOT IN ('", join( nodeList, "', '" ),
-                "') OR startState IS NULL) AND",
-                "\n    endState IN ('", join( nodeList, "', '" ), "')" )
+                "\n    (", mpSim.sNode, " NOT IN ('", join( nodeList, "', '" ),
+                "') OR ", mpSim.sNode, " IS NULL) AND",
+                "\n    ", mpSim.tNode, " IN ('", join( nodeList, "', '" ),
+                "')" )
         elseif fluxType === :out
             queryPartCmd = string( queryPartCmd,
-                "\n    startState IN ('", join( nodeList, "', '" ), "') AND",
-                "\n    (endState NOT IN ('", join( nodeList, "', '" ),
-                "') OR endState IS NULL)" )
+                "\n    ", mpSim.sNode, " IN ('", join( nodeList, "', '" ),
+                "') AND",
+                "\n    (", mpSim.tNode, " NOT IN ('", join( nodeList, "', '" ),
+                "') OR ", mpSim.tNode, " IS NULL)" )
         else
             queryPartCmd = string( queryPartCmd,
-                "\n    startState IN ('", join( nodeList, "', '" ), "') AND",
-                "\n    endState IN ('", join( nodeList, "', '" ), "') AND",
-                "\n    startState IS NOT endState" )
+                "\n    ", mpSim.sNode, " IN ('", join( nodeList, "', '" ),
+                "') AND",
+                "\n    ", mpSim.tNode, " IN ('", join( nodeList, "', '" ),
+                "') AND",
+                "\n    ", mpSim.sNode, " IS NOT ", mpSim.tNode )
         end  # if fluxType === :in    
 
         countDict = determineTransitionTypes( mpSim, queryPartCmd,
@@ -160,12 +163,13 @@ function determineTransitionTypes( mpSim::MPsim, queryCmd::String,
 
     # Determine transition types.
     result = DataFrame( SQLite.Query( mpSim.simDB, string( queryCmd,
-        "\n   GROUP BY transition, startState, endState" ) ) )
+        "\n   GROUP BY transition, ", mpSim.sNode, ", ", mpSim.tNode ) ) )
     countDict = Dict{Tuple, Vector{Int}}()
 
     for ii in eachindex( result[ :, :transition ] )
-        countDict[ (result[ ii, :transition ], result[ ii, :startState ],
-            result[ ii, :endState ]) ] = zeros( Int, nTimePoints )
+        countDict[ (result[ ii, :transition ],
+            result[ ii, Symbol( mpSim.sNode ) ],
+            result[ ii, Symbol( mpSim.tNode ) ]) ] = zeros( Int, nTimePoints )
     end  # for ii in eachindex( result[ :transition ] )
 
     return countDict
@@ -173,7 +177,8 @@ function determineTransitionTypes( mpSim::MPsim, queryCmd::String,
 end  # determineTransitionTypes( mpSim, queryCmd, nTimePoints )
 
 
-function performFluxCounts( mpSim::MPsim, queryPartCmd::String, timeGrid::Vector{Float64}, countDict::Dict{Tuple, Vector{Int}} )
+function performFluxCounts( mpSim::MPsim, queryPartCmd::String,
+    timeGrid::Vector{Float64}, countDict::Dict{Tuple, Vector{Int}} )
 
     queryPartCmd = string( queryPartCmd, " AND\n    " )
 
@@ -182,12 +187,14 @@ function performFluxCounts( mpSim::MPsim, queryPartCmd::String, timeGrid::Vector
             timeGrid[ 1 ] : timeGrid[ ii - 1 ], timeGrid[ ii ] ) )
 
         queryCmd = string( queryCmd,
-            "\n   GROUP BY transition, startState, endState" )
+            "\n   GROUP BY transition, ", mpSim.sNode, ", ", mpSim.tNode )
         result = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
 
         for jj in eachindex( result[ :, :transition ] )
-            countDict[ (result[ jj, :transition ], result[ jj, :startState ],
-                result[ jj, :endState ]) ][ ii ] = result[ jj, :counts ]
+            countDict[ (result[ jj, :transition ],
+                result[ jj, Symbol( mpSim.sNode ) ],
+                result[ jj, Symbol( mpSim.tNode ) ]) ][ ii ] =
+                result[ jj, :counts ]
         end  # for jj in eachindex( result[ :transition ] )
     end  # for ii in eachindex( timeGrid )
 

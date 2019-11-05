@@ -61,7 +61,7 @@ function getActiveAtTime( mpSim::MPsim, timePoint::Float64,
         " OR timeExited IS NULL )" )
 
     if !isempty( subpopulation.timeConds )
-        condSQLite = conditionToSQLite.( subpopulation.timeConds )
+        condSQLite = conditionToSQLite.( subpopulation.timeConds, Ref( mpSim ) )
 
         # Replace "time in node" by "tenure"
         for ii in eachindex( condSQLite )
@@ -89,7 +89,7 @@ function getActiveAtTime( mpSim::MPsim, timePoint::Float64,
         end  # for ii in eachindex( histConds )
     
         # Generate history condition queries.
-        condSQLite = conditionToSQLite.( histConds )
+        condSQLite = conditionToSQLite.( histConds, Ref( mpSim ) )
         condSQLite = string.( "`", mpSim.idKey, "`",
             map( bVal -> bVal ? " NOT" : "", isNegHistCond ), " IN ( SELECT `",
             mpSim.idKey, "` FROM `" , mpSim.transDBname, "`
@@ -127,7 +127,7 @@ function getActiveAtTime( mpSim::MPsim, timePoint::Float64,
     end  # for ii in eachindex( histConds )
 
     # Generate history condition queries.
-    queryCmd = conditionToSQLite.( histConds )
+    queryCmd = conditionToSQLite.( histConds, Ref( mpSim ) )
     queryCmd = string.( "`", mpSim.idKey, "`",
         map( bVal -> bVal ? " NOT" : "", isNegHistCond ), " IN ( SELECT `",
         mpSim.idKey, "` FROM `" , mpSim.transDBname, "` WHERE",
@@ -151,7 +151,7 @@ function getActiveAtTime( mpSim::MPsim, timePoint::Float64,
         "` IS tmpID" )
 
     if !isempty( subpopulation.timeConds )
-        condSQLite = conditionToSQLite.( subpopulation.timeConds )
+        condSQLite = conditionToSQLite.( subpopulation.timeConds, Ref( mpSim ) )
         queryCmd = string( queryCmd, "\n    WHERE ",
             join( condSQLite, " AND " ) )
     end  # if !isempty( timeConds )

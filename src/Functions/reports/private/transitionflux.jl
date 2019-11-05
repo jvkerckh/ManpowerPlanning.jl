@@ -73,7 +73,7 @@ function createTransitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
 
     queryPartCmd = string( "SELECT count( `", mpSim.idKey,
         "` ) counts FROM `", mpSim.transDBname, "` WHERE\n    ",
-        generateTransitionQuery( transition ), " AND\n    " )
+        generateTransitionQuery( transition, mpSim ), " AND\n    " )
 
     result = zeros( Int, length( timeGrid ) )
 
@@ -89,27 +89,26 @@ function createTransitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
 end  # createTransitionFluxReport( mpSim, timeGrid, transition )
 
 
-# ! Change startState and endState to sourceNode and targetNode, and remove the IS NOT 'active' clause.
-generateTransitionQuery( transition::String ) =
+generateTransitionQuery( transition::String, mpSim::MPsim ) =
     string( "transition IS '", transition, "' AND",
-    "\n    startState IS NOT 'active' AND",
-    "\n    endState IS NOT 'active'" )
+    "\n    ", mpSim.sNode, " IS NOT 'active' AND",
+    "\n    ", mpSim.tNode, " IS NOT 'active'" )
 
-function generateTransitionQuery( transition::NTuple{2, String } )
+function generateTransitionQuery( transition::NTuple{2, String }, mpSim::MPsim )
 
     sourceNode = lowercase( transition[ 1 ] ) ∈ specialNodes ? "NULL" :
         string( "'", transition[ 1 ], "'" )
     targetNode = lowercase( transition[ 2 ] ) ∈ specialNodes ? "NULL" :
         string( "'", transition[ 2 ], "'" )
-    return string( "startState IS ", sourceNode, " AND",
-        "\n    endState IS ", targetNode )
+    return string( mpSim.sNode, " IS ", sourceNode, " AND",
+        "\n    ", mpSim.tNode, " IS ", targetNode )
 
-end  # generateTransitionQuery( transition )
+end  # generateTransitionQuery( transition, mpSim )
     
 
-generateTransitionQuery( transition::NTuple{3, String} ) =
+generateTransitionQuery( transition::NTuple{3, String}, mpSim::MPsim ) =
     string( "transition IS '", transition[ 1 ], "' AND",
-    "\n    ", generateTransitionQuery( transition[ 2:3 ] ) )
+    "\n    ", generateTransitionQuery( transition[ 2:3 ], mpSim ) )
 
 
 generateTransitionName( transition::String ) =

@@ -41,6 +41,9 @@ Several additional fields are used to speed up computations, retain extra inform
 * `attritionExecTime::Millisecond`: the total execution time of the attrition process.
 * `nCommits::Int`: the number of times the database is saved to file throughout the simulation.
 * `attritionTimeSkip::Float64`: the period for the attrition check process.
+* `isOldDB::Bool`: a flag indicating whether the simulation database is configured in the old style (which will be deprecated) or the new style.
+* `sNode::String`: the name of the source node field in the database.
+* `tNode::String`: the name of the target node field in the database.
 
 These fields cannot be affected directly by the type's set! function, and should NEVER be changed by the user.
 
@@ -87,6 +90,9 @@ mutable struct ManpowerSimulation
     attritionExecTime::Millisecond
     nCommits::Int
     attritionTimeSkip::Float64
+    isOldDB::Bool
+    sNode::String
+    tNode::String
 
     # This is the name of the parameter configuration file. If this is an empty
     #   string, the simulation must be configured manually.
@@ -147,6 +153,9 @@ mutable struct ManpowerSimulation
         newMPsim.attritionExecTime = Millisecond( 0 )
         newMPsim.nCommits = 1
         newMPsim.attritionTimeSkip = 1.0
+        newMPsim.isOldDB = false
+        newMPsim.sNode = "sourceNode"
+        newMPsim.tNode = "targetNode"
 
         # This line ensures that foreign key logic works.
         SQLite.execute!( newMPsim.simDB, "PRAGMA foreign_keys = ON" )

@@ -8,11 +8,11 @@ module ManpowerPlanning
     using DataFrames
     using Dates
     using Distributions
+    # using ResumableFunctions
     using SimJulia
     using SQLite
     
     # using IterTools
-     # using ResumableFunctions
     # using Plots
     # using LightGraphs
     # using MetaGraphs
@@ -29,7 +29,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.17"
+    version = v"2.0.18"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -48,8 +48,6 @@ module ManpowerPlanning
         "compoundnode",
         "manpowersimulation",
         "subpopulation"
-        # "simulationReport",
-        # "manpowerSimulation"
     ]
 
     rootPath = Base.source_path()

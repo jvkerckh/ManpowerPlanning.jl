@@ -12,7 +12,7 @@ The type contains the following fields:
 * `requirements::Dict{String, String}`: the attributes (key) and the value(s) these attributes must have (value) for the personnel member to have this particular node.
 
 The type also contains one other field, used only during the simulation:
-* `inStateSince::Dict{String, Float64}`: a record of all the persons in the   node, including the time they last entered the node.
+* `inNodeSince::Dict{String, Float64}`: a record of all the persons in the   node, including the time they last entered the node.
 
 Constructor:
 ```
@@ -27,7 +27,7 @@ mutable struct BaseNode
     attrition::String
     requirements::Dict{String, String}
 
-    inStateSince::Dict{String, Float64}
+    inNodeSince::Dict{String, Float64}
 
 
     # Basic constructor.
@@ -39,7 +39,7 @@ mutable struct BaseNode
         newNode.attrition = "default"
         newNode.requirements = Dict{String, String}()
 
-        newNode.inStateSince = Dict{String, Float64}()
+        newNode.inNodeSince = Dict{String, Float64}()
         return newNode
 
     end  # BaseNode( name )

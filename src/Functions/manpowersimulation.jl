@@ -776,12 +776,15 @@ setSimulationDatabase!(
 ```
 This function sets the results database of the manpower simulation `mpSim` to a database with name `dbName`, adding the extension `.sqlite` if needed. If the name is the empty string `""`, the database will be stored in memory instead.
 
+If the database is an existing database, the function also checks if it's a new or old style database, and will give a deprecation warning in the latter case.
+
 This function returns `true`, indicating that the database is successfully set.
 """
 function setSimulationDatabase!( mpSim::MPsim, dbName::String = "" )::Bool
 
     setSimulationDatabaseName!( mpSim, dbName )
     mpSim.simDB = SQLite.DB( mpSim.dbName )
+    validateDatabaseAge!( mpSim )
     return true
 
 end  # setSimulationDatabase!( mpSim, dbName )

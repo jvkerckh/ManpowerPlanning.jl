@@ -7,7 +7,9 @@ MP = ManpowerPlanning
 versionMP()
 println()
 
-@testset "Full test " begin
+tStart = now()
+
+@testset "Full test" begin
 
 @testset "Basic test of types" begin
 
@@ -39,7 +41,11 @@ end  # @testset "Test of simulation reports"
 @testset "Test of simulation processes" begin
 
 include( "sim/basic.jl" )
+include( "sim/recruitment.jl" )
 
 end  # @testset "Test of simulation processes"
 
 end  # @testset "Full test"
+
+tElapsed = ( now() - tStart ).value / 1000
+@info string( "Unit tests completed in ", tElapsed, " seconds." )
