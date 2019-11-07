@@ -26,6 +26,35 @@ addSimulationBaseNode!( mpSim, node )
         all( report[ :, Symbol( "recruitment A: external => node A" ) ] .== 10 )
 end  # @testset "Basic recruitment test"
 
+@testset "Recruitment schedule" begin
+    clearSimulationRecruitment!( mpSim )
+    recruitment = Recruitment( "recruitment A" )
+    setRecruitmentSchedule!( recruitment, 24 )
+    setRecruitmentTarget!( recruitment, "node A" )
+    setRecruitmentFixed!( recruitment, 10 )
+    addSimulationRecruitment!( mpSim, recruitment )
+
+    @test verifySimulation!( mpSim )
+    run( mpSim, saveConfig = false )
+    report = nodeFluxReport( mpSim, 12, :in, "active" )[ "active" ]
+    @test all( report[ :, Symbol( "external => active" ) ] .==
+        repeat( [ 10, 0 ], 13 ) )
+
+    clearSimulationRecruitment!( mpSim )
+    recruitment = Recruitment( "recruitment A" )
+    setRecruitmentSchedule!( recruitment, 24, 12 )
+    setRecruitmentTarget!( recruitment, "node A" )
+    setRecruitmentFixed!( recruitment, 10 )
+    addSimulationRecruitment!( mpSim, recruitment )
+
+    @test verifySimulation!( mpSim )
+    run( mpSim, saveConfig = false )
+    report = nodeFluxReport( mpSim, 12, :in, "active" )[ "active" ]
+    @test all( report[ :, Symbol( "external => active" ) ] .==
+        repeat( [ 0, 10 ], 13 ) )
+
+end  # @testset "Recruitment schedule"
+
 @testset "Adaptive recruitment test" begin
     clearSimulationRecruitment!( mpSim )
     recruitment = Recruitment( "recruitment A" )

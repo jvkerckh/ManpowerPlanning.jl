@@ -8,7 +8,7 @@
 # Temporary files
 src/Functions/unprocessed*
 typedeps*
-test/sim/simDB.sqlite
+test/reports/simDBcopy.sqlite
 
 # Documentation
 docs/build*

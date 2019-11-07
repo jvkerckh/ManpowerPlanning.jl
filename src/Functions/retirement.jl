@@ -78,9 +78,8 @@ function setRetirementSchedule!( retirement::Retirement, freq::Real, offset::Rea
         return false
     end  # if freq <= 0.0
 
-    retirement.retirementFreq = freq
-    retirement.retirementOffset = ( offset % freq ) +
-        ( offset < 0.0 ? freq : 0.0 )
+    retirement.freq = freq
+    retirement.offset = ( offset % freq ) + ( offset < 0.0 ? freq : 0.0 )
     return true
 
 end  # setRetirementSchedule!( retirement, freq, offset )
@@ -115,8 +114,7 @@ function Base.show( io::IO, retirement::Retirement )::Nothing
     end  # if ( retirement.retirementAge == 0.0 ) && ...
 
     print( io, "\n  Retirement check occurs with a period of ",
-        retirement.retirementFreq, " (offset ", retirement.retirementOffset,
-        ")" )
+        retirement.freq, " (offset ", retirement.offset, ")" )
 
     print( io, "\n  Retirement occurs " )
 

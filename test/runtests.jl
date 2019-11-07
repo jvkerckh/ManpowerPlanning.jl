@@ -28,6 +28,7 @@ end  # @testset "Basic test of types"
 @testset "Test of simulation reports" begin
 
 include( "reports/simconfig.jl" )
+include( "reports/timegrid.jl" )
 include( "reports/fluxes.jl" )
 include( "reports/nodepopulation.jl" )
 include( "reports/nodecomposition.jl" )
@@ -42,6 +43,7 @@ end  # @testset "Test of simulation reports"
 
 include( "sim/basic.jl" )
 include( "sim/recruitment.jl" )
+include( "sim/retirement.jl" )
 
 end  # @testset "Test of simulation processes"
 

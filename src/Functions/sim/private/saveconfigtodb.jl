@@ -6,7 +6,6 @@ function wipeConfigTable( mpSim::MPsim )
         "\n    parType VARCHAR(32),",
         "\n    parValue TEXT )" )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
-    return
 
 end  # wipeConfigTable( mpSim )
 
@@ -22,7 +21,6 @@ function storeGeneralPars( mpSim::MPsim )
         "\n    ('Current time', 'General', '", now( mpSim ), "'),",
         "\n    ('DB commits', 'General', '", mpSim.nCommits, "')" )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
-    return
 
 end  # storeGeneralPars( mpSim )
 
@@ -44,9 +42,23 @@ function storeAttributes( mpSim::MPsim )
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( sqliteCmd, "," ) )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
-    return
 
 end  # storeAttributres( mpSim )
+
+
+function storeAttrition( mpSim )
+
+    sqliteCmd = map( collect( keys( mpSim.attritionSchemes ) ) ) do name
+        attrition = mpSim.attritionSchemes[ name ]
+        return string( "\n    ('", name, "', 'Attrition', '", attrition.period,     ";[", join( string.( attrition.curvePoints, ":", attrition.rates ),
+            "," ), "]')" )
+    end  # map( ... ) do name
+
+    sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
+        " VALUES", join( sqliteCmd, "," ) )        
+    SQLite.execute!( mpSim.simDB, sqliteCmd )
+
+end  # storeAttrition( mpSim )
 
 
 function storeNodes( mpSim::MPsim )
@@ -75,7 +87,6 @@ function storeNodes( mpSim::MPsim )
         isempty( baseNodeCmd ) || isempty( compNodeCmd ) ? "" : ",",
         join( compNodeCmd, "," ) )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
-    return
 
 end  # storeNodes( mpSim )
 
@@ -124,6 +135,5 @@ function storeRecruitment( mpSim::MPsim )
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( join.( sqliteCmd, "," ), "," ) )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
-        return
 
 end  # storeRecruitment( mpSim )

@@ -3,8 +3,7 @@
 @testset "Constructor" begin
     retirement = Retirement()
     @test all( [ retirement.maxCareerLength == 0, retirement.retirementAge == 0,
-        retirement.retirementFreq == 1, retirement.retirementOffset == 0,
-        retirement.isEither ] )
+        retirement.freq == 1, retirement.offset == 0, retirement.isEither ] )
 end  # @testset "Constructor"
 
 retirement = Retirement()
@@ -23,11 +22,11 @@ end  # @testset "function setRetirementAge!"
 
 @testset "function setRetirementSchedule!" begin
     setRetirementSchedule!( retirement, 12, 18 )
-    @test ( retirement.retirementFreq == 12.0 ) &&
-        ( retirement.retirementOffset == 6.0 )
+    @test ( retirement.freq == 12.0 ) &&
+        ( retirement.offset == 6.0 )
     setRetirementSchedule!( retirement, 6, -4 )
-    @test ( retirement.retirementFreq == 6.0 ) &&
-        ( retirement.retirementOffset == 2.0 )
+    @test ( retirement.freq == 6.0 ) &&
+        ( retirement.offset == 2.0 )
     @test !setRetirementSchedule!( retirement, -24 )
 end  # @testset "function setRetirementSchedule!"
 

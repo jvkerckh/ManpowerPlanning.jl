@@ -27,7 +27,7 @@ function resetSimulation( mpSim::MPsim )
         "\n    timeExited FLOAT,",
         "\n    ageAtRecruitment FLOAT,",
         "\n    expectedAttritionTime FLOAT,",
-        "\n    attritionScheme VARCHAR(64),",
+        "\n    currentNode VARCHAR(64),",
         join( string.( "\n    `", collect( keys( mpSim.attributeList ) )
             , "` VARCHAR(64)," ) ),
         "\n    status VARCHAR(16) )" )
@@ -51,5 +51,10 @@ function resetSimulation( mpSim::MPsim )
         "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
         mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
+
+    # Set database to new style.
+    mpSim.isOldDB = false
+    mpSim.sNode = "sourceNode"
+    mpSim.tNode = "targetNode"
 
 end  # clearSimDatabase( mpSim )

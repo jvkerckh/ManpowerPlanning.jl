@@ -308,8 +308,7 @@ end  # @testset "function setSimulationTransitions!"
     setSimulationRetirement!( mpSim, retirement )
     @test all( [ mpSim.retirement.retirementAge == 240,
         mpSim.retirement.maxCareerLength == 0,
-        mpSim.retirement.retirementFreq == 12,
-        mpSim.retirement.retirementOffset == 0,
+        mpSim.retirement.freq == 12, mpSim.retirement.offset == 0,
         retirement.isEither ] )
     setRetirementCareerLength!( retirement, 120 )
     setRetirementIsEither!( retirement, false )

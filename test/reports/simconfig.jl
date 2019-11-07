@@ -3,10 +3,13 @@ mpSim = ManpowerSimulation( "sim" )
 # Setting Attributes.
 attribute1 = Attribute( "level" )
 setPossibleAttributeValues!( attribute1, [ "Junior", "Senior", "Master" ] )
+setInitialAttributeValues!( attribute1, Dict( "Junior" => 1.0 ) )
 attribute2 = Attribute( "branch" )
 setPossibleAttributeValues!( attribute2, [ "A", "B", "reserve", "none" ] )
+setInitialAttributeValues!( attribute2, Dict( "none" => 1.0 ) )
 attribute3 = Attribute( "isCareer" )
 setPossibleAttributeValues!( attribute3, [ "yes", "no" ] )
+setInitialAttributeValues!( attribute3, Dict( "no" => 1.0 ) )
 setSimulationAttributes!( mpSim, [ attribute1, attribute2, attribute3 ] )
 
 # Setting Base Nodes.
@@ -22,15 +25,14 @@ setNodeRequirements!( node3, ("level", "Junior"), ("branch", "reserve"),
 node4 = BaseNode( "A senior" )
 setNodeRequirements!( node4, ("level", "Senior"), ("branch", "A"),
     ("isCareer", "yes") )
-setNodeTarget!( node4, 30 )
 node5 = BaseNode( "B senior" )
 setNodeRequirements!( node5, ("level", "Senior"), ("branch", "B"),
     ("isCareer", "yes") )
-setNodeTarget!( node5, 30 )
 node6 = BaseNode( "Master" )
 setNodeRequirements!( node6, ("level", "Master"), ("branch", "none"),
     ("isCareer", "yes") )
-setNodeTarget!( node6, 25 )
+setNodeTarget!.( [ node1, node2, node3, node4, node5, node6 ],
+    [ -1, -1, -1, 30, 30, 25 ] )
 setSimulationBaseNodes!( mpSim, [ node1, node2, node3, node4, node5, node6 ] )
 
 # Setting Compound Nodes.
@@ -104,16 +106,15 @@ addSimulationTransition!( mpSim, otrans1, otrans2, otrans3, otrans4, otrans5,
     otrans6 )
 
 # Miscellaneous configs.
-setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )
+# setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )
 setSimulationLength!( mpSim, 300 )
 
 @test verifySimulation!( mpSim )
 
-@testset "Time grid generation" begin
-    @test isempty( MP.generateTimeGrid( mpSim, -12 ) )
-    @test MP.generateTimeGrid( mpSim, 12 ) == [ 0.0 ]
-    run( mpSim.sim )
-    @test MP.generateTimeGrid( mpSim, 12 ) == collect( 0.0:12.0:300.0 )
-end  # @testset "Time grid generation"
+@testset "function saveSimulationConfiguration" begin
+    setSimulationDatabase!( mpSim, joinpath( "reports", "simDBcopy" ) )
+    saveSimulationConfiguration( mpSim )
+    setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )
+end  # @test "function saveSimulationConfiguration"
 
 println()

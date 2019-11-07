@@ -9,7 +9,8 @@
 
     # Preparatory steps.
     timeToWait = recruitment.offset
-    priority = typemin( Int ) + ( recruitment.isAdaptive ? 0 : 1 )
+    priority = typemin( Int8 ) + ( recruitment.isAdaptive ? zero( Int8 ) :
+        one( Int8 ) )
 
     # Process loop.
     while now( sim ) + timeToWait <= mpSim.simLength
@@ -28,7 +29,7 @@
             " seconds." ) )
     end  # if mpSim.showInfo
 
-end  # @process recruitProcess( sim, recruitment, mpSim )
+end  # @resumable recruitProcess( sim, recruitment, mpSim )
 
 
 function recruitmentCycle( recruitment::Recruitment, mpSim::MPsim )
@@ -114,9 +115,10 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
     sqliteCmd = map( toa -> toa == +Inf ? "NULL" : toa, timeOfAttrition )
     sqliteCmd = string.( "\n    ('", newPersons[ :, Symbol( mpSim.idKey ) ],
         "', 'active', ", currentTime, ", ", newPersons[ :, :recAge ], ", ",
-        sqliteCmd, ", '", attrition.name, "'", attrCmd, ")" )
+        sqliteCmd, ", '", targetNode.name, "'", attrCmd, ")" )
     sqliteCmd = string( "INSERT INTO `", mpSim.persDBname, "` (`", mpSim.idKey,
-        "`, status, timeEntered, ageAtRecruitment, expectedAttritionTime, attritionScheme",
+        "`, status, timeEntered, ageAtRecruitment, ",
+        "expectedAttritionTime, currentNode",
         join( string.( ", `", attributeNames, "`" ) ), ") VALUES",
         join( sqliteCmd, "," ) )
     SQLite.execute!( mpSim.simDB, sqliteCmd )

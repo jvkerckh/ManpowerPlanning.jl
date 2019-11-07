@@ -12,6 +12,7 @@ function saveSimulationConfiguration( mpSim::MPsim )::Bool
     wipeConfigTable( mpSim )
     storeGeneralPars( mpSim )
     storeAttributes( mpSim )
+    storeAttrition( mpSim )
     storeNodes( mpSim )
     storeRecruitment( mpSim )
     SQLite.execute!( mpSim.simDB, "COMMIT" )

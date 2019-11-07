@@ -2,7 +2,7 @@ name = "ManpowerPlanning"
 uuid = "6098a329-8c96-5c9c-9c97-4012e2806895"
 license = "MIT"
 authors = ["Johan Van Kerckhoven <johan.vankerckhoven@gmail.com>"]
-version = "2.0.18"
+version = "2.0.19"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -15,6 +15,7 @@ SimJulia = "428bdadb-6287-5aa5-874b-9969638295fd"
 [compat]
 DataFrames = "<0.19"
 SQLite = "<0.8.2"
+SimJulia = "<0.8"
 julia = ">=0.7"
 
 [extras]

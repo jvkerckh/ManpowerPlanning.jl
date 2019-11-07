@@ -18,6 +18,9 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
         end  # for recruitment in mpSim.recruitmentByName[ name ]
     end  # for name in keys( mpSim.recruitmentByName )
 
+    # Initialise the default retirement process.
+    @process retireProcess( mpSim.sim, mpSim )
+
     # Execute the simulation.
     try
         run( mpSim.sim )
@@ -42,4 +45,5 @@ include( joinpath( simPath, "dboperations.jl" ) )
 include( joinpath( simPrivPath, "attrition.jl" ) )
 include( joinpath( simPrivPath, "attribute.jl" ) )
 include( joinpath( simPrivPath, "recruitment.jl" ) )
+include( joinpath( simPrivPath, "retirement.jl" ) )
 include( joinpath( simPrivPath, "manpowersimulation.jl" ) )
