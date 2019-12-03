@@ -8,14 +8,12 @@ module ManpowerPlanning
     using DataFrames
     using Dates
     using Distributions
-    # using ResumableFunctions
+    using ResumableFunctions
     using SimJulia
     using SQLite
     
     # using IterTools
     # using Plots
-    # using LightGraphs
-    # using MetaGraphs
     # using GraphIO
     # using EzXML
     # using GraphPlot
@@ -29,7 +27,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.19"
+    version = v"2.0.20"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,

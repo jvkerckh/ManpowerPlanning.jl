@@ -25,8 +25,7 @@
     processTime += now() - tStart
 
     if mpSim.showInfo
-        println( string( recName, "took ", processTime.value / 1000,
-            " seconds." ) )
+        println( recName, "took ", processTime.value / 1000, " seconds." )
     end  # if mpSim.showInfo
 
 end  # @resumable recruitProcess( sim, recruitment, mpSim )

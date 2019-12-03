@@ -57,4 +57,8 @@ function resetSimulation( mpSim::MPsim )
     mpSim.sNode = "sourceNode"
     mpSim.tNode = "targetNode"
 
-end  # clearSimDatabase( mpSim )
+    # Reset timers.
+    mpSim.simExecTime = Millisecond( 0 )
+    mpSim.attritionExecTime = Millisecond( 0 )
+
+end  # resetSimulation( mpSim )

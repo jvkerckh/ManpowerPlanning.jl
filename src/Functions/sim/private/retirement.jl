@@ -10,7 +10,7 @@
     # Timing of the process.
     processTime = Dates.Millisecond( 0 )
     tStart = now()
-    recName = string( "Default retirement process " )
+    retName = string( "Default retirement process " )
 
     # Preparatory steps.
     timeToWait = retirement.offset
@@ -29,8 +29,7 @@
     processTime += now() - tStart
 
     if mpSim.showInfo
-        println( string( recName, "took ", processTime.value / 1000,
-            " seconds." ) )
+        println( retName, "took ", processTime.value / 1000, " seconds." )
     end  # if mpSim.showInfo
 
 end  # @resumable function retireProcess( sim, mpSim )
@@ -96,3 +95,6 @@ end  # removePersons( ids, currentNodes, reason, mpSim )
 removePersons( ids::Vector{String}, currentNode::String, reason::String,
     mpSim::MPsim ) = removePersons( ids, fill( currentNode, length( ids ) ),
     reason, mpSim )
+
+removePerson( id::String, currentNode::String, reason::String, mpSim::MPsim ) =
+    removePersons( [ id ], currentNode, reason, mpSim )

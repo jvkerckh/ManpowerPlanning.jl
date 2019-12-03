@@ -1,5 +1,13 @@
-using ManpowerPlanning
+using DataFrames
 using Dates
+using Distributions
+using HypothesisTests
+using LightGraphs
+using ManpowerPlanning
+using MetaGraphs
+using Random
+using SQLite
+using StatsBase
 using Test
 
 MP = ManpowerPlanning
@@ -44,6 +52,7 @@ end  # @testset "Test of simulation reports"
 include( "sim/basic.jl" )
 include( "sim/recruitment.jl" )
 include( "sim/retirement.jl" )
+include( "sim/attrition.jl" )
 
 end  # @testset "Test of simulation processes"
 
