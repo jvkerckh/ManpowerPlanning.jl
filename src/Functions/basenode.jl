@@ -231,7 +231,7 @@ function setNodeRequirements!( node::BaseNode, attributes::Vector{String}, value
     attrValDict = Dict{String, String}()
 
     for ii in eachindex( attributes )
-        attrValDict[ attributes[ 1 ] ] = values[ 1 ]
+        attrValDict[ attributes[ ii ] ] = values[ ii ]
     end  # for ii in eachindex( attributes )
 
     return setNodeRequirements!( node, attrValDict )

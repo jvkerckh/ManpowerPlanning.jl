@@ -56,6 +56,7 @@ function resetSimulation( mpSim::MPsim )
     mpSim.isOldDB = false
     mpSim.sNode = "sourceNode"
     mpSim.tNode = "targetNode"
+    mpSim.valName = "value"
 
     # Reset timers.
     mpSim.simExecTime = Millisecond( 0 )

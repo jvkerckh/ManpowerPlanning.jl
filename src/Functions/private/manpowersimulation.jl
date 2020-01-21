@@ -185,6 +185,65 @@ function verifyTransitionConditions!( mpSim::MPsim )
 end  # verifyTransitionConditions!( mpSim )
 
 
+function verifyTransitionChanges!( mpSim::MPsim )
+
+    missingAttributes = Dict{String, Vector{String}}()
+    missingAttrVals = Dict{String, Vector{String}}()
+
+    for name in keys( mpSim.transitionsByName ),
+        transition in mpSim.transitionsByName[ name ],
+        attrName in keys( transition.extraChanges )
+        # Check if the attribute exists.
+        if !haskey( mpSim.attributeList, attrName )
+            if haskey( missingAttributes, attrName )
+                push!( missingAttributes[ attrName ], name )
+            else
+                missingAttributes[ attrName ] = [ name ]
+            end  # if haskey( missingAttributes, attrName )
+
+            continue
+        end  # if !haskey( mpSim.attributeList, attrName )
+
+        # check if the new value is a possible value for the attribute.
+        attribute = mpSim.attributeList[ attrName ]
+        val = transition.extraChanges[ attrName ]
+
+        if val ∉ attribute.possibleValues
+            if haskey( missingAttrVals, attrName )
+                push!( missingAttrVals[ attrName ], val )
+            else
+                missingAttrVals[ attrName ] = [ val ]
+            end  # if haskey( missingAttrVals, attrName )
+        end  # if transition.extraChanges[ attrName ] ∉ attribute.possibleValues
+    end  # for name in keys( mpSim.transitionsByName ), ...
+
+    # Report missing attributes in extra changes of transition.
+    warnString = map( collect( keys( missingAttributes ) ) ) do name
+        return string( "Unknown attribute '", name,
+        "' to be changed in transitions '",
+        join( unique( missingAttributes[ name ] ), "', '", "', and '" ), "'." )
+    end  # map( collect( keys( missingAttributes ) ) ) do name
+
+    if !isempty( warnString )
+        @warn join( warnString, "\n" )
+        mpSim.isConsistent = false
+    end  # if !isempty( warnString )
+
+    # Report missing attribute values in extra changes of transition.
+    warnString = map( collect( keys( missingAttrVals ) ) ) do name
+        return string( "Unknown value(s) '",
+            join( missingAttrVals[ name ], "', '", "', and '" ),
+            "' in attribute '", name, "'." )
+    end  # map( collect( keys( missingAttributes ) ) ) do name
+
+    if !isempty( warnString )
+        @warn join( warnString, "\n" )
+        mpSim.isConsistent = false
+    end  # if !isempty( warnString )
+
+end  # verifyTransitionChanges!( mpSim )
+
+
 function verifyCompoundNodeComponents!( mpSim::MPsim )
 
     # Verify consistency of base nodes in each compound node.
@@ -365,6 +424,10 @@ function setSimTransitions!( mpSim::MPsim, transitions::Vector{Transition},
         return false
     end  # if isempty( tmpTransitions )
 
+    if wipeConfig
+        clearSimulationTransitions!( mpSim )
+    end  # if wipeConfig
+
     # Add the transitions to the appropriate lists.
     for transition in tmpTransitions
         if haskey( mpSim.transitionsByName, transition.name )
@@ -395,6 +458,46 @@ function setSimTransitions!( mpSim::MPsim, transitions::Vector{Transition},
     return true
 
 end  # setSimTransitions!( mpSim, transitions, wipeConfig )
+
+
+function setSimTransitionTypeOrder!( mpSim::MPsim,
+    transOrder::Dict{String, Int}, wipeConfig::Bool )
+
+    if isempty( transOrder )
+        return false
+    end  # if isempty( transOrder )
+
+    if wipeConfig
+        clearSimulationTransitionTypeOrder!( mpSim )
+    end   # if wipeConfig
+
+    for name in keys( transOrder )
+        mpSim.transitionTypeOrder[ name ] = transOrder[ name ]
+    end  # for name in keys( transOrder )
+
+    return true
+
+end  # setSimTransitionTypeOrder!( mpSim, transOrder, wipeConfig )
+
+
+function setSimBaseNodeOrder!( mpSim::MPsim,
+    nodeOrder::Dict{String, Int}, wipeConfig::Bool )
+
+    if isempty( nodeOrder )
+        return false
+    end  # if isempty( nodeOrder )
+
+    if wipeConfig
+        clearSimulationBaseNodeOrder!( mpSim )
+    end   # if wipeConfig
+
+    for name in keys( nodeOrder )
+        mpSim.baseNodeOrder[ name ] = nodeOrder[ name ]
+    end  # for name in keys( nodeOrder )
+
+    return true
+
+end  # setSimBaseNodeOrder!( mpSim, nodeOrder, wipeConfig )
 
 
 function setSimAttrition!( mpSim::MPsim, attritionList::Vector{Attrition},
@@ -441,5 +544,6 @@ function validateDatabaseAge!( mpSim::MPsim )
 
     mpSim.sNode = mpSim.isOldDB ? "startState" : "sourceNode"
     mpSim.tNode = mpSim.isOldDB ? "endState" : "targetNode"
+    mpSim.valName = mpSim.isOldDB ? "strValue" : "value"
 
 end  # validateDatabaseAge!( mpSim )

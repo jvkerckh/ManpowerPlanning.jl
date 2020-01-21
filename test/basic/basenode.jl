@@ -3,7 +3,7 @@
 @testset "BaseNode" begin
     @test_deprecated State( "State" )
     node = BaseNode( "Node" )
-    @test all( [ node.name == "Node", node.target == 0,
+    @test all( [ node.name == "Node", node.target == -1,
         isempty( node.requirements ) ] )
 end  # @testset "Constructor"
 

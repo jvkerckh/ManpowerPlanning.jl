@@ -8,6 +8,9 @@ module ManpowerPlanning
     using DataFrames
     using Dates
     using Distributions
+    using HierarchicalGraphPlot
+    using LightGraphs
+    using MetaGraphs
     using ResumableFunctions
     using SimJulia
     using SQLite
@@ -22,12 +25,11 @@ module ManpowerPlanning
     # using Luxor
     # using Polynomials
     # using FileIO
-    # using DataFrames
     # using StatsBase
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.0.20"
+    version = v"2.1.0"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,

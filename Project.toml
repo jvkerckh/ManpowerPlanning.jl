@@ -2,12 +2,13 @@ name = "ManpowerPlanning"
 uuid = "6098a329-8c96-5c9c-9c97-4012e2806895"
 license = "MIT"
 authors = ["Johan Van Kerckhoven <johan.vankerckhoven@gmail.com>"]
-version = "2.0.20"
+version = "2.1.0"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+HierarchicalGraphPlot = "74058bb6-0c38-11ea-314b-23156c1ed705"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
 LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
 MetaGraphs = "626554b9-1ddb-594c-aa3c-2596fe9399a5"
@@ -19,6 +20,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 DataFrames = "<0.19"
+Distributions = "<0.21"
 SQLite = "<0.8.2"
 SimJulia = "<0.8"
 julia = ">=0.7"

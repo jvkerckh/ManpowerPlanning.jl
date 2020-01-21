@@ -18,6 +18,7 @@ The type contains the following fields:
 * `transitionsByTarget::Dict{String, Vector{Transition}}`: the list of transitions in the simulation, grouped by source node.
 * `transitionsByTarget::Dict{String, Vector{Transition}}`: the list of transitions in the simulation, grouped by target node.
 * `retirement::Retirement`: the default retirement scheme. Defaults of no retirement.
+* `transitionTypeOrder::Dict{String, Int}`: the preferred order in which transitions of different types are handled.
 * `attritionSchemes::Dict{String, Attrition}`: the list of attrition schemes in the simulation. This list always contains a default attrition scheme with a flat zero attrition.
 * `simLength::Float64`: the length of the simulation (in internal time units). Default = 0.0
 * `personnelTarget:Int`: the target number of personnel members in the simulation. Default = 0
@@ -27,7 +28,7 @@ The type contains the following fields:
 Several additional fields are used to speed up computations, retain extra information, etcetera:
 * `sim::Simulation`: the `SimJulia.Simulation` object driving the simulation.
 * `nRecruitment::Int`: the number of recruitment schemes in the simulation.
-* `nTransitions::Int`: the number of transitions in the simulation.
+* `nPriorities::Int`: the number of priority levels in the simulation.
 * `orgSize::Int`: the current number personnel members in the simulation.
 * `dbSize::Int`: the total number of personnel members in the database.
 * `simDB::SQLite.DB`: the SQLite database holding the simulation results.
@@ -44,6 +45,7 @@ Several additional fields are used to speed up computations, retain extra inform
 * `isOldDB::Bool`: a flag indicating whether the simulation database is configured in the old style (which will be deprecated) or the new style.
 * `sNode::String`: the name of the source node field in the database.
 * `tNode::String`: the name of the target node field in the database.
+* `valName::String`: the name of the value field in the history database.
 
 These fields cannot be affected directly by the type's set! function, and should NEVER be changed by the user.
 
@@ -61,12 +63,14 @@ mutable struct ManpowerSimulation
     idKey::String
     attributeList::Dict{String, Attribute}
     baseNodeList::Dict{String, BaseNode}
+    baseNodeOrder::Dict{String, Int}
     compoundNodeList::Dict{String, CompoundNode}
     recruitmentByName::Dict{String, Vector{Recruitment}}
     recruitmentByTarget::Dict{String, Vector{Recruitment}}
     transitionsByName::Dict{String, Vector{Transition}}
     transitionsBySource::Dict{String, Vector{Transition}}
     transitionsByTarget::Dict{String, Vector{Transition}}
+    transitionTypeOrder::Dict{String, Int}
     retirement::Retirement
     attritionSchemes::Dict{String, Attrition}
     simLength::Float64
@@ -76,7 +80,7 @@ mutable struct ManpowerSimulation
 
     sim::Simulation
     nRecruitment::Int
-    nTransition::Int
+    nPriorities::Int
     orgSize::Int
     dbSize::Int
     simDB::SQLite.DB
@@ -93,14 +97,12 @@ mutable struct ManpowerSimulation
     isOldDB::Bool
     sNode::String
     tNode::String
+    valName::String
 
     # This is the name of the parameter configuration file. If this is an empty
     #   string, the simulation must be configured manually.
     # catFileName::String
     # parFileName::String
-
-    # The states.
-    # preferredStateOrder::Vector{String}
 
     # The compound states. The first is for the compound states from catalogue,
     #   so they can be properly processed at runtime and inserted into the
@@ -124,12 +126,14 @@ mutable struct ManpowerSimulation
         newMPsim.simName = simName
         newMPsim.attributeList = Dict{String, Attribute}()
         newMPsim.baseNodeList = Dict{String, BaseNode}()
+        newMPsim.baseNodeOrder = Dict{String, Int}()
         newMPsim.compoundNodeList = Dict{String, CompoundNode}()
         newMPsim.recruitmentByName = Dict{String, Vector{Recruitment}}()
         newMPsim.recruitmentByTarget = Dict{String, Vector{Recruitment}}()
         newMPsim.transitionsByName = Dict{String, Vector{Transition}}()
         newMPsim.transitionsBySource = Dict{String, Vector{Transition}}()
         newMPsim.transitionsByTarget = Dict( "OUT" => Vector{Transition}() )
+        newMPsim.transitionTypeOrder = Dict{String, Int}()
         newMPsim.retirement = Retirement()
         newMPsim.attritionSchemes = Dict( "default" => Attrition() )
         newMPsim.simLength = 0.0
@@ -139,7 +143,7 @@ mutable struct ManpowerSimulation
         
         newMPsim.sim = Simulation()
         newMPsim.nRecruitment = 0
-        newMPsim.nTransition = 0
+        newMPsim.nPriorities = 0
         newMPsim.orgSize = 0
         newMPsim.dbSize = 0
         newMPsim.simDB = SQLite.DB( "" )
@@ -156,6 +160,7 @@ mutable struct ManpowerSimulation
         newMPsim.isOldDB = false
         newMPsim.sNode = "sourceNode"
         newMPsim.tNode = "targetNode"
+        newMPsim.valName = "value"
 
         # This line ensures that foreign key logic works.
         SQLite.execute!( newMPsim.simDB, "PRAGMA foreign_keys = ON" )

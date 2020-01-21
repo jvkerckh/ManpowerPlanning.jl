@@ -112,7 +112,7 @@ addSimulationRecruitment!( mpSim, recruitment )
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
     @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 102, 98, 88, 57, 62, 56, 47, 38, 48, 39, 32, 34, 38, 24, 22, 19, 20,
+        [ 102, 98, 88, 57, 62, 57, 47, 38, 48, 39, 32, 34, 38, 24, 22, 19, 20,
         16, 24, 14, 8, 13, 14, 10, 8 ] )
 
     Random.seed!( 2718281 )
@@ -124,7 +124,7 @@ addSimulationRecruitment!( mpSim, recruitment )
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
     @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 86, 91, 86, 75, 71, 64, 43, 53, 44, 38, 39, 30, 27, 25, 30, 20, 11,
+        [ 86, 91, 86, 74, 71, 65, 43, 53, 44, 38, 39, 30, 27, 25, 30, 20, 11,
         11, 13, 13, 16, 9, 9, 7, 11 ] )
 
     Random.seed!( 1414213 )
@@ -136,7 +136,7 @@ addSimulationRecruitment!( mpSim, recruitment )
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
     @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 81, 96, 83, 74, 56, 49, 47, 57, 43, 44, 30, 32, 34, 38, 18, 16, 18,
+        [ 81, 96, 83, 74, 56, 49, 47, 57, 44, 44, 29, 32, 34, 38, 18, 16, 18,
         19, 20, 17, 8, 6, 11, 8, 12 ] )
 end  # @testset "Distribution test I"
 
@@ -166,7 +166,7 @@ end  # @testset "Distribution test I"
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
     @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 102, 98, 88, 57, 62, 56, 47, 38, 48, 39, 0, 0, 0, 0, 0, 90, 70, 50,
+        [ 102, 98, 88, 57, 62, 57, 47, 38, 48, 39, 0, 0, 0, 0, 0, 90, 70, 50,
         41, 30, 0, 0, 0, 0, 0 ] )
 
     Random.seed!( 2718281 )
@@ -178,7 +178,7 @@ end  # @testset "Distribution test I"
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
     @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 86, 91, 86, 75, 71, 64, 43, 53, 44, 38, 0, 0, 0, 0, 0, 88, 72, 36, 37,
+        [ 86, 91, 86, 74, 71, 65, 43, 53, 44, 38, 0, 0, 0, 0, 0, 88, 72, 36, 37,
         24, 0, 0, 0, 0, 0 ] )
 
     Random.seed!( 1414213 )
@@ -190,10 +190,11 @@ end  # @testset "Distribution test I"
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
     @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 81, 96, 83, 74, 56, 49, 47, 57, 43, 44, 0, 0, 0, 0, 0, 88, 69, 52, 41,
+        [ 81, 96, 83, 74, 56, 49, 47, 57, 44, 44, 0, 0, 0, 0, 0, 87, 69, 52, 41,
         24, 0, 0, 0, 0, 0 ] )
 end  # @testset "Distribution test II"
 
 Random.seed!()
+println()
 
 end  # @testset "Attrition tests"

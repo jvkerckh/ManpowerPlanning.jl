@@ -53,6 +53,10 @@ include( "sim/basic.jl" )
 include( "sim/recruitment.jl" )
 include( "sim/retirement.jl" )
 include( "sim/attrition.jl" )
+include( "sim/transition.jl" )
+include( "sim/transition2.jl" )
+include( "sim/transition3.jl" )
+include( "sim/transition4.jl" )
 
 end  # @testset "Test of simulation processes"
 

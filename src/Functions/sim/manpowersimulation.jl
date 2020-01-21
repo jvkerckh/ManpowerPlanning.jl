@@ -3,6 +3,7 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
 
     if !verifySimulation!( mpSim )
         error( "Simulation configuration is inconsistent, cannot run." )
+        return
     elseif showInfo
         @info "Simulation configuration is consistent, initialising processes."
     end  # if !verifySimulation!( mpSim )
@@ -25,6 +26,15 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
 
         # Initalise the attrition process.
         @process checkAttritionProcess( mpSim.sim, mpSim )
+
+        # Initialise the transition processes.
+        orderTransitions!( mpSim )
+
+        for name in keys( mpSim.transitionsByName )
+            for transition in mpSim.transitionsByName[ name ]
+                @process transitionProcess( mpSim.sim, transition, mpSim )
+            end  # for transition in mpSim.transitionsByName[ name ]
+        end  # for name in keys( mpSim.transitionsByName )
 
         # Execute the simulation.
         run( mpSim.sim )
@@ -55,4 +65,5 @@ include( joinpath( simPrivPath, "attrition.jl" ) )
 include( joinpath( simPrivPath, "attribute.jl" ) )
 include( joinpath( simPrivPath, "recruitment.jl" ) )
 include( joinpath( simPrivPath, "retirement.jl" ) )
+include( joinpath( simPrivPath, "transition.jl" ) )
 include( joinpath( simPrivPath, "manpowersimulation.jl" ) )

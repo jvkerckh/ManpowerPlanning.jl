@@ -23,6 +23,7 @@ Three additional fields are used to speed up computations:
 * `isAdaptive::Bool`: a flag indicating whether the recruitment scheme is adaptive or not.
 * `recruitmentDist::Function`: the function that draws a sample from the distribution of the number of people to recruit.
 * `ageDist::Function`: the function that draws a sample from the distrubiton of the recruitment age.
+* `priority::Int8`: the priority of the SimJulia process of this recruitment scheme.
 """
 mutable struct Recruitment
 
@@ -40,6 +41,7 @@ mutable struct Recruitment
     isAdaptive::Bool
     recruitmentDist::Function
     ageDist::Function
+    priority::Int8
 
 
     function Recruitment( name::String )
@@ -59,6 +61,7 @@ mutable struct Recruitment
         newRec.isAdaptive = false
         newRec.recruitmentDist = function() return 0 end
         newRec.ageDist = function( n::Integer ) return zeros( Float64, n ) end
+        newRec.priority = one( Int8 )
         return newRec
 
     end  # Recruitment( freq, offset )

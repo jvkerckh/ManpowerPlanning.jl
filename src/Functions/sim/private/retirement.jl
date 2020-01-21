@@ -83,9 +83,16 @@ function removePersons( ids::Vector{String}, currentNodes::Vector{String},
         "`, timeIndex, transition, sourceNode) VALUES", join( sqliteCmd, "," ) )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
 
+    # Clear the ids from the inNodeSince field of their current node.
+    for name in unique( currentNodes )
+        currentNode = mpSim.baseNodeList[ name ]
+        delete!.( Ref( currentNode.inNodeSince ), ids[ currentNodes .== name ] )
+    end  # for name in unique( currentNodes )
+
     # Update the personnel records.
     sqliteCmd = string( "UPDATE `", mpSim.persDBname, "`",
         "\n    SET status = '", reason, "',",
+        "\n        timeExited = ", now( mpSim ), ",",
         "\n        currentNode = NULL",
         "\n    WHERE `", mpSim.idKey, "` IN ('", join( ids, "', '" ), "')" )
     SQLite.execute!( mpSim.simDB, sqliteCmd )

@@ -56,7 +56,7 @@ mutable struct Transition
     extraChanges::Dict{String, String}
     probabilityList::Vector{Float64}
     
-    priority::Int
+    priority::Int8
 
 
     # Basic constructor.
@@ -79,7 +79,7 @@ mutable struct Transition
         newTrans.extraConditions = Vector{MPcondition}()
         newTrans.extraChanges = Dict{String, String}()
         newTrans.probabilityList = [ 1.0 ]
-        newTrans.priority = 1
+        newTrans.priority = one( Int8 )
         return newTrans
 
     end  # Transition( name, sourceNode, targetNode, freq, offset, maxAttempts,

@@ -140,7 +140,7 @@ function getActiveAtTime( mpSim::MPsim, timePoint::Float64,
     queryCmd = string( "SELECT `", mpSim.idKey, "` tmpID, timeIndex FROM `",
         mpSim.transDBname, "` WHERE",
         "\n    timeIndex <= ", timePoint, isempty( queryCmd ) ? "" : " AND ", join( queryCmd, " AND " ), "\n    GROUP BY `", mpSim.idKey, "`",
-        "\n    HAVING endState IN ( '", nodeCond, "' )" )
+        "\n    HAVING ", mpSim.tNode, " IN ( '", nodeCond, "' )" )
 
     # Generate full query.
     queryCmd = string( "SELECT *, ",
@@ -169,8 +169,8 @@ function getSubpopulationStateAtTime!( activeAtTime::DataFrame, mpSim::MPsim,
 
     # Get the value of the attributes at time tPoint.
     activeIDs = activeAtTime[ :, Symbol( mpSim.idKey ) ]
-    queryCmd = string( "SELECT `", mpSim.idKey, "`, attribute, strValue FROM `",
-        mpSim.histDBname, "` WHERE", 
+    queryCmd = string( "SELECT `", mpSim.idKey, "`, attribute, ", mpSim.valName,
+        " FROM `", mpSim.histDBname, "` WHERE",
         "\n    timeIndex <= ", timePoint, " AND ",
         "\n    attribute IS NOT 'status' AND ",
         "\n   `", mpSim.idKey, "` IN ( '",
@@ -191,7 +191,7 @@ function getSubpopulationStateAtTime!( activeAtTime::DataFrame, mpSim::MPsim,
         #     currentAttributeVals[ attributeInds, :strValue ]
         # ! This formulation is best for DataFrames v0.19+
         activeAtTime[ :, Symbol( attribute ) ] =
-            currentAttributeVals[ attributeInds, :strValue ]
+            currentAttributeVals[ attributeInds, Symbol( mpSim.valName ) ]
         # ! This formulation gives a deprecation warning for DataFrames v0.19+
     end  # for attrib in attribshelp
 

@@ -9,8 +9,8 @@
 
     # Preparatory steps.
     timeToWait = recruitment.offset
-    priority = typemin( Int8 ) + ( recruitment.isAdaptive ? zero( Int8 ) :
-        one( Int8 ) )
+    priority = recruitment.priority -
+        Int8( ( recruitment.isAdaptive ? 1 : 0 ) * mpSim.nPriorities )
 
     # Process loop.
     while now( sim ) + timeToWait <= mpSim.simLength
@@ -67,7 +67,7 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
 
     # Generate attribute values for the new personnel members.
     attributeNames = collect( keys( mpSim.attributeList ) )
-    newPersons = DataFrame( fill( missing, nToRecruit,
+    newPersons = DataFrame( fill( "", nToRecruit,
         length( mpSim.attributeList ) ), Symbol.( attributeNames ) )
     
     for name in attributeNames
@@ -83,7 +83,7 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
     targetNode = mpSim.baseNodeList[ recruitment.targetNode ]
 
     for name in keys( targetNode.requirements )
-        newPersons[ :, Symbol( name ) ] .= targetNode.requirements[ name ]
+        newPersons[ :, Symbol( name ) ] = targetNode.requirements[ name ]
     end  # for name in keys( targetNode.requirements )
 
     # Add ID key and ages.
@@ -92,15 +92,11 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
     insertcols!( newPersons, 2, :recAge => recruitment.ageDist( nToRecruit ) )
 
     # Update target node populaton.
-    currentTime = now( mpSim )
-
-    for id in ids
-        targetNode.inNodeSince[ id ] = currentTime
-    end  # for id in ids
+    setindex!.( Ref( targetNode.inNodeSince ), now( mpSim ), ids )
 
     # Entries into databases.
     attrition = mpSim.attritionSchemes[ targetNode.attrition ]
-    timeOfAttrition = currentTime .+ generateTimeToAttrition( attrition,
+    timeOfAttrition = now( mpSim ) .+ generateTimeToAttrition( attrition,
         nToRecruit )
     insertcols!( newPersons, 3, :attrTime => timeOfAttrition )
 
@@ -113,7 +109,7 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
     attrCmd = map( ii -> join( attrCmd[ ii, : ] ), 1:nToRecruit )
     sqliteCmd = map( toa -> toa == +Inf ? "NULL" : toa, timeOfAttrition )
     sqliteCmd = string.( "\n    ('", newPersons[ :, Symbol( mpSim.idKey ) ],
-        "', 'active', ", currentTime, ", ", newPersons[ :, :recAge ], ", ",
+        "', 'active', ", now( mpSim ), ", ", newPersons[ :, :recAge ], ", ",
         sqliteCmd, ", '", targetNode.name, "'", attrCmd, ")" )
     sqliteCmd = string( "INSERT INTO `", mpSim.persDBname, "` (`", mpSim.idKey,
         "`, status, timeEntered, ageAtRecruitment, ",
@@ -123,7 +119,7 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
     SQLite.execute!( mpSim.simDB, sqliteCmd )
 
     # Transition database.
-    sqliteCmd = string.( "\n    ('", ids, "', ", currentTime, ", '",
+    sqliteCmd = string.( "\n    ('", ids, "', ", now( mpSim ), ", '",
         recruitment.name, "', '", recruitment.targetNode, "')" )
     sqliteCmd = string( "INSERT INTO `", mpSim.transDBname, "` (`", mpSim.idKey,
         "`, timeIndex, transition, targetNode) VALUES", join( sqliteCmd, "," ) )
@@ -131,7 +127,7 @@ function generatePersons( recruitment::Recruitment, nToRecruit::Int,
 
     # History database.
     sqliteCmd = map( attributeNames ) do name
-        return string.( "\n    ('", ids, "', ", currentTime, ", '", name,
+        return string.( "\n    ('", ids, "', ", now( mpSim ), ", '", name,
             "', '", newPersons[ Symbol( name ) ], "')" )
     end  # map( attributeNames ) do name
     

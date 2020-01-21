@@ -232,6 +232,8 @@ transition3 = Transition( "Transition 3", "dummy", "dummy" )
 transition4 = Transition( "Transition 4", "Base Node 2", "Base Node 3" )
 transition5 = Transition( "Transition 5", "dummy", "Base Node 1" )
 transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
+transition7 = Transition( "Transition 7", "Base Node 1", "Base Node 2" )
+transition8 = Transition( "Transition 8", "Base Node 1", "Base Node 2" )
 
 @testset "function addSimulationTransition!" begin
     @test_deprecated addTransition!( mpSim, transition1 )
@@ -241,6 +243,8 @@ transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
     setTransitionNode!( transition3, "Base Node 3" )
     setTransitionNode!( transition3, "Base Node 2", true )
     setTransitionNode!( transition5, "Base Node 1" )
+    setTransitionAttributeChanges!( transition7, ("Attribute 4", "Tesla Gun") )
+    setTransitionAttributeChanges!( transition8, ("Attribute 1", "Boltgun") )
     addTransitionCondition!( transition1,
         MPcondition( "Attribute 1", ==, "Stubber" ) )
     addTransitionCondition!( transition2,
@@ -252,21 +256,25 @@ transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
     addTransitionCondition!( transition5,
         MPcondition( "Attribute 3", ∉, [ "Stubber", "Assault Cannon" ] ) )
     addSimulationTransition!( mpSim, transition1, transition2, transition3,
-        transition4, transition5, transition6 )
+        transition4, transition5, transition6, transition7, transition8 )
     @test all( [ haskey( mpSim.transitionsByName, "Transition 1" ),
         haskey( mpSim.transitionsByName, "Transition 2" ),
         haskey( mpSim.transitionsByName, "Transition 3" ),
         haskey( mpSim.transitionsByName, "Transition 4" ),
         haskey( mpSim.transitionsByName, "Transition 5" ),
+        haskey( mpSim.transitionsByName, "Transition 7" ),
+        haskey( mpSim.transitionsByName, "Transition 8" ),
         length( mpSim.transitionsByName[ "Transition 1" ] ) == 2,
         length( mpSim.transitionsByName[ "Transition 2" ] ) == 1,
         length( mpSim.transitionsByName[ "Transition 3" ] ) == 1,
         length( mpSim.transitionsByName[ "Transition 4" ] ) == 1,
-        length( mpSim.transitionsByName[ "Transition 5" ] ) == 1 ] )
+        length( mpSim.transitionsByName[ "Transition 5" ] ) == 1,
+        length( mpSim.transitionsByName[ "Transition 7" ] ) == 1,
+        length( mpSim.transitionsByName[ "Transition 8" ] ) == 1 ] )
     @test all( [ haskey( mpSim.transitionsBySource, "Base Node 1" ),
         haskey( mpSim.transitionsBySource, "Base Node 2" ),
         haskey( mpSim.transitionsBySource, "Base Node 3" ),
-        length( mpSim.transitionsBySource[ "Base Node 1" ] ) == 2,
+        length( mpSim.transitionsBySource[ "Base Node 1" ] ) == 4,
         length( mpSim.transitionsBySource[ "Base Node 2" ] ) == 1,
         length( mpSim.transitionsBySource[ "Base Node 3" ] ) == 3 ] )
     @test all( [ haskey( mpSim.transitionsByTarget, "Base Node 1" ),
@@ -274,7 +282,7 @@ transition6 = Transition( "Transition 1", "Base Node 3", "Base Node 1" )
         haskey( mpSim.transitionsByTarget, "Base Node 3" ),
         length( mpSim.transitionsByTarget[ "OUT" ] ) == 1,
         length( mpSim.transitionsByTarget[ "Base Node 1" ] ) == 2,
-        length( mpSim.transitionsByTarget[ "Base Node 2" ] ) == 1,
+        length( mpSim.transitionsByTarget[ "Base Node 2" ] ) == 3,
         length( mpSim.transitionsByTarget[ "Base Node 3" ] ) == 2 ] )
     @test !isSimulationConsistent( mpSim )
     @test !verifySimulation!( mpSim )
