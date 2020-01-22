@@ -84,6 +84,7 @@ mutable struct ManpowerSimulation
     orgSize::Int
     dbSize::Int
     simDB::SQLite.DB
+    reportFolder::String
     persDBname::String
     histDBname::String
     transDBname::String

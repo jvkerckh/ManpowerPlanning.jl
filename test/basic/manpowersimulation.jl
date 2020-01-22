@@ -25,6 +25,14 @@ end  # @testset "function verifySimulation!"
     @test verifySimulation!( mpSim, true )
 end  # @testset "function setSimulationKey!"
 
+@testset "function setSimulationName!" begin
+    setSimulationName!( mpSim, "testSim" )
+    @test ( mpSim.simName == "testSim" ) &&
+        ( mpSim.persDBname == "Personnel_testSim" ) &&
+        ( mpSim.histDBname == "History_testSim" ) &&
+        ( mpSim.transDBname == "Transitions_testSim" )
+end  # @testset "function setSimulationName!"
+
 attribute1 = Attribute( "Attribute 1" )
 setPossibleAttributeValues!( attribute1,
     [ "Lasgun", "Flak armour", "Stubber" ] )
@@ -404,8 +412,13 @@ end  # @testset "function setSimulationPersonnelTarget!"
 
 @testset "function setSimulationDatabaseName!" begin
     setSimulationDatabaseName!( mpSim, "testDB" )
-    @test mpSim.dbName == "testDB.sqlite"
+    @test ( mpSim.dbName == "testDB.sqlite" ) && ( mpSim.reportFolder == "" )
 end  # @testset "function setSimulationDatabaseName!"
+
+@testset "function setSimulationShowInfo!" begin
+    setSimulationShowInfo!( mpSim, false )
+    @test !mpSim.showInfo
+end  # @testset "function setSimulationShowInfo!"
 
 end  # @testset "ManpowerSimulation"
 

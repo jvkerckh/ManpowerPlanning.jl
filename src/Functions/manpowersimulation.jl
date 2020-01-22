@@ -42,7 +42,8 @@ export  isSimulationFresh,
         setSimulationLength!,
         setSimulationPersonnelTarget!,
         setSimulationDatabaseName!,
-        setSimulationDatabase!
+        setSimulationDatabase!,
+        setSimulationShowInfo!
 
 
 """
@@ -137,9 +138,9 @@ This function returns `true`, indicating that the name of the simulation has bee
 function setSimulationName!( mpSim::MPsim, simName::String )::Bool
 
     mpSim.simName = simName
-    newMPsim.persDBname = string( "Personnel_", simName )
-    newMPsim.histDBname = string( "History_", simName )
-    newMPsim.transDBname = string( "Transitions_", simName )
+    mpSim.persDBname = string( "Personnel_", simName )
+    mpSim.histDBname = string( "History_", simName )
+    mpSim.transDBname = string( "Transitions_", simName )
     return true
 
 end  # setSimulationName!( mpSim, simName )
@@ -1144,6 +1145,7 @@ function setSimulationDatabaseName!( mpSim::MPsim, dbName::String = "" )::Bool
 
     mpSim.dbName = endswith( dbName, ".sqlite" ) || isempty( dbName ) ? dbName :
         string( dbName, ".sqlite" )
+    mpSim.reportFolder = dirname( dbName )
     return true
 
 end  # setSimulationDatabaseName!( mpSim, dbName )
@@ -1169,6 +1171,24 @@ function setSimulationDatabase!( mpSim::MPsim, dbName::String = "" )::Bool
     return true
 
 end  # setSimulationDatabase!( mpSim, dbName )
+
+
+"""
+```
+setShowInfo!(
+    mpSim::MPsim,
+    showInfo::Bool )
+```
+This function sets the flag controlling whether timing and other information about the manpower simulation (`mpSim`) run is displayed to `showInfo`.
+
+This function returns `true`, indicating that the flag is successfully set.
+"""
+function setSimulationShowInfo!( mpSim::MPsim, showInfo::Bool )::Bool
+
+    mpSim.showInfo = showInfo
+    return true
+
+end  # setSimulationShowInfo!( mpSim, showInfo )
 
 
 """
