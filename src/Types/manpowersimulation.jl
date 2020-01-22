@@ -100,6 +100,8 @@ mutable struct ManpowerSimulation
     tNode::String
     valName::String
 
+    catFileName::String
+
     # This is the name of the parameter configuration file. If this is an empty
     #   string, the simulation must be configured manually.
     # catFileName::String
