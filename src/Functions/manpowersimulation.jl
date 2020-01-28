@@ -308,8 +308,16 @@ If there are multiple nodes with the same name, this function issues a warning a
 
 This function returns `true` if the compound nodes have been successfully added, and `false` if multiple nodes had the same name.
 """
-addSimulationCompoundNode!( mpSim::MPsim, nodes::CompoundNode... )::Bool =
-    setSimCompoundNodes!( mpSim, collect( nodes ), false )
+function addSimulationCompoundNode!( mpSim::MPsim,
+    nodes::CompoundNode... )::Bool
+
+    if isempty( nodes )
+        return false
+    end  # if isempty( nodes )
+
+    return setSimCompoundNodes!( mpSim, collect( nodes ), false )
+
+end  # addSimulationCompoundNode!( mpSim, nodes )
 
 """
 ```
