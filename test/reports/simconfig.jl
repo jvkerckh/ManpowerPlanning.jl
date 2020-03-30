@@ -63,17 +63,17 @@ addSimulationRecruitment!( mpSim, rec1, rec2, rec3 )
 
 # Setting THROUGH Transitions.
 ttrans1 = Transition( "Promotion", "A junior", "A senior" )
-addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( ttrans1, MPcondition( "time in node", >=, 24 ) )
 ttrans2 = Transition( "Promotion", "B junior", "B senior" )
-addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( ttrans2, MPcondition( "time in node", >=, 24 ) )
 ttrans3 = Transition( "Promotion", "A senior", "Master" )
-addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 36 ) )
+addTransitionCondition!( ttrans3, MPcondition( "time in node", >=, 36 ) )
 ttrans4 = Transition( "Promotion", "B senior", "Master" )
-addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 36 ) )
+addTransitionCondition!( ttrans4, MPcondition( "time in node", >=, 36 ) )
 ttrans5 = Transition( "Reserve", "Reserve junior", "A senior" )
-addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( ttrans5, MPcondition( "time in node", >=, 24 ) )
 ttrans6 = Transition( "Reserve", "Reserve junior", "B senior" )
-addTransitionCondition!( ttrans1, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( ttrans6, MPcondition( "time in node", >=, 24 ) )
 
 setTransitionSchedule!.( [ ttrans1, ttrans2, ttrans3, ttrans4, ttrans5,
     ttrans6 ], 12 )
@@ -86,17 +86,17 @@ addSimulationTransition!( mpSim, ttrans1, ttrans2, ttrans3, ttrans4, ttrans5,
 
 # Setting OUT Transitions.
 otrans1 = Transition( "B-", "A junior" )
-addTransitionCondition!( otrans1, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( otrans1, MPcondition( "time in node", >=, 24 ) )
 otrans2 = Transition( "B-", "B junior" )
-addTransitionCondition!( otrans2, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( otrans2, MPcondition( "time in node", >=, 24 ) )
 otrans3 = Transition( "B-", "Reserve junior" )
-addTransitionCondition!( otrans3, MPcondition( "time in node", ==, 24 ) )
+addTransitionCondition!( otrans3, MPcondition( "time in node", >=, 24 ) )
 otrans4 = Transition( "PE", "A senior" )
-addTransitionCondition!( otrans1, MPcondition( "tenure", ==, 120 ) )
+addTransitionCondition!( otrans4, MPcondition( "tenure", >=, 120 ) )
 otrans5 = Transition( "PE", "B senior" )
-addTransitionCondition!( otrans1, MPcondition( "tenure", ==, 120 ) )
+addTransitionCondition!( otrans5, MPcondition( "tenure", >=, 120 ) )
 otrans6 = Transition( "PE", "Master" )
-addTransitionCondition!( otrans1, MPcondition( "tenure", ==, 120 ) )
+addTransitionCondition!( otrans6, MPcondition( "tenure", >=, 120 ) )
 
 setTransitionMaxAttempts!.( [ otrans1, otrans2, otrans3, otrans4, otrans5,
     otrans6 ], 1 )

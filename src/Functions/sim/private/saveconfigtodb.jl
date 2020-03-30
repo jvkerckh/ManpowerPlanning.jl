@@ -63,10 +63,6 @@ end  # storeAttrition( mpSim )
 
 function storeNodes( mpSim::MPsim )
 
-    if isempty( mpSim.baseNodeList ) && isempty( mpSim.compoundNodeList )
-        return
-    end  # if isempty( mpSim.baseNodeList ) && ...
-
     baseNodeCmd = map( collect( keys( mpSim.baseNodeList ) ) ) do name
         node = mpSim.baseNodeList[ name ]
         tmpCmd = join( map( attr -> string( attr, ":",
@@ -76,6 +72,13 @@ function storeNodes( mpSim::MPsim )
             node.attrition, ";[", tmpCmd, "]')" )
     end  # map( ... ) do name
 
+    orderCmd = map( collect( keys( mpSim.baseNodeOrder ) ) ) do name
+        return string( name, ":", mpSim.baseNodeOrder[ name ] )
+    end  # map( ... ) do name
+
+    orderCmd = string( "\n    ('Order', 'Base Node Order', '",
+        join( orderCmd, ";" ), "')" )
+
     compNodeCmd = map( collect( keys( mpSim.compoundNodeList ) ) ) do name
         node = mpSim.compoundNodeList[ name ]
         return string( "\n    ('", name, "', 'Compound Node', '[",
@@ -83,9 +86,8 @@ function storeNodes( mpSim::MPsim )
     end  # map( ... ) do name
 
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
-        " VALUES", join( baseNodeCmd, "," ),
-        isempty( baseNodeCmd ) || isempty( compNodeCmd ) ? "" : ",",
-        join( compNodeCmd, "," ) )
+        " VALUES", join( baseNodeCmd, "," ), isempty( baseNodeCmd ) ? "" : ",",
+        orderCmd, isempty( compNodeCmd ) ? "" : ",", join( compNodeCmd, "," ) )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
 
 end  # storeNodes( mpSim )
@@ -137,3 +139,60 @@ function storeRecruitment( mpSim::MPsim )
     SQLite.execute!( mpSim.simDB, sqliteCmd )
 
 end  # storeRecruitment( mpSim )
+
+
+function storeTransitions( mpSim )
+
+    transCmd = map( collect( keys( mpSim.transitionsByName ) ) ) do name
+        tmpCmd = map( mpSim.transitionsByName[ name ] ) do trans
+            conditionsStr = map( trans.extraConditions ) do condition
+                return string( condition.attribute, ":",
+                    relationEntries[ condition.operator ], ":",
+                    condition.value isa Vector ? join( condition.value, ":" ) :
+                        condition.value )
+            end  # map( trans.extraConditions ) do condition
+
+            changesStr =
+                map( collect( keys( trans.extraChanges ) ) ) do attribute
+                    return string( attribute, ":",
+                        trans.extraChanges[ attribute ] )
+            end  # map( ... ) do attribute
+
+            tmpStr = string( "'", trans.sourceNode, ";",
+                trans.isOutTransition ? "OUT" : trans.targetNode, ";",
+                trans.freq, ";", trans.offset, ";", trans.maxAttempts, ";",
+                trans.minFlux, ";", trans.maxFlux, ";", trans.hasPriority,
+                ";[", join( conditionsStr, "," ), "];[",
+                join( changesStr, "," ), "];[", join( trans.probabilityList,
+                "," ), "]'" )
+            return tmpStr
+        end  # map( ... ) do trans
+
+        tmpCmd = join( string.( "\n    ('", name, "', 'Transition', ", tmpCmd,
+            ")" ), "," )
+    end  # map( ... ) do name
+
+    orderCmd = map( collect( keys( mpSim.baseNodeOrder ) ) ) do name
+        return string( name, ":", mpSim.baseNodeOrder[ name ] )
+    end  # map( ... ) do name
+
+    orderCmd = string( "\n    ('Order', 'Base Node Order', '",
+        join( orderCmd, ";" ), "')" )
+
+    sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
+        " VALUES", join( transCmd, "," ), isempty( transCmd ) ? "" : ",",
+        orderCmd )
+    SQLite.execute!( mpSim.simDB, sqliteCmd )
+
+end  # storeTransitions( mpSim )
+
+
+function storeRetirement( mpSim )
+
+    sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
+        " VALUES ('Retirement', 'Retirement', '", mpSim.retirement.freq, ";",
+        mpSim.retirement.offset, ";", mpSim.retirement.maxCareerLength, ";",
+        mpSim.retirement.retirementAge, ";", mpSim.retirement.isEither, "')" )
+    SQLite.execute!( mpSim.simDB, sqliteCmd )
+
+end  # storeRetirement( mpSim )

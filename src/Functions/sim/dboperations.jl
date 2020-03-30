@@ -15,6 +15,8 @@ function saveSimulationConfiguration( mpSim::MPsim )::Bool
     storeAttrition( mpSim )
     storeNodes( mpSim )
     storeRecruitment( mpSim )
+    storeTransitions( mpSim )
+    storeRetirement( mpSim )
     SQLite.execute!( mpSim.simDB, "COMMIT" )
 
     return true

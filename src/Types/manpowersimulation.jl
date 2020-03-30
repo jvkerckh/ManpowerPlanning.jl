@@ -11,6 +11,7 @@ The type contains the following fields:
 * `attributeList::Dict{String, Attribute}`: the list of attributes in the simulation.
 * `idKey::String`: the name of the unique personnel identifier key. This is used only in the results database. Default = `"id"`
 * `baseNodeList::Dict{String, BaseNode}`: the list of base nodes in the simulation.
+* `baseNodeOrder::Dict{String, Int}`: the preferred order in which the base nodes are visited by transitions.
 * `compoundNodeList::Dict{String, CompoundNode}`: the list of compound nodes in the simulation.
 * `recruitmentByName::Dict{String, Vector{Recruitment}}`: the list of recruitment schemes in the simulation, grouped by name.
 * `recruitmentByTarget::Dict{String, Vector{Recruitment}}`: the list of recruitment schemes in the simulation, grouped by target node.
@@ -19,6 +20,7 @@ The type contains the following fields:
 * `transitionsByTarget::Dict{String, Vector{Transition}}`: the list of transitions in the simulation, grouped by target node.
 * `retirement::Retirement`: the default retirement scheme. Defaults of no retirement.
 * `transitionTypeOrder::Dict{String, Int}`: the preferred order in which transitions of different types are handled.
+* `retirement::Retirement`: the fallback retirement scheme for personnel member who haven't had an OUT transition yet.
 * `attritionSchemes::Dict{String, Attrition}`: the list of attrition schemes in the simulation. This list always contains a default attrition scheme with a flat zero attrition.
 * `simLength::Float64`: the length of the simulation (in internal time units). Default = 0.0
 * `personnelTarget:Int`: the target number of personnel members in the simulation. Default = 0
