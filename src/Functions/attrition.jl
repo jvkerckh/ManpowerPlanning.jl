@@ -75,7 +75,7 @@ end  # setAttritionPeriod!( attrition, period )
 
 
 """
-``````
+```
 setAttritionCurve!(
     attrition::Attrition,
     curve::Dict{Float64, Float64} )
@@ -129,9 +129,11 @@ function setAttritionCurve!( attrition::Attrition,
 end  # setAttritionCurve!( attrition, curve )
 
 """
-setAttritionCurve!( attrition::Attrition,
-                    curve::Array{Float64, 2} )
-
+```
+setAttritionCurve!(
+    attrition::Attrition,
+    curve::Array{Float64, 2} )
+```
 This function sets the attrition curve of attrition scheme `attrition` to
 `curve`. The attrition curve is passed as a 2-dimensional `Array{Float64, 2}`
 with 2 columns. The first column has the time a person exists in the simulation,

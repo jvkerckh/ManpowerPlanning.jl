@@ -176,7 +176,7 @@ function storeTransitions( mpSim )
         return string( name, ":", mpSim.baseNodeOrder[ name ] )
     end  # map( ... ) do name
 
-    orderCmd = string( "\n    ('Order', 'Base Node Order', '",
+    orderCmd = string( "\n    ('Order', 'Transition Order', '",
         join( orderCmd, ";" ), "')" )
 
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",

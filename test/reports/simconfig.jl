@@ -34,6 +34,8 @@ setNodeRequirements!( node6, ("level", "Master"), ("branch", "none"),
 setNodeTarget!.( [ node1, node2, node3, node4, node5, node6 ],
     [ -1, -1, -1, 30, 30, 25 ] )
 setSimulationBaseNodes!( mpSim, [ node1, node2, node3, node4, node5, node6 ] )
+setSimulationBaseNodeOrder!( mpSim, Dict( "Master" => 1, "A senior" => 2,
+    "B senior" => 2, "A junior" => 3, "B junior" => 3 ) )
 
 # Setting Compound Nodes.
 cnode1 = CompoundNode( "Branch A" )
@@ -104,6 +106,8 @@ setTransitionFluxLimits!.( [ otrans1, otrans2, otrans3, otrans4, otrans5,
     otrans6 ], 0, -1 )
 addSimulationTransition!( mpSim, otrans1, otrans2, otrans3, otrans4, otrans5,
     otrans6 )
+setSimulationTransitionTypeOrder!( mpSim, Dict( "PE" => 1, "Promotion" => 2,
+    "Reserve" => 3, "B-" => 4 ) )
 
 # Miscellaneous configs.
 # setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )
