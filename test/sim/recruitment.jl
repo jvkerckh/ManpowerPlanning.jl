@@ -125,15 +125,15 @@ end  # @testset "Disc random recruitment test"
     report = report[ :, Symbol( "external => active" ) ]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 33, 28, 35, 60, 64, 81 ] )
-    
+    @test all( reportCounts .== [ 35, 37, 35, 68, 57, 69 ] )
+   
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
     report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
     report = report[ :, Symbol( "external => active" ) ]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 31, 42, 30, 63, 70, 65 ] )
+    @test all( reportCounts .== [ 38, 23, 32, 67, 68, 73 ] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
@@ -141,7 +141,7 @@ end  # @testset "Disc random recruitment test"
     report = report[ :, Symbol( "external => active" ) ]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 29, 31, 42, 61, 65, 73 ] )
+    @test all( reportCounts .== [ 44, 31, 34, 63, 67, 62 ] )
 end  # @testset "PUnif random recruitment test"
 
 @testset "PLin random recruitment test" begin

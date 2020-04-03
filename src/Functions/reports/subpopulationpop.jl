@@ -16,7 +16,8 @@ This function will issue a warning and not generate any report in the following 
     
 This function returns a `DataFrame`, with the first column the time points and the other columns corresponding to the population counts at each time point for each subpopulation. In case the function issues a warning, its return value will be an empty `DataFrame`.
 """
-function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64}, subpopulations::Subpopulation... )::DataFrame
+function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64},
+    subpopulations::Subpopulation... )::DataFrame
 
     timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
     timeGrid = unique( sort( timeGrid, rev = true ) )

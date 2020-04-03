@@ -89,13 +89,9 @@ function recPUnifDist( distNodes::Dict{Int, Float64}, nodes::Vector{Int} )
     if length( nodes ) == 2
         intLength = nodes[ 2 ] - nodes[ 1 ]
 
-        # Equivalent to discrete distribution with one outcome.
-        if intLength == 1
-            return function() return nodes[ 1 ] end
-        end  # if nodes[ 2 ] - nodes[ 1 ] == 1
-
         return function()
-            return floor( Int, rand() * intLength ) + nodes[ 1 ]
+            return intLength == 1 ? nodes[ 1 ] :
+                rand( nodes[ 1 ]:( nodes[ 2 ] - 1 ) )
         end  # anonymous function()
     end  # if length( nodes ) == 2
 
@@ -106,12 +102,8 @@ function recPUnifDist( distNodes::Dict{Int, Float64}, nodes::Vector{Int} )
     return function()
         intInd = rand( Categorical( pInts ) )
         intLength = nodes[ intInd + 1 ] - nodes[ intInd ]
-
-        if intLength == 1
-            return nodes[ intInd ]
-        end  # if intLength == 1
-
-        return floor( Int, rand() * intLength ) + nodes[ intInd ]
+        return intLength == 1 ? nodes[ intInd ] :
+            rand( nodes[ intInd ]:( nodes[ intInd + 1 ] - 1 ) )
     end  # anonymous function()
 
 end  # recPUnifDist( distNodes, nodes )
@@ -177,7 +169,7 @@ function ageDiscDist( distNodes::Dict{Float64, Float64},
 
     # No need to involve a distribution if there's only one node.
     if length( nodes ) == 1
-        return function() return nodes[ 1 ] end
+        return function( n::Integer ) return fill( nodes[ 1 ], n ) end
     end  # if length( nodes ) == 1
 
     # Get the point probabilities of the nodes.

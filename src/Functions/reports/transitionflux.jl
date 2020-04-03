@@ -23,7 +23,8 @@ This function will issue a warning and not generate any report in the following 
 
 The function returns a `DataFrame` holding the flux report. The first column are the time points, and each other column corresponds to one of the valid transitions. In case the function issues a warning, its return value will be an empty `DataFrame`.
 """
-function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64}, transitions::TransitionType... )::DataFrame
+function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
+    transitions::TransitionType... )::DataFrame
 
     timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
     timeGrid = unique( sort( timeGrid, rev = true ) )
@@ -67,7 +68,7 @@ end  # transitionFluxReport( mpSim, timeGrid, transitions )
 ```
 transitionFluxReport(
     mpSim::MPsim,
-    timeGrid::Vector{Float64},
+    timeRes::Real,
     transitions::TransitionType... )
 ```
 This function generates reports for the flux of the unique transitions in `transitions` of the manpower simulation `mpSim`. The reports are generated on a grid of time points with resolution `timeRes`.
@@ -85,7 +86,9 @@ This function will issue a warning and not generate any report in the following 
 
 The function returns a `DataFrame` holding the flux report. The first column are the time points, and each other column corresponds to one of the valid transitions. In case the function issues a warning, its return value will be an empty `DataFrame`.
 """
-transitionFluxReport( mpSim::MPsim, timeRes::Real, transitions::TransitionType... )::DataFrame = transitionFluxReport( mpSim, generateTimeGrid( mpSim, timeRes ), transitions... )
+transitionFluxReport( mpSim::MPsim, timeRes::Real,
+    transitions::TransitionType... )::DataFrame = transitionFluxReport( mpSim,
+    generateTimeGrid( mpSim, timeRes ), transitions... )
 
 
 include( joinpath( repPrivPath, "transitionflux.jl" ) )
