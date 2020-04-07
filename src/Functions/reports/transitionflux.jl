@@ -56,10 +56,11 @@ function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
             transitions[ ii ] )
     end  # for transition in transitions
 
-    transitionNames = generateTransitionName.( transitions )
+    transitionNames = vcat( "timeStart", "timePoint",
+        generateTransitionName.( transitions ) )
 
-    return DataFrame( hcat( timeGrid, results ), vcat( :timePoint,
-        Symbol.( transitionNames ) ) )
+    return DataFrame( hcat( vcat( 0, timeGrid[ 1:(end - 1) ] ), timeGrid,
+        results ), Symbol.( transitionNames ) )
 
 end  # transitionFluxReport( mpSim, timeGrid, transitions )
 

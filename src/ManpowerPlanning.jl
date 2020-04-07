@@ -29,7 +29,7 @@ module ManpowerPlanning
     # using XLSX
     # using ExcelWrapper
 
-    version = v"2.1.3"
+    version = v"2.1.4"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
