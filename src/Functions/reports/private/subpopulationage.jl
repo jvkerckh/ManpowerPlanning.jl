@@ -1,4 +1,5 @@
-function getAgesAtTime( mpSim::MPsim, timePoint::Float64, subpopulations::Vector{Subpopulation}, ageType::Symbol )
+function getAgesAtTime( mpSim::MPsim, timePoint::Float64,
+    subpopulations::Vector{Subpopulation}, ageType::Symbol )
 
     # Get the ids in each subpopulation at the time point.
     result = Vector{Vector{Float64}}( undef, length( subpopulations ) )
@@ -49,7 +50,7 @@ function getAgesAtTime( mpSim::MPsim, timePoint::Float64, subpopulations::Vector
 end  # getAgesAtTime( mpSim, timePoint, subpopulationulations, ageType )
 
 
-function processSubpopulationAges( personnelAges::Array{Vector{Float64}, 2},
+function processSubpopulationAges( personnelAges::Array{Vector{Float64},2},
     subpopulations::Vector{Subpopulation}, timeGrid::Vector{Float64},
     ageRes::Float64 )
 

@@ -21,14 +21,14 @@ This function will issue a warning and not generate any report in the following 
 2. The flux type is unknown;
 3. None of the entered nodes are actual nodes in the simulation.
 
-This function returns a `Dict{String, DataFrame}`, where the keys are the valid nodes, and the value is the flux report for that node, where fluxes are broken down per specific transitions. In case the function issues a warning, its return value will be an empty dictionary.
+This function returns a `Dict{String,DataFrame}`, where the keys are the valid nodes, and the value is the flux report for that node, where fluxes are broken down per specific transitions. In case the function issues a warning, its return value will be an empty dictionary.
 """
 function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    fluxType::KeyType, nodes::String... )::Dict{String, DataFrame}
+    fluxType::KeyType, nodes::String... )::Dict{String,DataFrame}
 
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
-    result = Dict{String, DataFrame}()
+    result = Dict{String,DataFrame}()
     fluxType = Symbol( fluxType )
 
     if isempty( timeGrid )
@@ -90,10 +90,10 @@ This function will issue a warning and not generate any report in the following 
 2. The flux type is unknown;
 3. None of the entered nodes are actual nodes in the simulation.
 
-This function returns a `Dict{String, DataFrame}`, where the keys are the valid nodes, and the value is the flux report for that node, where fluxes are broken down per specific transitions. In case the function issues a warning, its return value will be an empty dictionary.
+This function returns a `Dict{String,DataFrame}`, where the keys are the valid nodes, and the value is the flux report for that node, where fluxes are broken down per specific transitions. In case the function issues a warning, its return value will be an empty dictionary.
 """
 nodeFluxReport( mpSim::MPsim, timeRes::Real, fluxType::Symbol,
-    nodes::String... )::Dict{String, DataFrame} = nodeFluxReport( mpSim,
+    nodes::String... )::Dict{String,DataFrame} = nodeFluxReport( mpSim,
     generateTimeGrid( mpSim, timeRes ), fluxType, nodes... )
 
 

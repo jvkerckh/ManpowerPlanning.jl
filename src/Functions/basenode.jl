@@ -157,14 +157,14 @@ end  # clearNodeRequirements!( node )
 ```
 setNodeRequirements!(
     node::BaseNode,
-    attrVals::Dict{String, String} )
+    attrVals::Dict{String,String} )
 ```
 This function sets the requirements for the node `node` to the attribute/value combinations in `attrVals`.
 
 This function returns `true`, indicating the requirements have been successfully set.
 """
 function setNodeRequirements!( node::BaseNode,
-    attrVals::Dict{String, String} )::Bool
+    attrVals::Dict{String,String} )::Bool
 
     node.requirements = deepcopy( attrVals )
     return true
@@ -175,7 +175,7 @@ end  # setNodeRequirements!( node, attrVals )
 ```
 setNodeRequirements!(
     node::BaseNode,
-    attrVals::NTuple{2, String}... )
+    attrVals::NTuple{2,String}... )
 ```
 This function sets the requirements for the node `node` to the attribute/value combinations in `attrVals`.
 
@@ -184,7 +184,7 @@ If there are multiple entries for the same attribute, this function isues a warn
 This function returns `true` when the requirements have been set successfully, and `false` when the list contains duplicate entries.
 """
 function setNodeRequirements!( node::BaseNode,
-    attrVals::NTuple{2, String}... )::Bool
+    attrVals::NTuple{2,String}... )::Bool
 
     newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
 
@@ -193,7 +193,7 @@ function setNodeRequirements!( node::BaseNode,
         return false
     end  # if length( newAttrs ) != length( unique( newAttrs ) )
 
-    attrValDict = Dict{String, String}()
+    attrValDict = Dict{String,String}()
 
     for attrVal in attrVals
         attrValDict[attrVal[1]] = attrVal[2]
@@ -228,7 +228,7 @@ function setNodeRequirements!( node::BaseNode, attributes::Vector{String}, value
         return false
     end  # if length( values ) != length( unique( values ) )
 
-    attrValDict = Dict{String, String}()
+    attrValDict = Dict{String,String}()
 
     for ii in eachindex( attributes )
         attrValDict[attributes[ii]] = values[ii]

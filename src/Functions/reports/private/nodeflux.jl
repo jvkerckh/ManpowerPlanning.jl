@@ -228,4 +228,4 @@ function putFluxResultsInArray( mpSim::MPsim,
     results = hcat( sum( results, dims = 2 ), results )
     return results, names
 
-end
+end  # putFluxResultsInArray( mpSim, countDict, nTimePoints )

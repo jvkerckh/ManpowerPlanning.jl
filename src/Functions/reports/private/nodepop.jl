@@ -1,4 +1,5 @@
-function createPopReport( nodes::Vector{String}, timeGrid::Vector{Float64}, inFluxes::Dict{String, DataFrame}, outFluxes::Dict{String, DataFrame} )
+function createPopReport( nodes::Vector{String}, timeGrid::Vector{Float64},
+    inFluxes::Dict{String,DataFrame}, outFluxes::Dict{String,DataFrame} )
 
     result = zeros( Int, length( timeGrid ), length( nodes ) )
 

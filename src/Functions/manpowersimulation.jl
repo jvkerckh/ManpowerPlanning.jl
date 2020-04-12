@@ -499,21 +499,21 @@ setSimulationTransitions!( mpSim::MPsim,
 ```
 addSimulationTransitionTypeOrder!(
     mpSim::MPsim,
-    transOrder::Dict{String, Int} )
+    transOrder::Dict{String,Int} )
 ```
 This function adds the transition type priorities in the list `transOrder` to the manpower simulation `mpSim`. The transition type priorities are given as a dictionary with the transition type as key, and the priority as the key's value, where lower numbers mean transitions of that type are handled first. Transition types that already have a priority, have their priority overwritten.
 
 This function returns `true` if any transition type has a priority added or changed, and `false` otherwise.
 """
 addSimulationTransitionTypeOrder!( mpSim::MPsim,
-    transOrder::Dict{String, Int} )::Bool = setSimTransitionTypeOrder!( mpSim,
+    transOrder::Dict{String,Int} )::Bool = setSimTransitionTypeOrder!( mpSim,
     transOrder, false )
 
 """
 ```
 addSimulationTransitionTypeOrder!(
     mpSim::MPsim,
-    transOrder::Tuple{String, Int}... )
+    transOrder::Tuple{String,Int}... )
 ```
 This function adds the transition type priorities in the list `transOrder` to the manpower simulation `mpSim`. The transition type priorities are given as a list of transition type/priority, where lower numbers for the priority mean transitions of that type are handled first. Transition types that already have a priority, have their priority overwritten.
 
@@ -522,7 +522,7 @@ If this list contains multiple entries for the same transition type, this functi
 This function returns `true` if any transition type has a priority added or changed, and `false` otherwise.
 """
 function addSimulationTransitionTypeOrder!( mpSim::MPsim,
-    transOrder::Tuple{String, Int}... )::Bool
+    transOrder::Tuple{String,Int}... )::Bool
 
     transTypes = map( orderPair -> orderPair[1], transOrder )
 
@@ -531,7 +531,7 @@ function addSimulationTransitionTypeOrder!( mpSim::MPsim,
         return false
     end  # if length( transTypes ) != length( unique( transTypes ) )
 
-    transOrderDict = Dict{String, Int}()
+    transOrderDict = Dict{String,Int}()
 
     for orderPair in transOrder
         transOrderDict[orderPair[1]] = orderPair[2]
@@ -601,21 +601,21 @@ end  # clearSimulationTransitionTypeOrder!( mpSim )
 ```
 setSimulationTransitionTypeOrder!(
     mpSim::MPsim,
-    transOrder::Dict{String, Int} )
+    transOrder::Dict{String,Int} )
 ```
 This function sets the transition type priorities in the list `transOrder` to the manpower simulation `mpSim`. The transition type priorities are given as a dictionary with the transition type as key, and the priority as the key's value, where lower numbers mean transitions of that type are handled first.
 
 This function returns `true` if the transition type priorities have been set successfully, and `false` otherwise.
 """
 setSimulationTransitionTypeOrder!( mpSim::MPsim,
-    transOrder::Dict{String, Int} )::Bool = setSimTransitionTypeOrder!( mpSim,
+    transOrder::Dict{String,Int} )::Bool = setSimTransitionTypeOrder!( mpSim,
     transOrder, true )
 
 """
 ```
 setSimulationTransitionTypeOrder!(
     mpSim::MPsim,
-    transOrder::Tuple{String, Int}... )
+    transOrder::Tuple{String,Int}... )
 ```
 This function sets the transition type priorities in the list `transOrder` to the manpower simulation `mpSim`. The transition type priorities are given as a list of transition type/priority, where lower numbers for the priority mean transitions of that type are handled first.
 
@@ -624,7 +624,7 @@ If this list contains multiple entries for the same transition type, this functi
 This function returns `true` if the transition type priorities have been set successfully, and `false` otherwise.
 """
 function setSimulationTransitionTypeOrder!( mpSim::MPsim,
-    transOrder::Tuple{String, Int}... )::Bool
+    transOrder::Tuple{String,Int}... )::Bool
 
     transTypes = map( orderPair -> orderPair[1], transOrder )
 
@@ -633,7 +633,7 @@ function setSimulationTransitionTypeOrder!( mpSim::MPsim,
         return false
     end  # if length( transTypes ) != length( unique( transTypes ) )
 
-    transOrderDict = Dict{String, Int}()
+    transOrderDict = Dict{String,Int}()
 
     for orderPair in transOrder
         transOrderDict[orderPair[1]] = orderPair[2]
@@ -671,7 +671,7 @@ function setSimulationTransitionTypeOrder!( mpSim::MPsim,
         return false
     end  # if length( transTypes ) != length( unique( transTypes ) )
 
-    transOrderDict = Dict{String, Int}()
+    transOrderDict = Dict{String,Int}()
 
     for ii in eachindex( transTypes )
         transOrderDict[transTypes[ii]] = transPrios[ii]
@@ -686,21 +686,21 @@ end  # setSimulationTransitionTypeOrder!( mpSim, transTypes, transPrios )
 ```
 addSimulationBaseNodeOrder!(
     mpSim::MPsim,
-    nodeOrder::Dict{String, Int} )
+    nodeOrder::Dict{String,Int} )
 ```
 This function adds the base node priorities in the list `nodeOrder` to the manpower simulation `mpSim`. The base node priorities are given as a dictionary with the base node names as key, and the priority as the key's value, where lower numbers mean transitions to/from that node are handled first. Base nodes that already have a priority, have their priority overwritten.
 
 This function returns `true` if any base node has a priority added or changed, and `false` otherwise.
 """
 addSimulationBaseNodeOrder!( mpSim::MPsim,
-    nodeOrder::Dict{String, Int} )::Bool = setSimBaseNodeOrder!( mpSim,
+    nodeOrder::Dict{String,Int} )::Bool = setSimBaseNodeOrder!( mpSim,
     nodeOrder, false )
 
 """
 ```
 addSimulationBaseNodeOrder!(
     mpSim::MPsim,
-    nodeOrder::Tuple{String, Int}... )
+    nodeOrder::Tuple{String,Int}... )
 ```
 This function adds the base node priorities in the list `nodeOrder` to the manpower simulation `mpSim`. The base node priorities are given as a list of base node/priority, where lower numbers for the priority mean transitions to/from that node are handled first. Base nodes that already have a priority, have their priority overwritten.
 
@@ -709,7 +709,7 @@ If this list contains multiple entries for the same base node, this function iss
 This function returns `true` if any base node has a priority added or changed, and `false` otherwise.
 """
 function addSimulationBaseNodeOrder!( mpSim::MPsim,
-    nodeOrder::Tuple{String, Int}... )::Bool
+    nodeOrder::Tuple{String,Int}... )::Bool
 
     baseNodes = map( orderPair -> orderPair[1], nodeOrder )
 
@@ -718,7 +718,7 @@ function addSimulationBaseNodeOrder!( mpSim::MPsim,
         return false
     end  # if length( baseNodes ) != length( unique( baseNodes ) )
 
-    nodeOrderDict = Dict{String, Int}()
+    nodeOrderDict = Dict{String,Int}()
 
     for orderPair in nodeOrder
         nodeOrderDict[orderPair[1]] = orderPair[2]
@@ -788,21 +788,21 @@ end  # clearSimulationBaseNodeOrder!( mpSim )
 ```
 setSimulationBaseNodeOrder!(
     mpSim::MPsim,
-    nodeOrder::Dict{String, Int} )
+    nodeOrder::Dict{String,Int} )
 ```
 This function sets the transition type priorities in the list `nodeOrder` to the manpower simulation `mpSim`. The transition type priorities are given as a dictionary with the transition type as key, and the priority as the key's value, where lower numbers mean transitions of that type are handled first.
 
 This function returns `true` if the transition type priorities have been set successfully, and `false` otherwise.
 """
 setSimulationBaseNodeOrder!( mpSim::MPsim,
-    nodeOrder::Dict{String, Int} )::Bool = setSimBaseNodeOrder!( mpSim,
+    nodeOrder::Dict{String,Int} )::Bool = setSimBaseNodeOrder!( mpSim,
     nodeOrder, true )
 
 """
 ```
 setSimulationBaseNodeOrder!(
     mpSim::MPsim,
-    nodeOrder::Tuple{String, Int}... )
+    nodeOrder::Tuple{String,Int}... )
 ```
 This function sets the base node priorities in the list `nodeOrder` to the manpower simulation `mpSim`. The base node priorities are given as a list of base node/priority, where lower numbers for the priority mean transitions to/from that node are handled first.
 
@@ -811,7 +811,7 @@ If this list contains multiple entries for the same base node, this function iss
 This function returns `true` if the base node priorities have been set successfully, and `false` otherwise.
 """
 function setSimulationBaseNodeOrder!( mpSim::MPsim,
-    nodeOrder::Tuple{String, Int}... )::Bool
+    nodeOrder::Tuple{String,Int}... )::Bool
 
     baseNodes = map( orderPair -> orderPair[1], nodeOrder )
 
@@ -820,7 +820,7 @@ function setSimulationBaseNodeOrder!( mpSim::MPsim,
         return false
     end  # if length( baseNodes ) != length( unique( baseNodes ) )
 
-    nodeOrderDict = Dict{String, Int}()
+    nodeOrderDict = Dict{String,Int}()
 
     for orderPair in nodeOrder
         nodeOrderDict[orderPair[1]] = orderPair[2]
@@ -858,7 +858,7 @@ function setSimulationBaseNodeOrder!( mpSim::MPsim,
         return false
     end  # if length( baseNodes ) != length( unique( baseNodes ) )
 
-    transOrderDict = Dict{String, Int}()
+    transOrderDict = Dict{String,Int}()
 
     for ii in eachindex( baseNodes )
         transOrderDict[baseNodes[ii]] = nodePrios[ii]

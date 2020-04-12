@@ -241,7 +241,7 @@ end  # setTransitionConditions!( transition, conditions )
 ```
 addTransitionAttributeChange!(
     transition::Transition,
-    attrVals::NTuple{2, String}... )
+    attrVals::NTuple{2,String}... )
 ```
 This function adds the extra attribute changes in the list `attrVals` to the transition `transition`. These changes take priority over the changes imposed by moving from the source to the target node.
     
@@ -250,7 +250,7 @@ If the list contains multiple changes for the attribute, the function issues a w
 This function returns `true` if the attribute changes have been successfully added, and `false` if there were duplicate entries in the list.
 """
 function addTransitionAttributeChange!( transition::Transition,
-    attrVals::NTuple{2, String}... )::Bool
+    attrVals::NTuple{2,String}... )::Bool
 
     newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
 
@@ -288,14 +288,14 @@ end  # clearTransitionAttributeChanges!( trans )
 ```
 setTransitionAttributeChanges!(
     transition::Transition,
-    attrVals::Dict{String, String} )
+    attrVals::Dict{String,String} )
 ```
 This function sets the additional attribute changes made by the transition `transition` to the list in `attrVals`. These changes take priority over the changes imposed by moving from the source to the target node.
 
 This function returns `true`, indicating the list of changes has been successfully set.
 """
 function setTransitionAttributeChanges!( transition::Transition,
-    attrVals::Dict{String, String} )::Bool
+    attrVals::Dict{String,String} )::Bool
 
     transition.extraChanges = deepcopy( attrVals )
     return true
@@ -306,7 +306,7 @@ end  # setTransitionAttributeChanges!( transition, attrVals )
 ```
 setTransitionAttributeChanges!(
     transition::Transition,
-    attrVals::NTuple{2, String}... )
+    attrVals::NTuple{2,String}... )
 ```
 This function sets the additional attribute changes made by the transition `transition` to the list in `attrVals`. These changes take priority over the changes imposed by moving from the source to the target node.
 
@@ -315,7 +315,7 @@ If the list contains multiple entries for the same attribute, the function issue
 This function returns `true` if the list of changes has been successfully set, and `false` if that list contained duplicate entries.
     
 """
-function setTransitionAttributeChanges!( transition::Transition, attrVals::NTuple{2, String}... )::Bool
+function setTransitionAttributeChanges!( transition::Transition, attrVals::NTuple{2,String}... )::Bool
 
     # Check for duplicates.
     newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
@@ -326,7 +326,7 @@ function setTransitionAttributeChanges!( transition::Transition, attrVals::NTupl
     end  # if length( newAttrs ) != length( unique( newAttrs ) )
 
     # Convert the val/weight pairs to a dictionary.
-    attrValDict = Dict{String, String}()
+    attrValDict = Dict{String,String}()
 
     for attrVal in attrVals
         attrValDict[attrVal[1]] = attrVal[2]
@@ -364,7 +364,7 @@ function setTransitionAttributeChanges!( transition::Transition,
         return false
     end  # if length( attributes ) != length( unique( attributes ) )
 
-    attrValDict = Dict{String, String}()
+    attrValDict = Dict{String,String}()
 
     for ii in eachindex( attributes )
         attrValDict[attributes[ii]] = values[ii]

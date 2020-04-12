@@ -9,10 +9,10 @@ The type contains the following fields:
 * `name::String`: the name of the node.
 * `target::Int`: the target number of personnel members in this node. Default = -1 (no target)
 * `attrition::String`: The name of the attrition scheme attached to this node. Default = "default"
-* `requirements::Dict{String, String}`: the attributes (key) and the value(s) these attributes must have (value) for the personnel member to have this particular node.
+* `requirements::Dict{String,String}`: the attributes (key) and the value(s) these attributes must have (value) for the personnel member to have this particular node.
 
 The type also contains one other field, used only during the simulation:
-* `inNodeSince::Dict{String, Float64}`: a record of all the persons in the   node, including the time they last entered the node.
+* `inNodeSince::Dict{String,Float64}`: a record of all the persons in the   node, including the time they last entered the node.
 
 Constructor:
 ```
@@ -25,9 +25,9 @@ mutable struct BaseNode
     name::String
     target::Int
     attrition::String
-    requirements::Dict{String, String}
+    requirements::Dict{String,String}
 
-    inNodeSince::Dict{String, Float64}
+    inNodeSince::Dict{String,Float64}
 
 
     # Basic constructor.
@@ -37,9 +37,9 @@ mutable struct BaseNode
         newNode.name = name
         newNode.target = -1
         newNode.attrition = "default"
-        newNode.requirements = Dict{String, String}()
+        newNode.requirements = Dict{String,String}()
 
-        newNode.inNodeSince = Dict{String, Float64}()
+        newNode.inNodeSince = Dict{String,Float64}()
         return newNode
 
     end  # BaseNode( name )

@@ -1,4 +1,5 @@
-function getSubpopulationAtTime( mpSim::MPsim, timePoint::Float64, subpopulations::Vector{Subpopulation} )
+function getSubpopulationAtTime( mpSim::MPsim, timePoint::Float64,
+    subpopulations::Vector{Subpopulation} )
 
     result = fill( Vector{String}(), length( subpopulations ) )
     hasAttributeConds = map( subpopulation -> !isempty(

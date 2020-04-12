@@ -17,11 +17,11 @@ This function will issue a warning and not generate any report in the following 
 This function returns a `Dict{String, DataFrame}`, where the keys are the valid nodes, and the value is the composition report for that node. The base nodes are bundled in a single report with name `"Base nodes"`. In case the function issues a warning, its return value will be an empty dictionary.
 """
 function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    nodes::String... )::Dict{String, DataFrame}
+    nodes::String... )::Dict{String,DataFrame}
 
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
-    result = Dict{String, DataFrame}()
+    result = Dict{String,DataFrame}()
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."

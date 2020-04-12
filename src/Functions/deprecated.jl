@@ -5,7 +5,7 @@
     setAttritionPeriod!( attrition, period ) )
 # TODO: make sure these deprecations covers all bases.
 @deprecate( setAttritionCurve( attrition::Attrition,
-    curve::Dict{Float64, Float64} ), setAttritionCurve!( attrition, curve ) )
+    curve::Dict{Float64,Float64} ), setAttritionCurve!( attrition, curve ) )
 @deprecate( setAttritionCurve( attrition::Attrition,
     curve::Array{Float64, 2} ), setAttritionCurve!( attrition, curve ) )
 
@@ -19,7 +19,7 @@
 @deprecate( removeValueFromAttr!( attribute::Attribute, val::String ),
     removeInitialAttributeValue!( attribute, val ) )
 @deprecate( setAttrValues!( attribute::Attribute,
-    valWeights::Dict{String, Float64} ), setInitialAttributeValues!( attribute,
+    valWeights::Dict{String,Float64} ), setInitialAttributeValues!( attribute,
     valWeights ) )
 
 
@@ -97,10 +97,10 @@
 @deprecate( setRecruitmentFixed( recruitment::Recruitment, amount::Integer ),
     setRecruitmentFixed!( recruitment, amount ) )
 @deprecate( setRecruitmentDistribution( recruitment::Recruitment,
-    distNodes::Dict{Int, Float64}, distType::Symbol ),
+    distNodes::Dict{Int,Float64}, distType::Symbol ),
     setRecruitmentDist!( recruitment, distType, distNodes ) )
 @deprecate( setAgeDistribution( recScheme::Recruitment,
-    distNodes::Dict{Float64, Float64}, distType::Symbol ),
+    distNodes::Dict{Float64,Float64}, distType::Symbol ),
     setRecruitmentAgeDist!( recruitment, distType, distNodes ) )
 
 

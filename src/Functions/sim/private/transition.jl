@@ -140,7 +140,7 @@ function orderTransitions!( mpSim::MPsim )
             vertices( subgraph ), :rank )
     end  # for nodeList in subgraphNodes
 
-    setfield!.( transitions, :priority, -Int8.( graphRanks ) )
+    setfield!.( transitions, :priority, -Int.( graphRanks ) )
     mpSim.nPriorities = maximum( graphRanks )
 
 end  # orderTransitions!( mpSim )
@@ -157,16 +157,15 @@ end  # orderTransitions!( mpSim )
     timeOfCheck = ceil( timeOfCheck / transition.freq ) * transition.freq +
         transition.offset
     priority = transition.priority
-    priorityShift = Int8( ( transition.hasPriority ? 0 : 1 ) *
-        mpSim.nPriorities )
+    priorityShift = ( transition.hasPriority ? 0 : 1 ) * mpSim.nPriorities
     maxAttempts = transition.maxAttempts == 0 ?
         length( transition.probabilityList ) : transition.maxAttempts
-    nAttempts = Dict{String, Int}()
+    nAttempts = Dict{String,Int}()
 
     while timeOfCheck <= mpSim.simLength
         processTime += now() - tStart
         @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority -
-            ( transition.minFlux == 0 ? priorityShift : zero( Int8 ) ) ) )
+            ( transition.minFlux == 0 ? priorityShift : 0 ) ) )
         tStart = now()
         timeOfCheck += transition.freq
 
@@ -180,8 +179,6 @@ end  # orderTransitions!( mpSim )
         # Assign a modified probability to each person.
         transitionLevels = determineTransitionLevels( transition, checkedIDs,
             nAttempts )
-        # transitionLevels = Dict{String, Float64}()
-        # setindex!.( Ref( transitionLevels ), 0.0, checkedIDs )  # ! to remove
 
         # If the transition has a minimum flux, transition those IDs first, and
         #   set the priority of the rest of the transition to the proper level.
@@ -209,7 +206,7 @@ end  # orderTransitions!( mpSim )
 end  # transitionProcess( sim, transition, mpSim )
 
 
-function getEligibleIDs( transition::Transition, nAttempts::Dict{String, Int},
+function getEligibleIDs( transition::Transition, nAttempts::Dict{String,Int},
     maxAttempts::Int, mpSim::MPsim )::Vector{String}
 
     sourceNode = mpSim.baseNodeList[transition.sourceNode]
@@ -264,7 +261,7 @@ function checkExtraConditions( transition::Transition,
 end  # checkExtraConditions( transition, eligibleIDs, mpSim )
 
 
-function updateAttemptsAndIDs!( nAttempts::Dict{String, Int}, maxAttempts::Int,
+function updateAttemptsAndIDs!( nAttempts::Dict{String,Int}, maxAttempts::Int,
     eligibleIDs::Vector{String} )
 
     # Increase number of attempts for all eligible IDs. 0 attempts means
@@ -283,9 +280,9 @@ end  # updateAttemptsAndIDs!( nAttempts, eligibleIDs )
 
 
 function determineTransitionLevels( transition::Transition,
-    eligibleIDs::Vector{String}, nAttempts::Dict{String, Int} )
+    eligibleIDs::Vector{String}, nAttempts::Dict{String,Int} )
 
-    probDict = Dict{String, Float64}()
+    probDict = Dict{String,Float64}()
 
     if isempty( eligibleIDs )
         return probDict
@@ -303,7 +300,7 @@ end  # determineTransitionLevels( trans, eligibleIDs, nAttempts )
 
 
 function determineMandatoryIDs( transition::Transition,
-    eligibleIDs::Vector{String}, transitionLevels::Dict{String, Float64} )
+    eligibleIDs::Vector{String}, transitionLevels::Dict{String,Float64} )
 
     if length( eligibleIDs ) <= transition.minFlux
         return eligibleIDs
@@ -317,7 +314,7 @@ end  # determineMandatoryIDs( transition, eligibleIDs, transLevels )
 
 
 function determineAdditionalIDs( transition::Transition,
-    eligibleIDs::Vector{String}, transitionLevels::Dict{String, Float64},
+    eligibleIDs::Vector{String}, transitionLevels::Dict{String,Float64},
     mpSim::MPsim )
 
     if transition.maxFlux == transition.minFlux
@@ -401,7 +398,7 @@ function executeTransitions( transition::Transition, idList::Vector{String},
 
     # Make changes in personnel database.
     persChangesCmd = [string( "currentNode = '", transition.targetNode, "'" )]
-    changedAttrVals = Dict{String, String}()
+    changedAttrVals = Dict{String,String}()
 
     # Target node attributes.
     if !transition.isOutTransition &&

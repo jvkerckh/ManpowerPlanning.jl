@@ -138,7 +138,7 @@ end  # setRecruitmentFixed!( recruitment, amount )
 setRecruitmentDist!(
     recruitment::Recruitment,
     distType::Symbol,
-    distNodes::Dict{Int, Float64} )
+    distNodes::Dict{Int,Float64} )
 ```
 This function sets the distribution of the number of people to recruit during every cycle of the recruitment scheme `recruitment` to a distribution of type `distType` with nodes `distNodes` (amount/weight). Permitted distribution types are `:disc` (discrete), `:pUnif` (piecewise uniform), and `:pLin` (piecewise linear). Nodes which have a negative amount (key) or negative weight are ignored.
 
@@ -147,7 +147,7 @@ If the entered distribution type is unknown, if there are insufficient proper no
 The function returns `true` if the distribution of the number of people to recruit is successfully set, and `false` if any problems arose.
 """
 setRecruitmentDist!( recruitment::Recruitment, distType::Symbol,
-    distNodes::Dict{Int, Float64} )::Bool = setRecDist!( recruitment, distType,
+    distNodes::Dict{Int,Float64} )::Bool = setRecDist!( recruitment, distType,
     distNodes )
 
 
@@ -187,7 +187,7 @@ end  # setRecruitmentAgeFixed!( recruitment, age )
 setRecruitmentAgeDist!(
     recruitment::Recruitment,
     distType::Symbol,
-    distNodes::Dict{Float64, Float64} )
+    distNodes::Dict{Float64,Float64} )
 ```
 This function sets the distribution of the recruitment age of the recruitment scheme `recruitment` to a distribution of type `distType` with nodes `distNodes` (amount/weight). Permitted distribution types are `:disc` (discrete), `:pUnif` (piecewise uniform), and `:pLin` (piecewise linear). Nodes which have a negative amount (key) or negative weight are ignored.
 
@@ -196,7 +196,7 @@ If the entered distribution type is unknown, if there are insufficient proper no
 The function returns `true` if the distribution of the recruitment age is successfully set, and `false` if any problems arose.
 """
 setRecruitmentAgeDist!( recruitment::Recruitment, distType::Symbol,
-    distNodes::Dict{Float64, Float64} )::Bool = setRecDist!( recruitment,
+    distNodes::Dict{Float64,Float64} )::Bool = setRecDist!( recruitment,
     distType, distNodes )
 
 

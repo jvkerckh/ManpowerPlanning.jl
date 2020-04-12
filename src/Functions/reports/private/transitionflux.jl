@@ -94,7 +94,7 @@ generateTransitionQuery( transition::String, mpSim::MPsim ) =
     "\n    ", mpSim.sNode, " IS NOT 'active' AND",
     "\n    ", mpSim.tNode, " IS NOT 'active'" )
 
-function generateTransitionQuery( transition::NTuple{2,String }, mpSim::MPsim )
+function generateTransitionQuery( transition::NTuple{2,String}, mpSim::MPsim )
 
     sourceNode = lowercase( transition[1] ) ∈ specialNodes ? "NULL" :
         string( "'", transition[1], "'" )

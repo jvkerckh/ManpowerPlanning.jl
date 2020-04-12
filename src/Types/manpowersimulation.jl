@@ -8,20 +8,20 @@ The 'ManpowerSimulation' type defines a manpower simulation, holding its complet
 
 The type contains the following fields:
 * `simName::String`: the name of the simulation. Default = "simulation"
-* `attributeList::Dict{String, Attribute}`: the list of attributes in the simulation.
+* `attributeList::Dict{String,Attribute}`: the list of attributes in the simulation.
 * `idKey::String`: the name of the unique personnel identifier key. This is used only in the results database. Default = `"id"`
-* `baseNodeList::Dict{String, BaseNode}`: the list of base nodes in the simulation.
-* `baseNodeOrder::Dict{String, Int}`: the preferred order in which the base nodes are visited by transitions.
-* `compoundNodeList::Dict{String, CompoundNode}`: the list of compound nodes in the simulation.
-* `recruitmentByName::Dict{String, Vector{Recruitment}}`: the list of recruitment schemes in the simulation, grouped by name.
-* `recruitmentByTarget::Dict{String, Vector{Recruitment}}`: the list of recruitment schemes in the simulation, grouped by target node.
-* `transitionsByName::Dict{String, Vector{Transition}}`: the list of transitions in the simulation, grouped by name.
-* `transitionsByTarget::Dict{String, Vector{Transition}}`: the list of transitions in the simulation, grouped by source node.
-* `transitionsByTarget::Dict{String, Vector{Transition}}`: the list of transitions in the simulation, grouped by target node.
+* `baseNodeList::Dict{String,BaseNode}`: the list of base nodes in the simulation.
+* `baseNodeOrder::Dict{String,Int}`: the preferred order in which the base nodes are visited by transitions.
+* `compoundNodeList::Dict{String,CompoundNode}`: the list of compound nodes in the simulation.
+* `recruitmentByName::Dict{String,Vector{Recruitment}}`: the list of recruitment schemes in the simulation, grouped by name.
+* `recruitmentByTarget::Dict{String,Vector{Recruitment}}`: the list of recruitment schemes in the simulation, grouped by target node.
+* `transitionsByName::Dict{String,Vector{Transition}}`: the list of transitions in the simulation, grouped by name.
+* `transitionsByTarget::Dict{String,Vector{Transition}}`: the list of transitions in the simulation, grouped by source node.
+* `transitionsByTarget::Dict{String,Vector{Transition}}`: the list of transitions in the simulation, grouped by target node.
 * `retirement::Retirement`: the default retirement scheme. Defaults of no retirement.
-* `transitionTypeOrder::Dict{String, Int}`: the preferred order in which transitions of different types are handled.
+* `transitionTypeOrder::Dict{String,Int}`: the preferred order in which transitions of different types are handled.
 * `retirement::Retirement`: the fallback retirement scheme for personnel member who haven't had an OUT transition yet.
-* `attritionSchemes::Dict{String, Attrition}`: the list of attrition schemes in the simulation. This list always contains a default attrition scheme with a flat zero attrition.
+* `attritionSchemes::Dict{String,Attrition}`: the list of attrition schemes in the simulation. This list always contains a default attrition scheme with a flat zero attrition.
 * `simLength::Float64`: the length of the simulation (in internal time units). Default = 0.0
 * `personnelTarget:Int`: the target number of personnel members in the simulation. Default = 0
 * `dbName::String`: the name of the SQLite databases holding the simulation results. Default = `""`, indicating the database is kept in memory only.
@@ -63,18 +63,18 @@ mutable struct ManpowerSimulation
 
     simName::String
     idKey::String
-    attributeList::Dict{String, Attribute}
-    baseNodeList::Dict{String, BaseNode}
-    baseNodeOrder::Dict{String, Int}
-    compoundNodeList::Dict{String, CompoundNode}
-    recruitmentByName::Dict{String, Vector{Recruitment}}
-    recruitmentByTarget::Dict{String, Vector{Recruitment}}
-    transitionsByName::Dict{String, Vector{Transition}}
-    transitionsBySource::Dict{String, Vector{Transition}}
-    transitionsByTarget::Dict{String, Vector{Transition}}
-    transitionTypeOrder::Dict{String, Int}
+    attributeList::Dict{String,Attribute}
+    baseNodeList::Dict{String,BaseNode}
+    baseNodeOrder::Dict{String,Int}
+    compoundNodeList::Dict{String,CompoundNode}
+    recruitmentByName::Dict{String,Vector{Recruitment}}
+    recruitmentByTarget::Dict{String,Vector{Recruitment}}
+    transitionsByName::Dict{String,Vector{Transition}}
+    transitionsBySource::Dict{String,Vector{Transition}}
+    transitionsByTarget::Dict{String,Vector{Transition}}
+    transitionTypeOrder::Dict{String,Int}
     retirement::Retirement
-    attritionSchemes::Dict{String, Attrition}
+    attritionSchemes::Dict{String,Attrition}
     simLength::Float64
     personnelTarget::Int
     dbName::String
@@ -109,17 +109,6 @@ mutable struct ManpowerSimulation
     # catFileName::String
     # parFileName::String
 
-    # The compound states. The first is for the compound states from catalogue,
-    #   so they can be properly processed at runtime and inserted into the
-    #   the second list (which retains the component states of each compound
-    #   state).
-    # compoundStatesCat::Dict{String, BaseNode}
-    # compoundStatesCustom::Dict{String, CompoundNode}
-    # compoundStateList::Dict{String, CompoundNode}
-
-    # The priorities of the various simulation phases.
-    # phasePriorities::Dict{Symbol, Int}
-
     # The start date of the simulation.
     # simStartDate::Date
 
@@ -129,16 +118,16 @@ mutable struct ManpowerSimulation
         newMPsim = new()
         newMPsim.idKey = "id"
         newMPsim.simName = simName
-        newMPsim.attributeList = Dict{String, Attribute}()
-        newMPsim.baseNodeList = Dict{String, BaseNode}()
-        newMPsim.baseNodeOrder = Dict{String, Int}()
-        newMPsim.compoundNodeList = Dict{String, CompoundNode}()
-        newMPsim.recruitmentByName = Dict{String, Vector{Recruitment}}()
-        newMPsim.recruitmentByTarget = Dict{String, Vector{Recruitment}}()
-        newMPsim.transitionsByName = Dict{String, Vector{Transition}}()
-        newMPsim.transitionsBySource = Dict{String, Vector{Transition}}()
+        newMPsim.attributeList = Dict{String,Attribute}()
+        newMPsim.baseNodeList = Dict{String,BaseNode}()
+        newMPsim.baseNodeOrder = Dict{String,Int}()
+        newMPsim.compoundNodeList = Dict{String,CompoundNode}()
+        newMPsim.recruitmentByName = Dict{String,Vector{Recruitment}}()
+        newMPsim.recruitmentByTarget = Dict{String,Vector{Recruitment}}()
+        newMPsim.transitionsByName = Dict{String,Vector{Transition}}()
+        newMPsim.transitionsBySource = Dict{String,Vector{Transition}}()
         newMPsim.transitionsByTarget = Dict( "OUT" => Vector{Transition}() )
-        newMPsim.transitionTypeOrder = Dict{String, Int}()
+        newMPsim.transitionTypeOrder = Dict{String,Int}()
         newMPsim.retirement = Retirement()
         newMPsim.attritionSchemes = Dict( "default" => Attrition() )
         newMPsim.simLength = 0.0

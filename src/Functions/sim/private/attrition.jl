@@ -29,7 +29,7 @@ end  # generateTimeToAttrition( attrition, nVals )
 
     # Preparatory steps.
     timeOfNextCheck = mpSim.attritionTimeSkip
-    priority = typemax( Int8 )
+    priority = typemax( Int )
     queryCmd = string( "SELECT `", mpSim.idKey, "`, expectedAttritionTime ",
         "FROM `", mpSim.persDBname, "` WHERE",
         "\n    status IS 'active' AND expectedAttritionTime <= " )
@@ -71,7 +71,7 @@ end  # checkAttritionProcess( sim, mpSim )
 
 
 @resumable function executeAttritionProcess( sim::Simulation, id::String,
-    expAttrTime::Float64, mpSim::MPsim, priority::Int8 )
+    expAttrTime::Float64, mpSim::MPsim, priority::Int )
 
     # Wait until the time attrition should take place.
     @yield( timeout( sim, expAttrTime - now( sim ), priority = priority ) )

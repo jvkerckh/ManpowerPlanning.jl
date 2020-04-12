@@ -18,7 +18,7 @@ The type contains the following fields:
 * `maxFlux::Int`: the maximum number of people that can undergo the transition at the same time. A value of -1 means there is no maximum. Default = Inf
 * `hasPriority::Bool`: a flag indicating that this transition can override the target population of the transition's target node. If the flag is `true`, it means that if the max flux of the node is 15, and only 10 spots are available in the target node, 15 people will undergo the transition nonetheless. If the flag is `false`, 10 persons would.
 * `extraConditions::Vector{MPcondition}`: the extra conditions that must be satisfied before the transition can take place.
-* `extraChanges::Dict{String, String}`: the extra changes to attributes that happen during the transition.
+* `extraChanges::Dict{String,String}`: the extra changes to attributes that happen during the transition.
 * `probabilityList::Vector{Float64}`: the list of probabilities for this transition to occur.
 
 The type has one extra field, computed at the start of the simulation:
@@ -53,10 +53,10 @@ mutable struct Transition
     maxFlux::Int
     hasPriority::Bool
     extraConditions::Vector{MPcondition}
-    extraChanges::Dict{String, String}
+    extraChanges::Dict{String,String}
     probabilityList::Vector{Float64}
     
-    priority::Int8
+    priority::Int
 
 
     # Basic constructor.
@@ -77,9 +77,9 @@ mutable struct Transition
         newTrans.maxFlux = -1
         newTrans.hasPriority = false
         newTrans.extraConditions = Vector{MPcondition}()
-        newTrans.extraChanges = Dict{String, String}()
+        newTrans.extraChanges = Dict{String,String}()
         newTrans.probabilityList = [1.0]
-        newTrans.priority = one( Int8 )
+        newTrans.priority = 1
         return newTrans
 
     end  # Transition( name, sourceNode, targetNode, freq, offset, maxAttempts,

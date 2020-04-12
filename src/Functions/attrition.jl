@@ -78,9 +78,9 @@ end  # setAttritionPeriod!( attrition, period )
 ```
 setAttritionCurve!(
     attrition::Attrition,
-    curve::Dict{Float64, Float64} )
+    curve::Dict{Float64,Float64} )
 ```
-This function sets the attrition curve of attrition scheme `attrition` to `curve`. The attrition curve is passed as a `Dict{Float64, Float64}` with the keys as the time a person exists in the simulation, and the values as the attrition rates per period from the time specified by that key to the next.
+This function sets the attrition curve of attrition scheme `attrition` to `curve`. The attrition curve is passed as a `Dict{Float64,Float64}` with the keys as the time a person exists in the simulation, and the values as the attrition rates per period from the time specified by that key to the next.
 
 This function ignores non-sensical attrition rates, that is, rates outside the interval [0.0, 1.0). This function takes the rate at the negative time point closest to zero as the zero rate, and ignores the other negative time points. 
 
@@ -89,7 +89,7 @@ If the first time point is non-zero positive, a zero attrition rate is set from 
 This function returns `true` if the attrition rate curve is set successfully, `false otherwise`.
 """
 function setAttritionCurve!( attrition::Attrition,
-    curve::Dict{T1, T2} )::Bool where T1 <: Real where T2 <: Real
+    curve::Dict{T1,T2} )::Bool where {T1 <: Real, T2 <: Real}
 
     terms = Float64.( sort( collect( keys( curve ) ) ) )
     rates = Float64.( map( term -> curve[term], terms ) )
@@ -162,7 +162,7 @@ function setAttritionCurve!( attrition::Attrition,
     end  # if length( curve[:, 1] ) != length( unique( curve[:, 1] ) )
 
     # Generate curve dictionary.
-    curveDict = Dict{Float64, Float64}()
+    curveDict = Dict{Float64,Float64}()
 
     for ii in eachindex( curve[:, 1] )
         curveDict[curve[ii, 1]] = curve[ii, 2]

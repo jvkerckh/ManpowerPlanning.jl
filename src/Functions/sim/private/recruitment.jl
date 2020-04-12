@@ -10,7 +10,7 @@
     # Preparatory steps.
     timeToWait = recruitment.offset
     priority = recruitment.priority -
-        Int8( ( recruitment.isAdaptive ? 1 : 0 ) * mpSim.nPriorities )
+        ( recruitment.isAdaptive ? 1 : 0 ) * mpSim.nPriorities
 
     # Process loop.
     while now( sim ) + timeToWait <= mpSim.simLength

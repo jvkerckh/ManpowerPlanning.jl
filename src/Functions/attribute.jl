@@ -120,7 +120,7 @@ end  # setPossibleAttributeValues!( attribute, values )
 ```
 addInitialAttributeValue!(
     attribute::Attribute,
-    valWeights::Tuple{String, Float64}... )
+    valWeights::Tuple{String,Float64}... )
 ```
 This function adds each value/weight pair in `valWeights` to the initial values of the personnel attribute `attribute`. Values that aren't in the list of possible values get added as well.
 
@@ -132,7 +132,7 @@ Some remarks:
 This function returns `true` if it successfully adds initial values and/or updates their weights, and `false` if it makes no changes.
 """
 function addInitialAttributeValue!( attribute::Attribute,
-    valWeights::Tuple{String, Float64}... )::Bool
+    valWeights::Tuple{String,Float64}... )::Bool
 
     newVals = map( valWeight -> valWeight[1], collect( valWeights ) )
     newWeights = map( valWeight -> valWeight[2], collect( valWeights ) )
@@ -233,7 +233,7 @@ end  # clearInitialAttributeValues!( attribute::Attribute )
 ```
 setInitialAttributeValues!(
     attribute::Attribute,
-    valWeights::Dict{String, T} )
+    valWeights::Dict{String,T} )
     where T <: Real
 ```
 This function sets the list of interval values, with associated weights, of the personnel attribute `attribute` to the pairs in `valWeights`. Values with a negative weight are ignored. If the dictionary contains no valid entires, this function makes no changes. Hence, to clear the list of initial values, `clearInitialAttributeValues!` should be used.
@@ -241,7 +241,7 @@ This function sets the list of interval values, with associated weights, of the 
 This function returns `true` if the list of initial values is successfully set, and `false` if the dictionary contained no valid entries.
 """
 function setInitialAttributeValues!( attribute::Attribute,
-    valWeights::Dict{String, T} )::Bool where T <: Real
+    valWeights::Dict{String,T} )::Bool where T <: Real
 
     newVals = filter( val -> valWeights[val] > 0,
         collect( keys( valWeights ) ) )
@@ -263,7 +263,7 @@ end  # setInitialAttributeValues!( attribute, valWeights )
 ```
 setInitialAttributeValues!(
     attribute::Attribute,
-    valWeights::Tuple{String, Float64}... )
+    valWeights::Tuple{String,Float64}... )
 ```
 This function sets the list of interval values, with associated weights, of the personnel attribute `attribute` to the pairs in `valWeights`.
 
@@ -272,7 +272,7 @@ If the list of initial values contains duplicate entries, the function will issu
 This function returns `true` if the list of initial values is successfully set, and `false` if the list of initial values contained no valid entries.
 """
 function setInitialAttributeValues!( attribute::Attribute,
-    valWeights::Tuple{String, Float64}... )::Bool
+    valWeights::Tuple{String,Float64}... )::Bool
 
     # Check for duplicates.
     newVals = map( valWeight -> valWeight[1], collect( valWeights ) )
@@ -283,7 +283,7 @@ function setInitialAttributeValues!( attribute::Attribute,
     end  # if length( newVals ) != length( unique( newVals ) )
 
     # Convert the val/weight pairs to a dictionary.
-    valWeightDict = Dict{String, Float64}()
+    valWeightDict = Dict{String,Float64}()
 
     for valWeight in valWeights
         valWeightDict[valWeight[1]] = valWeight[2]
@@ -325,7 +325,7 @@ function setInitialAttributeValues!( attribute::Attribute,
     end  # if length( values ) != length( unique( values ) )
 
     # Convert the val/weight pairs to a dictionary.
-    valWeightDict = Dict{String, Float64}()
+    valWeightDict = Dict{String,Float64}()
 
     for ii in eachindex( values )
         valWeightDict[values[ii]] = weights[ii]

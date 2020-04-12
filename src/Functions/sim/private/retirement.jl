@@ -14,7 +14,7 @@
 
     # Preparatory steps.
     timeToWait = retirement.offset
-    priority = typemax( Int8 )
+    priority = typemax( Int )
     
     # Process loop.
     while now( sim ) + timeToWait <= mpSim.simLength

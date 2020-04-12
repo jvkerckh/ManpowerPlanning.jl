@@ -25,9 +25,9 @@ This function returns a `Dict` with the valid subpopulations as the keys (`Strin
 """
 function subpopulationAgeReport( mpSim::MPsim, timeGrid::Vector{Float64},
     ageRes::Real, ageType::Symbol,
-    subpopulations::Subpopulation... )::Dict{String, DataFrame}
+    subpopulations::Subpopulation... )::Dict{String,DataFrame}
 
-    result = Dict{String, DataFrame}()
+    result = Dict{String,DataFrame}()
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
@@ -98,7 +98,7 @@ This function returns a `Dict` with the valid subpopulations as the keys (`Strin
 """
 subpopulationAgeReport( mpSim::MPsim, timeRes::Real, ageRes::Real,
     ageType::Symbol,
-    subpopulations::Subpopulation... )::Dict{String, DataFrame} =
+    subpopulations::Subpopulation... )::Dict{String,DataFrame} =
     subpopulationAgeReport( mpSim, generateTimeGrid( mpSim, timeRes ), ageRes,
     ageType, subpopulations... )
 

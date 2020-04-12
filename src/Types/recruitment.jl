@@ -15,15 +15,15 @@ The type contains the following fields:
 * `minRecruitment::Int`: the minimum number of personnel members to recruit during a single recruitment step. This is only used for adaptive recruitment schemes. Default = 0
 * `maxRecruitment::Int`: the maximum number of personnel members to recruit during a single recruitment step, where -1 stands for no upper limit. This is only used for adaptive recruitment schemes. Default = -1
 * `recruitmentDistType::Symbol`: the type of the distribution of the number of people to recruit. Supported types are `:disc` (pointwise), `:pUnif` (piecewise uniform), and `:pLin` (piecewise linear). This is only used for non-adaptive recruitment schemes. Default = `:disc`
-* `recruitmentDistNodes::Dict{Int, Float64}`: the nodes of the distribution of the number of people to recruit. These are given as number/weight pairs. Default: Dict( 0 => 1.0 )
+* `recruitmentDistNodes::Dict{Int,Float64}`: the nodes of the distribution of the number of people to recruit. These are given as number/weight pairs. Default: Dict( 0 => 1.0 )
 * `ageDistType::Symbol`: the type of the distribution of the ages of the recruited people. Supported types are `:disc` (pointwise), `:pUnif` (piecewise uniform), and `:pLin` (piecewise linear). This is only used for non-adaptive recruitment schemes. Default = `:disc`
-* `ageDistNodes::Dict{Float64, Float64}`: the nodes of the distribution of the ages of the recruited people. These are given as age/weight pairs. Default: Dict( 0.0 => 1.0 )
+* `ageDistNodes::Dict{Float64,Float64}`: the nodes of the distribution of the ages of the recruited people. These are given as age/weight pairs. Default: Dict( 0.0 => 1.0 )
 
 Three additional fields are used to speed up computations:
 * `isAdaptive::Bool`: a flag indicating whether the recruitment scheme is adaptive or not.
 * `recruitmentDist::Function`: the function that draws a sample from the distribution of the number of people to recruit.
 * `ageDist::Function`: the function that draws a sample from the distrubiton of the recruitment age.
-* `priority::Int8`: the priority of the SimJulia process of this recruitment scheme.
+* `priority::Int`: the priority of the SimJulia process of this recruitment scheme.
 """
 mutable struct Recruitment
 
@@ -34,14 +34,14 @@ mutable struct Recruitment
     minRecruitment::Int
     maxRecruitment::Int
     recruitmentDistType::Symbol
-    recruitmentDistNodes::Dict{Int, Float64}
+    recruitmentDistNodes::Dict{Int,Float64}
     ageDistType::Symbol
-    ageDistNodes::Dict{Float64, Float64}
+    ageDistNodes::Dict{Float64,Float64}
 
     isAdaptive::Bool
     recruitmentDist::Function
     ageDist::Function
-    priority::Int8
+    priority::Int
 
 
     function Recruitment( name::String )
@@ -61,7 +61,7 @@ mutable struct Recruitment
         newRec.isAdaptive = false
         newRec.recruitmentDist = function() return 0 end
         newRec.ageDist = function( n::Integer ) return zeros( Float64, n ) end
-        newRec.priority = one( Int8 )
+        newRec.priority = 1
         return newRec
 
     end  # Recruitment( freq, offset )
