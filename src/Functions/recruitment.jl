@@ -219,21 +219,21 @@ function Base.show( io::IO, recruitment::Recruitment )::Nothing
     else
         print( io, "\n  Non-adaptive recruitment scheme, distribution of ",
             "number to recruit is ",
-            recruitmentDists[ recruitment.recruitmentDistType ][ 1 ],
+            recruitmentDists[recruitment.recruitmentDistType][1],
             " with node(s)" )
         
         for node in sort( collect( keys( recruitment.recruitmentDistNodes ) ) )
             print( io, "\n    ", node, " with weight ",
-                recruitment.recruitmentDistNodes[ node ] )
+                recruitment.recruitmentDistNodes[node] )
         end  # for node in sort( collect( keys( ...
     end  # if recruitment.isAdaptive
 
     print( io, "\n  Distribution of recruitment age is ",
-        recruitmentDists[ recruitment.ageDistType ][ 1 ], " with node(s)" )
+        recruitmentDists[recruitment.ageDistType][1], " with node(s)" )
 
     for node in sort( collect( keys( recruitment.ageDistNodes ) ) )
         print( io, "\n    ", node, " with weight ",
-            recruitment.ageDistNodes[ node ] )
+            recruitment.ageDistNodes[node] )
     end  # for node in sort( collect( keys( ...
 
     return

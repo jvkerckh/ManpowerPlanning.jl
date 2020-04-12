@@ -19,7 +19,7 @@ This function returns a `DataFrame`, with the first column the time points and t
 function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     subpopulations::Subpopulation... )::DataFrame
 
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
@@ -27,9 +27,9 @@ function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return DataFrame()
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
@@ -47,8 +47,8 @@ function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     counts = zeros( Int, length( timeGrid ), length( subpopulations ) )
 
     for ii in eachindex( timeGrid )
-        counts[ ii, : ] = length.( getSubpopulationAtTime( mpSim,
-            timeGrid[ ii ], subpopulations ) )
+        counts[ii, :] = length.( getSubpopulationAtTime( mpSim,
+            timeGrid[ii], subpopulations ) )
     end  # for ii in eachindex( timeGrid )
 
     return DataFrame( hcat( timeGrid, counts ), vcat( :timePoint,

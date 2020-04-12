@@ -1,5 +1,5 @@
-const defaultTransitions = [ "attrition", "retirement" ]
-const specialNodes = [ "", "external", "out" ]
+const defaultTransitions = ["attrition", "retirement"]
+const specialNodes = ["", "external", "out"]
 
 
 function validateTransition( mpSim::MPsim, transition::String )
@@ -14,7 +14,7 @@ function validateTransition( mpSim::MPsim, transition::String )
 
 end  # validateTransition( mpSim, transition )
 
-function validateTransition( mpSim::MPsim, transition::NTuple{2, String} )
+function validateTransition( mpSim::MPsim, transition::NTuple{2,String} )
 
     sourceNode, targetNode = transition
 
@@ -33,11 +33,11 @@ function validateTransition( mpSim::MPsim, transition::NTuple{2, String} )
     end  # if !haskey( mpSim.transitionsBySource, sourceNode )
 
     return any( transition -> transition.targetNode == targetNode,
-        mpSim.transitionsBySource[ sourceNode ] )
+        mpSim.transitionsBySource[sourceNode] )
 
 end  # validateTransition( mpSim, transition )
 
-function validateTransition( mpSim::MPsim, transition::NTuple{3, String} )
+function validateTransition( mpSim::MPsim, transition::NTuple{3,String} )
 
     name, sourceNode, targetNode = transition
 
@@ -45,7 +45,7 @@ function validateTransition( mpSim::MPsim, transition::NTuple{3, String} )
     if lowercase( sourceNode ) ∈ specialNodes
         return haskey( mpSim.recruitmentByName, name ) &&
             any( recruitment -> recruitment.targetNode == targetNode,
-                mpSim.recruitmentByName[ name ] )
+                mpSim.recruitmentByName[name] )
     end  # if lowercase( sourceNode ) ∈ specialNodes
 
     # Default transitions (attrition and retirement).
@@ -57,13 +57,13 @@ function validateTransition( mpSim::MPsim, transition::NTuple{3, String} )
     if lowercase( targetNode ) ∈ specialNodes
         return any( transition -> ( transition.name == name ) &&
             ( transition.sourceNode == sourceNode ),
-            mpSim.transitionsByTarget[ "OUT" ] )
+            mpSim.transitionsByTarget["OUT"] )
     end  # if lowercase( targetNode ) ∈ specialNodes
 
     return haskey( mpSim.transitionsByTarget, targetNode ) &&
         any( transition -> ( transition.name == name ) &&
             ( transition.sourceNode == sourceNode ),
-            mpSim.transitionsByTarget[ targetNode ] )
+            mpSim.transitionsByTarget[targetNode] )
 
 end  # validateTransition( mpSim, transition )
 
@@ -79,9 +79,9 @@ function createTransitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
 
     for ii in eachindex( timeGrid )
         queryCmd = string( queryPartCmd, generateTimeFork( ii == 1 ?
-            timeGrid[ 1 ] : timeGrid[ ii - 1 ], timeGrid[ ii ] ) )
-        result[ ii ] =
-            DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )[ 1, :counts ]
+            timeGrid[1] : timeGrid[ii - 1], timeGrid[ii] ) )
+        result[ii] =
+            DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )[1, 1]
     end  # for ii in eachindex( timeGrid )
 
     return result
@@ -94,28 +94,28 @@ generateTransitionQuery( transition::String, mpSim::MPsim ) =
     "\n    ", mpSim.sNode, " IS NOT 'active' AND",
     "\n    ", mpSim.tNode, " IS NOT 'active'" )
 
-function generateTransitionQuery( transition::NTuple{2, String }, mpSim::MPsim )
+function generateTransitionQuery( transition::NTuple{2,String }, mpSim::MPsim )
 
-    sourceNode = lowercase( transition[ 1 ] ) ∈ specialNodes ? "NULL" :
-        string( "'", transition[ 1 ], "'" )
-    targetNode = lowercase( transition[ 2 ] ) ∈ specialNodes ? "NULL" :
-        string( "'", transition[ 2 ], "'" )
+    sourceNode = lowercase( transition[1] ) ∈ specialNodes ? "NULL" :
+        string( "'", transition[1], "'" )
+    targetNode = lowercase( transition[2] ) ∈ specialNodes ? "NULL" :
+        string( "'", transition[2], "'" )
     return string( mpSim.sNode, " IS ", sourceNode, " AND",
         "\n    ", mpSim.tNode, " IS ", targetNode )
 
 end  # generateTransitionQuery( transition, mpSim )
     
 
-generateTransitionQuery( transition::NTuple{3, String}, mpSim::MPsim ) =
-    string( "transition IS '", transition[ 1 ], "' AND",
-    "\n    ", generateTransitionQuery( transition[ 2:3 ], mpSim ) )
+generateTransitionQuery( transition::NTuple{3,String}, mpSim::MPsim ) =
+    string( "transition IS '", transition[1], "' AND",
+    "\n    ", generateTransitionQuery( transition[2:3], mpSim ) )
 
 
 generateTransitionName( transition::String ) =
     lowercase( transition ) ∈ defaultTransitions ? lowercase( transition ) :
     transition
 
-function generateTransitionName( transition::NTuple{2, String} )
+function generateTransitionName( transition::NTuple{2,String} )
 
     sourceNode, targetNode = transition
     sourceNode = lowercase( sourceNode ) ∈ specialNodes ? "external" :
@@ -126,6 +126,6 @@ function generateTransitionName( transition::NTuple{2, String} )
 
 end  # generateTransitionName( transition )
 
-generateTransitionName( transition::NTuple{3, String} ) =
-    string( generateTransitionName( transition[ 1 ] ), ": ",
-    generateTransitionName( transition[ 2:3 ] ) )
+generateTransitionName( transition::NTuple{3,String} ) =
+    string( generateTransitionName( transition[1] ), ": ",
+    generateTransitionName( transition[2:3] ) )

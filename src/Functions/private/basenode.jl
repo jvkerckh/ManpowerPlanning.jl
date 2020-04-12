@@ -22,7 +22,7 @@ function isPersonnelOfNode( persAttrVals::Dict{String, String},
         #   personnel doesn't satisfy it, and isn't in the node. Otherwise,
         #   the attribute's value must match with the requirements of the node.
         if !haskey( persAttrVals, attribute ) ||
-            ( persAttrVals[ attribute ] != node.requirements[ attribute ] )
+            ( persAttrVals[attribute] != node.requirements[attribute] )
             return false
         end  # if !haskey( persAttrVals, attribute ) || ...
     end  # for attr in keys( node.requirements )

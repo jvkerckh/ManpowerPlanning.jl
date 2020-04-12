@@ -60,14 +60,14 @@ function retirementCycle( retirement::Retirement, mpSim::MPsim )
 
     queryCmd = string( queryCmd,
         "\n    ORDER BY currentNode" )
-    ids = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
+    ids = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
 
     if isempty( ids )
         return
     end  # if isempty( ids )
 
-    currentNodes = Vector{String}( ids[ :, :currentNode ] )
-    ids = Vector{String}( ids[ :, Symbol( mpSim.idKey ) ] )
+    currentNodes = Vector{String}( ids[:, :currentNode] )
+    ids = Vector{String}( ids[:, Symbol( mpSim.idKey )] )
     removePersons( ids, currentNodes, "retirement", mpSim )
 
 end  # retirementCycle( retirement, mpSim )
@@ -81,12 +81,12 @@ function removePersons( ids::Vector{String}, currentNodes::Vector{String},
         "', '", currentNodes, "')" )
     sqliteCmd = string( "INSERT INTO `", mpSim.transDBname, "` (`", mpSim.idKey,
         "`, timeIndex, transition, sourceNode) VALUES", join( sqliteCmd, "," ) )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     # Clear the ids from the inNodeSince field of their current node.
     for name in unique( currentNodes )
-        currentNode = mpSim.baseNodeList[ name ]
-        delete!.( Ref( currentNode.inNodeSince ), ids[ currentNodes .== name ] )
+        currentNode = mpSim.baseNodeList[name]
+        delete!.( Ref( currentNode.inNodeSince ), ids[currentNodes .== name] )
     end  # for name in unique( currentNodes )
 
     # Update the personnel records.
@@ -95,7 +95,7 @@ function removePersons( ids::Vector{String}, currentNodes::Vector{String},
         "\n        timeExited = ", now( mpSim ), ",",
         "\n        currentNode = NULL",
         "\n    WHERE `", mpSim.idKey, "` IN ('", join( ids, "', '" ), "')" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # removePersons( ids, currentNodes, reason, mpSim )
 
@@ -104,4 +104,4 @@ removePersons( ids::Vector{String}, currentNode::String, reason::String,
     reason, mpSim )
 
 removePerson( id::String, currentNode::String, reason::String, mpSim::MPsim ) =
-    removePersons( [ id ], currentNode, reason, mpSim )
+    removePersons( [id], currentNode, reason, mpSim )

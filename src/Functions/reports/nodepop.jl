@@ -22,7 +22,7 @@ This function returns a `DataFrame`, with the first column the time points and t
 function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     nodes::String... )::DataFrame
 
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
@@ -30,14 +30,14 @@ function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return DataFrame()
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
     nodes = filter( collect( nodes ) ) do nodeName
-        return ( lowercase( nodeName ) ∈ [ "active", "" ] ) ||
+        return ( lowercase( nodeName ) ∈ ["active", ""] ) ||
             haskey( mpSim.baseNodeList, nodeName ) ||
             haskey( mpSim.compoundNodeList, nodeName )
     end  # filter( nodes ) do nodeName
@@ -97,7 +97,7 @@ This function returns a `Tuple` consisting of a `DataFrame` and a dictionary. th
 function nodeEvolutionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     nodes::String... )::Tuple{DataFrame, Dict{String, NTuple{2, DataFrame}}}
 
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
     fluxReport = Dict{String, NTuple{2, DataFrame}}()
 
@@ -106,9 +106,9 @@ function nodeEvolutionReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return (DataFrame(), fluxReport)
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
@@ -131,7 +131,7 @@ function nodeEvolutionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     popReport = createPopReport( nodes, timeGrid, inFluxes, outFluxes )
 
     for node in nodes
-        fluxReport[ node ] = (inFluxes[ node ], outFluxes[ node ])
+        fluxReport[node] = (inFluxes[node], outFluxes[node])
     end  # for node in nodes
 
     return (popReport, fluxReport)

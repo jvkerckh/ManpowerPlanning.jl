@@ -28,7 +28,7 @@ function subpopulationAgeReport( mpSim::MPsim, timeGrid::Vector{Float64},
     subpopulations::Subpopulation... )::Dict{String, DataFrame}
 
     result = Dict{String, DataFrame}()
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
@@ -36,9 +36,9 @@ function subpopulationAgeReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return result
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
@@ -47,10 +47,10 @@ function subpopulationAgeReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return result
     end  # if ageRes <= 0
 
-    if ageType ∉ [ :age, :tenure, :timeInNode ]
+    if ageType ∉ [:age, :tenure, :timeInNode]
         @warn "Unknown type of data requested, cannot generate report."
         return result
-    end  # if ageType ∉ [ :age, :tenure, :timeInNode ]
+    end  # if ageType ∉ [:age, :tenure, :timeInNode]
 
     subpopulations = filter( collect( subpopulations ) ) do subpopulation
         sourceNode = subpopulation.sourceNode

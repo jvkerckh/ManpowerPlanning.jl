@@ -59,7 +59,7 @@ This function returns `true`, indicating the attrition scheme is successfully se
 """
 function setNodeAttritionScheme!( node::BaseNode, attrition::String )::Bool
 
-    node.attrition = lowercase( attrition ) ∈ [ "", "default" ] ? "default" :
+    node.attrition = lowercase( attrition ) ∈ ["", "default"] ? "default" :
         attrition
     return true
 
@@ -81,17 +81,17 @@ This function returns `true` if the requirements have been added successfully, a
 function addNodeRequirement!( node::BaseNode,
     attrVals::NTuple{2,String}... )::Bool
 
-    newAttrs = map( attrVal -> attrVal[ 1 ], collect( attrVals ) )
+    newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
 
     if length( newAttrs ) != length( unique( newAttrs ) )
         @warn "Duplicate attribute entries in the requirement list, not making any changes."
         return false
     end  # if length( newAttrs ) != length( unique( newAttrs ) )
 
-    newVals = map( attrVal -> attrVal[ 2 ], collect( attrVals ) )
+    newVals = map( attrVal -> attrVal[2], collect( attrVals ) )
 
     for ii in eachindex( newAttrs )
-        node.requirements[ newAttrs[ ii ] ] = newVals[ ii ]
+        node.requirements[newAttrs[ii]] = newVals[ii]
     end  # for ii in eachindex( newAttrs )
 
     return true
@@ -131,7 +131,7 @@ function removeNodeRequirement!( node::BaseNode, attributes::String... )::Bool
         return false
     end  # if !any( hasRequirement )
 
-    delete!.( Ref( node.requirements ), attributes[ hasRequirement ] )
+    delete!.( Ref( node.requirements ), attributes[hasRequirement] )
     return true
 
 end  # removeRequirement!( node, attributes )
@@ -186,7 +186,7 @@ This function returns `true` when the requirements have been set successfully, a
 function setNodeRequirements!( node::BaseNode,
     attrVals::NTuple{2, String}... )::Bool
 
-    newAttrs = map( attrVal -> attrVal[ 1 ], collect( attrVals ) )
+    newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
 
     if length( newAttrs ) != length( unique( newAttrs ) )
         @warn "Duplicate attribute entries in the requirement list, not making any changes."
@@ -196,7 +196,7 @@ function setNodeRequirements!( node::BaseNode,
     attrValDict = Dict{String, String}()
 
     for attrVal in attrVals
-        attrValDict[ attrVal[ 1 ] ] = attrVal[ 2 ]
+        attrValDict[attrVal[1]] = attrVal[2]
     end  # for attrVal in attrVals
 
     return setNodeRequirements!( node, attrValDict )
@@ -231,7 +231,7 @@ function setNodeRequirements!( node::BaseNode, attributes::Vector{String}, value
     attrValDict = Dict{String, String}()
 
     for ii in eachindex( attributes )
-        attrValDict[ attributes[ ii ] ] = values[ ii ]
+        attrValDict[attributes[ii]] = values[ii]
     end  # for ii in eachindex( attributes )
 
     return setNodeRequirements!( node, attrValDict )
@@ -259,7 +259,7 @@ function Base.show( io::IO, node::BaseNode )::Nothing
     print( io, "\n  Requirements" )
 
     for attribute in keys( node.requirements )
-        print( io, "\n    ", attribute, " = ", node.requirements[ attribute ] )
+        print( io, "\n    ", attribute, " = ", node.requirements[attribute] )
     end  # for attr in keys( node.requirements )
 
     return

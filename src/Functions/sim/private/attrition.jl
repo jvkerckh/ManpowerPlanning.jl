@@ -3,15 +3,15 @@ function generateTimeToAttrition( attrition::Attrition, nVals::Int )
     urand = rand( nVals )
     nSections = map( u -> findlast( u .<= attrition.gammas ), urand )
     result = map( 1:nVals ) do ii
-        nSection = nSections[ ii ]
+        nSection = nSections[ii]
 
-        if attrition.lambdas[ nSection ] == 0
+        if attrition.lambdas[nSection] == 0
             return +Inf
-        end  # if attrition.lambdas[ nSection ] == 0
+        end  # if attrition.lambdas[nSection] == 0
 
-        attrTime = attrition.curvePoints[ nSection ]
-        attrTime -= log( urand[ ii ] / attrition.gammas[ nSection ] ) /
-            attrition.lambdas[ nSection ]
+        attrTime = attrition.curvePoints[nSection]
+        attrTime -= log( urand[ii] / attrition.gammas[nSection] ) /
+            attrition.lambdas[nSection]
         return attrTime * attrition.period
     end  # map( 1:nVals ) do ii
 
@@ -45,15 +45,15 @@ end  # generateTimeToAttrition( attrition, nVals )
         timeOfNextCheck += mpSim.attritionTimeSkip
         timeOfNextCheck = timeOfNextCheck > mpSim.simLength ? mpSim.simLength :
             timeOfNextCheck
-        result = DataFrame( SQLite.Query( mpSim.simDB,
+        result = DataFrame( DBInterface.execute( mpSim.simDB,
             string( queryCmd, timeOfNextCheck ) ) )
 
         # Execute attrition process for these people.
         processTime += now() - tStart
 
         for ii in 1:size( result, 1 )
-            @process executeAttritionProcess( sim, result[ ii, idSymb ],
-                result[ ii, :expectedAttritionTime ], mpSim, priority )
+            @process executeAttritionProcess( sim, result[ii, idSymb],
+                result[ii, :expectedAttritionTime], mpSim, priority )
         end  # for ii in 1:size( result, 1 )
 
         tStart = now()
@@ -81,14 +81,14 @@ end  # checkAttritionProcess( sim, mpSim )
     queryCmd = string( "SELECT expectedAttritionTime, status, currentNode ",
         "FROM `", mpSim.persDBname, "`  WHERE",
         "\n    `", mpSim.idKey, "` IS '", id, "'" )
-    persRecord = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
+    persRecord = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
 
     # Only perform the attrition if the person is still active and the time of
     #   attrition hasn't changed.
-    if ( persRecord[ 1, :status ] == "active" ) &&
-        ( persRecord[ 1, :expectedAttritionTime ] == expAttrTime )
-        removePerson( id, persRecord[ 1, :currentNode ], "attrition", mpSim )
-    end  # if ( persRecord[ 1, :status ] == "active" ) && ...
+    if ( persRecord[1, :status] == "active" ) &&
+        ( persRecord[1, :expectedAttritionTime] == expAttrTime )
+        removePerson( id, persRecord[1, :currentNode], "attrition", mpSim )
+    end  # if ( persRecord[1, :status] == "active" ) && ...
 
     mpSim.attritionExecTime += now() - tStart
 

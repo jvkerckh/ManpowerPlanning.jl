@@ -2,14 +2,14 @@
 
 @testset "function Constructor" begin
     recruitment = Recruitment( "Recruitment" )
-    @test all( [ recruitment.name == "Recruitment", recruitment.freq == 1.0,
+    @test all( [recruitment.name == "Recruitment", recruitment.freq == 1.0,
         recruitment.offset == 0.0, recruitment.targetNode == "dummy",
         recruitment.minRecruitment == 0, recruitment.maxRecruitment == -1,
         !recruitment.isAdaptive,
         recruitment.recruitmentDistType === :disc,
         recruitment.recruitmentDistNodes == Dict( 0 => 1.0 ),
         recruitment.ageDistType === :disc,
-        recruitment.ageDistNodes == Dict( 0 => 1.0 ) ] )
+        recruitment.ageDistNodes == Dict( 0 => 1.0 )] )
 end  # @testset "function Constructor"
 
 recruitment = Recruitment( "Recruitment" )
@@ -31,8 +31,8 @@ end  # @testset "function setRecruitmentTarget!"
 
 @testset "function setRecruitmentAdaptiveRange!" begin
     @test_deprecated setRecruitmentLimits( recruitment, 20 )
-    @test all( [ recruitment.isAdaptive, recruitment.minRecruitment == 20,
-        recruitment.maxRecruitment == -1 ] )
+    @test all( [recruitment.isAdaptive, recruitment.minRecruitment == 20,
+        recruitment.maxRecruitment == -1] )
     setRecruitmentAdaptiveRange!( recruitment, -20, -20 )
     @test ( recruitment.minRecruitment == 0 ) &&
         ( recruitment.maxRecruitment == -1 )
@@ -46,9 +46,9 @@ end  # @testset "function setRecruitmentAdaptiveRange!"
 
 @testset "function setRecruitmentFixed!" begin
     @test_deprecated setRecruitmentFixed( recruitment, 50 )
-    @test all( [ !recruitment.isAdaptive,
+    @test all( [!recruitment.isAdaptive,
         recruitment.recruitmentDistType === :disc,
-        recruitment.recruitmentDistNodes == Dict( 50 => 1.0 ) ] )
+        recruitment.recruitmentDistNodes == Dict( 50 => 1.0 )] )
     setRecruitmentFixed!( recruitment, 200 )
     @test recruitment.recruitmentDistNodes == Dict( 200 => 1.0 )
     @test !setRecruitmentFixed!( recruitment, -500 )
@@ -61,7 +61,7 @@ end  # @testset "function setRecruitmentFixed!"
     @test ( recruitment.recruitmentDistType === :disc ) &&
         ( recruitment.recruitmentDistNodes ==
             Dict( 50 => 1.0, 75 => 2.0, 100 => 1.0 ) )
-    @test all( map( ii -> recruitment.recruitmentDist() ∈ [ 50, 75, 100 ],
+    @test all( map( ii -> recruitment.recruitmentDist() ∈ [50, 75, 100],
         1:10000 ) )
     setRecruitmentDist!( recruitment, :pUnif,
         Dict( 50 => 1.0, 70 => 2.0, 90 => 1.0 ) )
@@ -100,7 +100,7 @@ end  # @testset "function setRecruitmentAgeFixed!"
     @test ( recruitment.ageDistType === :disc ) &&
         ( recruitment.ageDistNodes ==
             Dict( 20.0 => 1.0, 30.0 => 2.0, 45.0 => 1.0 ) )
-    @test all( map( age -> age ∈ [ 20.0, 30.0, 45.0 ],
+    @test all( map( age -> age ∈ [20.0, 30.0, 45.0],
         recruitment.ageDist( 10000 ) ) )
     setRecruitmentAgeDist!( recruitment, :pUnif,
         Dict( 20.0 => 1.0, 25.0 => 2.0, 40.0 => 1.0 ) )

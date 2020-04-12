@@ -23,14 +23,14 @@ function generateTimeGrid( mpSim::MPsim, timeRes::Real,
 
     if currentTime == 0
         @warn "Simulation hasn't started yet." 
-        return [ 0.0 ]
+        return [0.0]
     end  # if currentTime == 0
 
     timeGrid = collect( 0:timeRes:currentTime )
 
-    if addCurrentTime && ( timeGrid[ end ] < currentTime )
+    if addCurrentTime && ( timeGrid[end] < currentTime )
         push!( timeGrid, currentTime )
-    end  # if timeGrid[ end ] < currentTime
+    end  # if timeGrid[end] < currentTime
 
     return timeGrid
 

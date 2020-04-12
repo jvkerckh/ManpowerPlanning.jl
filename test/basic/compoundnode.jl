@@ -3,8 +3,8 @@
 @testset "Constructor" begin
     @test_deprecated CompoundState( "Test" )
     compoundNode = CompoundNode( "Compound node" )
-    @test all( [ compoundNode.name == "Compound node",
-        isempty( compoundNode.baseNodeList ), compoundNode.nodeTarget == -1 ] )
+    @test all( [compoundNode.name == "Compound node",
+        isempty( compoundNode.baseNodeList ), compoundNode.nodeTarget == -1] )
 end  # @testset "Constructor"
 
 compoundNode = CompoundNode( "Compound node" )
@@ -13,7 +13,7 @@ compoundNode = CompoundNode( "Compound node" )
     @test_deprecated addStateToCompound!( compoundNode, "Air Officer",
         "Air Non-Com", "Air Officer" )
     @test ( length( compoundNode.baseNodeList ) == 2 ) &&
-        ( [ "Air Officer", "Air Non-Com" ] ⊆ compoundNode.baseNodeList )
+        ( ["Air Officer", "Air Non-Com"] ⊆ compoundNode.baseNodeList )
     addCompoundNodeComponent!( compoundNode, "Air Officer", "Air Volunteer" )
     @test ( length( compoundNode.baseNodeList ) == 3 ) &&
         ( "Air Volunteer" ∈ compoundNode.baseNodeList )
@@ -38,14 +38,14 @@ end  # @testset "function removeCompoundNodeComponent!"
 end  # @testset "function clearCompoundNodeComponents!"
 
 @testset "function setCompoundNodeComponents!" begin
-    setCompoundNodeComponents!( compoundNode, [ "Ground Officer",
-        "Ground Non-Com", "Ground Officer" ] )
+    setCompoundNodeComponents!( compoundNode, ["Ground Officer",
+        "Ground Non-Com", "Ground Officer"] )
     @test ( length( compoundNode.baseNodeList ) == 2 ) &&
-        ( [ "Ground Officer", "Ground Non-Com" ] ⊆ compoundNode.baseNodeList )
+        ( ["Ground Officer", "Ground Non-Com"] ⊆ compoundNode.baseNodeList )
     setCompoundNodeComponents!( compoundNode, "Medical Volunteer",
         "Medical Officer" )
     @test ( length( compoundNode.baseNodeList ) == 2 ) &&
-        ( [ "Medical Officer", "Medical Volunteer" ] ⊆ 
+        ( ["Medical Officer", "Medical Volunteer"] ⊆ 
         compoundNode.baseNodeList )
 end  # @testset "function setCompoundNodeComponents!"
 

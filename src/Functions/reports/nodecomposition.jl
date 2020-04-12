@@ -19,7 +19,7 @@ This function returns a `Dict{String, DataFrame}`, where the keys are the valid 
 function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     nodes::String... )::Dict{String, DataFrame}
 
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
     result = Dict{String, DataFrame}()
 
@@ -28,9 +28,9 @@ function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return result
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
@@ -55,16 +55,16 @@ function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     isBaseNode = haskey.( Ref( mpSim.baseNodeList ), nodes )
     
     if any( isBaseNode )
-        baseNodeList = nodes[ isBaseNode ]
-        result[ "Base nodes" ] = baseNodeReport[ :, vcat( :timePoint,
-            Symbol.( baseNodeList ) ) ]
+        baseNodeList = nodes[isBaseNode]
+        result["Base nodes"] = baseNodeReport[:, vcat( :timePoint,
+            Symbol.( baseNodeList ) )]
     end  # if any( isBaseNode )
 
     # Generate the report for the compound nodes.
-    for node in nodes[ .!isBaseNode ]
-        result[ node ] = generateCompositionReport(
-            mpSim.compoundNodeList[ node ], baseNodeReport )
-    end  # for node in nodes[ .!isBaseNode ]
+    for node in nodes[.!isBaseNode]
+        result[node] = generateCompositionReport(
+            mpSim.compoundNodeList[node], baseNodeReport )
+    end  # for node in nodes[.!isBaseNode]
 
     return result
 

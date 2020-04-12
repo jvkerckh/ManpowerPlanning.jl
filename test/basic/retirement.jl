@@ -2,8 +2,8 @@
 
 @testset "Constructor" begin
     retirement = Retirement()
-    @test all( [ retirement.maxCareerLength == 0, retirement.retirementAge == 0,
-        retirement.freq == 1, retirement.offset == 0, retirement.isEither ] )
+    @test all( [retirement.maxCareerLength == 0, retirement.retirementAge == 0,
+        retirement.freq == 1, retirement.offset == 0, retirement.isEither] )
 end  # @testset "Constructor"
 
 retirement = Retirement()

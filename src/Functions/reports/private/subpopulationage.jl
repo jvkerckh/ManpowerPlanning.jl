@@ -15,14 +15,14 @@ function getAgesAtTime( mpSim::MPsim, timePoint::Float64, subpopulations::Vector
             "\n    GROUP BY `", mpSim.idKey, "`" )
 
         for ii in eachindex( subpopulations )
-            if isempty( idsInSubpop[ ii ] )
-                result[ ii ] = Vector{Float64}()
+            if isempty( idsInSubpop[ii] )
+                result[ii] = Vector{Float64}()
             else
-                queryCmd = string( queryPrefix, join( idsInSubpop[ ii ],
+                queryCmd = string( queryPrefix, join( idsInSubpop[ii],
                     "', '" ), querySuffix )
-                result[ ii ] = DataFrame( SQLite.Query( mpSim.simDB,
-                    queryCmd ) )[ 1 ]
-            end  # if isempty( idsInSubpop )[ ii ]
+                result[ii] = DataFrame( DBInterface.execute( mpSim.simDB,
+                    queryCmd ) )[:, 1]
+            end  # if isempty( idsInSubpop )[ii]
         end  # for ii in eachindex( subpopulations )
 
         return result
@@ -34,13 +34,14 @@ function getAgesAtTime( mpSim::MPsim, timePoint::Float64, subpopulations::Vector
         "\n    `", mpSim.idKey, "` IN ( '" )
     
     for ii in eachindex( subpopulations )
-        if isempty( idsInSubpop[ ii ] )
-            result[ ii ] = Vector{Float64}()
+        if isempty( idsInSubpop[ii] )
+            result[ii] = Vector{Float64}()
         else
-            queryCmd = string( queryCmdTmp, join( idsInSubpop[ ii ], "', '" ),
+            queryCmd = string( queryCmdTmp, join( idsInSubpop[ii], "', '" ),
                 "' )" )
-            result[ ii ] = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )[ 1 ]
-        end  # if isempty( idsInSubpop )[ ii ]
+            result[ii] = DataFrame( DBInterface.execute( mpSim.simDB,
+                queryCmd ) )[:, 1]
+        end  # if isempty( idsInSubpop )[ii]
     end  # for ii in eachindex( subpopulations )
 
     return result
@@ -53,48 +54,48 @@ function processSubpopulationAges( personnelAges::Array{Vector{Float64}, 2},
     ageRes::Float64 )
 
     result = Dict{String, DataFrame}()
-    baseNames = [ :timePoint, :mean, :median, :stdev, :min, :max ]
+    baseNames = [:timePoint, :mean, :median, :stdev, :min, :max]
 
     for ii in eachindex( subpopulations )
-        subpopName = subpopulations[ ii ].name
-        agesOfSubpop = personnelAges[ ii, : ]
+        subpopName = subpopulations[ii].name
+        agesOfSubpop = personnelAges[ii, :]
         ageSummary = zeros( Union{Float64, Missing}, length( timeGrid ), 6 )
-        ageSummary[ :, 1 ] = timeGrid
+        ageSummary[:, 1] = timeGrid
         emptySubpop = isempty.( agesOfSubpop )
 
         if all( emptySubpop )
-            ageSummary[ :, 2:end ] .= missing
-            result[ subpopName ] = DataFrame( ageSummary, baseNames )
+            ageSummary[:, 2:end] .= missing
+            result[subpopName] = DataFrame( ageSummary, baseNames )
         else
-            minAge = minimum( minimum.( agesOfSubpop[ .!emptySubpop ] ) )
+            minAge = minimum( minimum.( agesOfSubpop[.!emptySubpop] ) )
             minAge = floor( minAge / ageRes ) * ageRes
-            maxAge = maximum( maximum.( agesOfSubpop[ .!emptySubpop ] ) )
+            maxAge = maximum( maximum.( agesOfSubpop[.!emptySubpop] ) )
             maxAge = floor( maxAge / ageRes ) * ageRes
             ageGrid = collect( minAge:ageRes:maxAge )
 
             counts = zeros( Int, length( timeGrid ), length( ageGrid ) )
 
             for jj in eachindex( timeGrid )
-                subpopAgesAtTime = agesOfSubpop[ jj ]
+                subpopAgesAtTime = agesOfSubpop[jj]
 
                 if isempty( subpopAgesAtTime )
-                    ageSummary[ jj, 2:6 ] .= missing
+                    ageSummary[jj, 2:6] .= missing
                 else
-                    ageSummary[ jj, 2:6 ] = [ mean( subpopAgesAtTime ),
+                    ageSummary[jj, 2:6] = [mean( subpopAgesAtTime ),
                         median( subpopAgesAtTime ),
                         length( subpopAgesAtTime ) == 1 ? missing :
                             std( subpopAgesAtTime ),
                         minimum( subpopAgesAtTime ),
-                        maximum( subpopAgesAtTime ) ]
+                        maximum( subpopAgesAtTime )]
                 end  # if isempty( subpopAgesAtTime )
 
                 tmpCounts = map( age -> count( subpopAgesAtTime .>= age ),
                     ageGrid )
-                tmpCounts -= vcat( tmpCounts[ 2:end ], 0 )
-                counts[ jj, : ] = tmpCounts
+                tmpCounts -= vcat( tmpCounts[2:end], 0 )
+                counts[jj, :] = tmpCounts
             end  # for jj in eachindex( timeGrid )
 
-            result[ subpopName ] = DataFrame( hcat( ageSummary, counts ),
+            result[subpopName] = DataFrame( hcat( ageSummary, counts ),
                 vcat( baseNames, Symbol.( ageGrid ) ) )
         end  # if all( emptySubpop )
     end  # for ii in eachindex( subpopulations )

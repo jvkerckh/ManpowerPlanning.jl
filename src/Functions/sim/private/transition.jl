@@ -63,30 +63,30 @@ function orderTransitions!( mpSim::MPsim )
         end  # if length( transFromSource ) < 2
 
         for trans1 in transFromSource, trans2 in transFromSource
-            if haskey( transOrder, names[ trans1 ] ) &&
-                haskey( transOrder, names[ trans2 ] ) &&
-                ( transOrder[ names[ trans1 ] ] <
-                    transOrder[ names[ trans2 ] ] )
+            if haskey( transOrder, names[trans1] ) &&
+                haskey( transOrder, names[trans2] ) &&
+                ( transOrder[names[trans1]] <
+                    transOrder[names[trans2]] )
                 add_edge!( transGraph, trans1, trans2 )
-            end  # if haskey( transOrder, names[ trans1 ] ) && ...
+            end  # if haskey( transOrder, names[trans1] ) && ...
         end  # for trans1 in transFromSource, trans2 in transFromSource
 
-        transNames = names[ transFromSource ]
+        transNames = names[transFromSource]
 
         for name in uniqueNames
-            transNameSource = transFromSource[ transNames .== name ]
+            transNameSource = transFromSource[transNames .== name]
 
             if length( transNameSource ) < 2
                 continue
             end  # if length( transNameSource ) < 2
 
             for trans1 in transNameSource, trans2 in transNameSource
-                if haskey( nodeOrder, targets[ trans1 ] ) &&
-                    haskey( nodeOrder, targets[ trans2 ] ) &&
-                    ( nodeOrder[ targets[ trans1 ] ] <
-                        nodeOrder[ targets[ trans2 ] ] )
+                if haskey( nodeOrder, targets[trans1] ) &&
+                    haskey( nodeOrder, targets[trans2] ) &&
+                    ( nodeOrder[targets[trans1]] <
+                        nodeOrder[targets[trans2]] )
                     add_edge!( transGraph, trans1, trans2 )
-                end  # if haskey( nodeOrder, targets[ trans1 ] ) && ...
+                end  # if haskey( nodeOrder, targets[trans1] ) && ...
             end  # for trans1 in transNameSource, trans2 in transNameSource
         end  # for name in uniqueNames
     end  # for source in uniqueSources
@@ -99,30 +99,30 @@ function orderTransitions!( mpSim::MPsim )
         end  # if length( transToTarget ) < 2
 
         for trans1 in transToTarget, trans2 in transToTarget
-            if haskey( transOrder, names[ trans1 ] ) &&
-                haskey( transOrder, names[ trans2 ] ) &&
-                ( transOrder[ names[ trans1 ] ] <
-                    transOrder[ names[ trans2 ] ] )
+            if haskey( transOrder, names[trans1] ) &&
+                haskey( transOrder, names[trans2] ) &&
+                ( transOrder[names[trans1]] <
+                    transOrder[names[trans2]] )
                 add_edge!( transGraph, trans1, trans2 )
-            end  # if haskey( transOrder, names[ trans1 ] ) && ...
+            end  # if haskey( transOrder, names[trans1] ) && ...
         end  # for trans1 in transToTarget, trans2 in transToTarget
 
-        transNames = names[ transToTarget ]
+        transNames = names[transToTarget]
 
         for name in uniqueNames
-            transNameTarget = transToTarget[ transNames .== name ]
+            transNameTarget = transToTarget[transNames .== name]
 
             if length( transNameTarget ) < 2
                 continue
             end  # if length( transNameTarget ) < 2
 
             for trans1 in transNameTarget, trans2 in transNameTarget
-                if haskey( nodeOrder, sources[ trans1 ] ) &&
-                    haskey( nodeOrder, sources[ trans2 ] ) &&
-                    ( nodeOrder[ sources[ trans1 ] ] <
-                        nodeOrder[ sources[ trans2 ] ] )
+                if haskey( nodeOrder, sources[trans1] ) &&
+                    haskey( nodeOrder, sources[trans2] ) &&
+                    ( nodeOrder[sources[trans1]] <
+                        nodeOrder[sources[trans2]] )
                     add_edge!( transGraph, trans1, trans2 )
-                end  # if haskey( nodeOrder, sources[ trans1 ] ) && ...
+                end  # if haskey( nodeOrder, sources[trans1] ) && ...
             end  # for trans1 in transNameTarget, trans2 in transNameTarget
         end  # for name in uniqueNames
     end  # for target in uniqueTargets
@@ -134,9 +134,9 @@ function orderTransitions!( mpSim::MPsim )
     graphRanks = zeros( vertices( transGraph ) )
 
     for nodeList in subgraphNodes
-        subgraph = induced_subgraph( transGraph, nodeList )[ 1 ]
+        subgraph = induced_subgraph( transGraph, nodeList )[1]
         generateGraphNodeRanks!( subgraph )
-        graphRanks[ nodeList ] = get_prop.( Ref( subgraph ),
+        graphRanks[nodeList] = get_prop.( Ref( subgraph ),
             vertices( subgraph ), :rank )
     end  # for nodeList in subgraphNodes
 
@@ -190,7 +190,7 @@ end  # orderTransitions!( mpSim )
                 transitionLevels )
             performTransitions( mpSim, transition, mandatoryIDs )
             @yield( timeout( sim, 0, priority = priority - priorityShift ) )
-            sourceNode = mpSim.baseNodeList[ transition.sourceNode ]
+            sourceNode = mpSim.baseNodeList[transition.sourceNode]
             filter!( id -> haskey( sourceNode.inNodeSince, id ), checkedIDs )
         end  # if transition.minFlux > 0
 
@@ -212,7 +212,7 @@ end  # transitionProcess( sim, transition, mpSim )
 function getEligibleIDs( transition::Transition, nAttempts::Dict{String, Int},
     maxAttempts::Int, mpSim::MPsim )::Vector{String}
 
-    sourceNode = mpSim.baseNodeList[ transition.sourceNode ]
+    sourceNode = mpSim.baseNodeList[transition.sourceNode]
     eligibleIDs = collect( keys( sourceNode.inNodeSince ) )
 
     # Check if attempts have been exhausted (important if transition doesn't
@@ -220,15 +220,15 @@ function getEligibleIDs( transition::Transition, nAttempts::Dict{String, Int},
     if maxAttempts > 0
         # The first condition means 0 attempts so far.
         filter!( id -> !haskey( nAttempts, id ) ||
-            ( nAttempts[ id ] < maxAttempts ), eligibleIDs )
+            ( nAttempts[id] < maxAttempts ), eligibleIDs )
     end  # if maxAttempts > 0
 
-    filter!( id -> now( mpSim ) > sourceNode.inNodeSince[ id ], eligibleIDs )
+    filter!( id -> now( mpSim ) > sourceNode.inNodeSince[id], eligibleIDs )
 
     for cond in filter( cond -> cond.attribute == "time in node",
         transition.extraConditions )
         filter!( id -> cond.operator( now( mpSim ) -
-            sourceNode.inNodeSince[ id ], cond.value ), eligibleIDs )
+            sourceNode.inNodeSince[id], cond.value ), eligibleIDs )
     end  # for cond in filter( ...
 
     return eligibleIDs
@@ -248,18 +248,18 @@ function checkExtraConditions( transition::Transition,
         " - timeEntered age, ", now( mpSim ), " - timeEntered tenure FROM `",
         mpSim.persDBname, "` WHERE ",
         "\n    `", mpSim.idKey, "` IN ('", join( eligibleIDs, "', '" ), "')" )
-    eligibleIDsState = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
-    checkedIDs = Vector{String}( eligibleIDsState[ :, Symbol( mpSim.idKey ) ] )
+    eligibleIDsState = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
+    checkedIDs = Vector{String}( eligibleIDsState[:, Symbol( mpSim.idKey )] )
     isIDokay = trues( length( checkedIDs ) )
 
     for cond in filter( cond -> cond.attribute != "time in node",
         transition.extraConditions )
         isIDokay = isIDokay .& map( ii -> cond.operator(
-            eligibleIDsState[ Symbol( cond.attribute ) ][ ii ], cond.value ),
+            eligibleIDsState[:, Symbol( cond.attribute )][ii], cond.value ),
             eachindex( isIDokay ) )
     end  # for cond in filter( ...
 
-    return checkedIDs[ isIDokay ]
+    return checkedIDs[isIDokay]
 
 end  # checkExtraConditions( transition, eligibleIDs, mpSim )
 
@@ -272,10 +272,10 @@ function updateAttemptsAndIDs!( nAttempts::Dict{String, Int}, maxAttempts::Int,
     #   succesfully while stil being eligible for it.
     for id in eligibleIDs
         if haskey( nAttempts, id ) && ( ( maxAttempts == -1 ) ||
-            ( nAttempts[ id ] <= maxAttempts ) ) && ( nAttempts[ id ] > 0 )
-            nAttempts[ id ] += 1
+            ( nAttempts[id] <= maxAttempts ) ) && ( nAttempts[id] > 0 )
+            nAttempts[id] += 1
         else
-            nAttempts[ id ] = 1
+            nAttempts[id] = 1
         end  # if haskey( nAttempts, id ) && ...
     end  # for id in eligibleIDs
 
@@ -294,7 +294,7 @@ function determineTransitionLevels( transition::Transition,
     # The probabilities of undergoing the transition for each person.
     tresholds =  transition.probabilityList[
         min.( length( transition.probabilityList ),
-        getindex.( Ref( nAttempts ), eligibleIDs ) ) ]
+        getindex.( Ref( nAttempts ), eligibleIDs ) )]
     modProbs = rand( length( eligibleIDs ) ) ./ tresholds
     setindex!.( Ref( probDict ), modProbs, eligibleIDs )
     return probDict
@@ -311,7 +311,7 @@ function determineMandatoryIDs( transition::Transition,
 
     # Get the min flux IDs which have the smallest value for their transLevel.
     modProbs = getindex.( Ref( transitionLevels ), eligibleIDs )
-    return eligibleIDs[ sortperm( modProbs )[ 1:(transition.minFlux) ] ]
+    return eligibleIDs[sortperm( modProbs )[1:(transition.minFlux)]]
 
 end  # determineMandatoryIDs( transition, eligibleIDs, transLevels )
 
@@ -334,7 +334,7 @@ function determineAdditionalIDs( transition::Transition,
     vacancies = -1
 
     targetNode = transition.isOutTransition ? nothing :
-        mpSim.baseNodeList[ transition.targetNode ]
+        mpSim.baseNodeList[transition.targetNode]
 
     if !transition.isOutTransition && !transition.hasPriority &&
         ( transition.sourceNode != transition.targetNode ) &&
@@ -357,11 +357,11 @@ function determineAdditionalIDs( transition::Transition,
     # If the number of people who have passed the test is smaller than the
     #   number of people who can transfer, return the list of people who passed.
     if count( hasPassed ) <= maxToTransfer
-        return eligibleIDs[ hasPassed ]
+        return eligibleIDs[hasPassed]
     end  # if sum( hasPassed ) <= maxToTransfer
 
     # Otherwise, only select people with highest scores.
-    return eligibleIDs[ sortperm( modProbs )[ 1:maxToTransfer ] ]
+    return eligibleIDs[sortperm( modProbs )[1:maxToTransfer]]
 
 end  # determineAdditionalIDs( transition, eligibleIDs, transitionLevels,
      #   mpSim )
@@ -396,17 +396,17 @@ function executeTransitions( transition::Transition, idList::Vector{String},
     #   transition.
     queryCmd = string( "SELECT * FROM `", mpSim.persDBname, "` WHERE",
         "\n    `", mpSim.idKey, "` IN ('", join( idList, "', '" ), "')" )
-    idListState = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
-    tmpIDs = idListState[ :, Symbol( mpSim.idKey ) ]
+    idListState = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
+    tmpIDs = idListState[:, Symbol( mpSim.idKey )]
 
     # Make changes in personnel database.
-    persChangesCmd = [ string( "currentNode = '", transition.targetNode, "'" ) ]
+    persChangesCmd = [string( "currentNode = '", transition.targetNode, "'" )]
     changedAttrVals = Dict{String, String}()
 
     # Target node attributes.
     if !transition.isOutTransition &&
         ( transition.sourceNode !== transition.targetNode )
-        targetNode = mpSim.baseNodeList[ transition.targetNode ]
+        targetNode = mpSim.baseNodeList[transition.targetNode]
         changedAttrVals = deepcopy( targetNode.requirements )
     end  # if !transition.isOutTransition && ...
 
@@ -423,19 +423,19 @@ function executeTransitions( transition::Transition, idList::Vector{String},
     persChangesCmd = string( "UPDATE `", mpSim.persDBname, "`",
         "\n    SET ", join( persChangesCmd, ", " ),
         "\n    WHERE `", mpSim.idKey, "` IN ('", join( tmpIDs, "', '" ), "')" )
-    SQLite.execute!( mpSim.simDB, persChangesCmd )
+    DBInterface.execute( mpSim.simDB, persChangesCmd )
 
     # Record attribute changes in history database.
     histChangesCmd = Vector{String}()
 
     for attr in changedAttrs
-        oldAttrValues = idListState[ :, Symbol( attr ) ]
-        changedIDs = tmpIDs[ oldAttrValues .!= changedAttrVals[ attr ] ]
+        oldAttrValues = idListState[:, Symbol( attr )]
+        changedIDs = tmpIDs[oldAttrValues .!= changedAttrVals[attr]]
 
         if !isempty( changedIDs )
             push!( histChangesCmd, join( string.( "\n    ('", changedIDs,
                 "', '", attr, "', ", now( mpSim ), ", '",
-                changedAttrVals[ attr ], "')" ), ", " ) )
+                changedAttrVals[attr], "')" ), ", " ) )
         end  # if !isempty( changedIDs )
     end  # for attr in changedAttrs
 
@@ -443,7 +443,7 @@ function executeTransitions( transition::Transition, idList::Vector{String},
         histChangesCmd = string( "INSERT INTO `", mpSim.histDBname, "` (`",
             mpSim.idKey, "`, attribute, timeIndex, value) VALUES",
             join( histChangesCmd, "," ) )
-        SQLite.execute!( mpSim.simDB, histChangesCmd )
+        DBInterface.execute( mpSim.simDB, histChangesCmd )
     end  # if !isempty( histChangesCmd )
 
 end  # executeTransitions( trans, idList, mpSim )
@@ -453,13 +453,13 @@ function updateNodes( transition::Transition, transIDs::Vector{String},
     mpSim::MPsim )
 
     # Update the inNodeSince fields of the source and target nodes.
-    sourceNode = mpSim.baseNodeList[ transition.sourceNode ]
+    sourceNode = mpSim.baseNodeList[transition.sourceNode]
     tName = transition.isOutTransition ? "NULL" :
         string( "'", transition.targetNode, "'" )
     delete!.( Ref( sourceNode.inNodeSince ), transIDs )
 
     if !transition.isOutTransition
-        targetNode = mpSim.baseNodeList[ transition.targetNode ]
+        targetNode = mpSim.baseNodeList[transition.targetNode]
         setindex!.( Ref( targetNode.inNodeSince ), now( mpSim ), transIDs )
     end  # if !transition.isOutTransition
 
@@ -469,7 +469,7 @@ function updateNodes( transition::Transition, transIDs::Vector{String},
     transCmd = string( "INSERT INTO `", mpSim.transDBname, "` (`", mpSim.idKey,
         "`, timeIndex, transition, sourceNode, targetNode) VALUES",
         join( transCmd, "," ) )
-        SQLite.execute!( mpSim.simDB, transCmd )
+        DBInterface.execute( mpSim.simDB, transCmd )
 
     # Update the expected time of attrition.
     updateTimeOfAttrition( transIDs, transition.targetNode, mpSim )
@@ -481,8 +481,8 @@ function updateTimeOfAttrition( transIDs::Vector{String}, targetName::String,
     mpSim::MPsim  )
 
     # Update the expected times to attrition.
-    targetNode = mpSim.baseNodeList[ targetName ]
-    attrition = mpSim.attritionSchemes[ targetNode.attrition ]
+    targetNode = mpSim.baseNodeList[targetName]
+    attrition = mpSim.attritionSchemes[targetNode.attrition]
     timeOfAttrition = now( mpSim ) .+ generateTimeToAttrition( attrition,
         length( transIDs ) )
     timeOfAttrition = map( toa -> toa == +Inf ? "NULL" : toa, timeOfAttrition )
@@ -490,7 +490,7 @@ function updateTimeOfAttrition( transIDs::Vector{String}, targetName::String,
     updateCmds = string.( "UPDATE `", mpSim.persDBname, "`",
         "\n    SET expectedAttritionTime = ", timeOfAttrition,
         "\n    WHERE `", mpSim.idKey, "` IS '", transIDs, "'" )
-    SQLite.execute!.( Ref( mpSim.simDB ), updateCmds )
+    SQLite.execute.( Ref( mpSim.simDB ), updateCmds )
 
     # Check if any of the new attrition times occur before the next attrition
     #   process check.
@@ -498,10 +498,10 @@ function updateTimeOfAttrition( transIDs::Vector{String}, targetName::String,
     #     mpSim.attritionTimeSkip
 
     # for ii in eachindex( idList )
-    #     if newAttrTimeList[ ii ] <= newProcessCheckTime
-    #         executeAttritionProcess( mpSim.sim, idList[ ii ],
-    #             newAttrTimeList[ ii ], mpSim )
-    #     end  # if newAttrTimeList[ ii ] <= newProcessCheckTime
+    #     if newAttrTimeList[ii] <= newProcessCheckTime
+    #         executeAttritionProcess( mpSim.sim, idList[ii],
+    #             newAttrTimeList[ii], mpSim )
+    #     end  # if newAttrTimeList[ii] <= newProcessCheckTime
     # end  # for ii in eachindex( idList )
 
 end  # updateTimeOfAttrition( transIDs, targetName, mpSim )

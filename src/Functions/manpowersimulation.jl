@@ -524,7 +524,7 @@ This function returns `true` if any transition type has a priority added or chan
 function addSimulationTransitionTypeOrder!( mpSim::MPsim,
     transOrder::Tuple{String, Int}... )::Bool
 
-    transTypes = map( orderPair -> orderPair[ 1 ], transOrder )
+    transTypes = map( orderPair -> orderPair[1], transOrder )
 
     if length( transTypes ) != length( unique( transTypes ) )
         @warn "Duplicate entries in the transition type/priority list, not making any changes."
@@ -534,7 +534,7 @@ function addSimulationTransitionTypeOrder!( mpSim::MPsim,
     transOrderDict = Dict{String, Int}()
 
     for orderPair in transOrder
-        transOrderDict[ orderPair[ 1 ] ] = orderPair[ 2 ]
+        transOrderDict[orderPair[1]] = orderPair[2]
     end  # for orderPair in transOrder
 
     return setSimTransitionTypeOrder!( mpSim, transOrderDict, false )
@@ -626,7 +626,7 @@ This function returns `true` if the transition type priorities have been set suc
 function setSimulationTransitionTypeOrder!( mpSim::MPsim,
     transOrder::Tuple{String, Int}... )::Bool
 
-    transTypes = map( orderPair -> orderPair[ 1 ], transOrder )
+    transTypes = map( orderPair -> orderPair[1], transOrder )
 
     if length( transTypes ) != length( unique( transTypes ) )
         @warn "Duplicate entries in the transition type/priority list, not making any changes."
@@ -636,7 +636,7 @@ function setSimulationTransitionTypeOrder!( mpSim::MPsim,
     transOrderDict = Dict{String, Int}()
 
     for orderPair in transOrder
-        transOrderDict[ orderPair[ 1 ] ] = orderPair[ 2 ]
+        transOrderDict[orderPair[1]] = orderPair[2]
     end  # for orderPair in transOrder
 
     return setSimTransitionTypeOrder!( mpSim, transOrderDict, true )
@@ -674,7 +674,7 @@ function setSimulationTransitionTypeOrder!( mpSim::MPsim,
     transOrderDict = Dict{String, Int}()
 
     for ii in eachindex( transTypes )
-        transOrderDict[ transTypes[ ii ] ] = transPrios[ ii ]
+        transOrderDict[transTypes[ii]] = transPrios[ii]
     end  # for ii in eachindex( transTypes )
 
     return setSimTransitionTypeOrder!( mpSim, transOrderDict, true )
@@ -711,7 +711,7 @@ This function returns `true` if any base node has a priority added or changed, a
 function addSimulationBaseNodeOrder!( mpSim::MPsim,
     nodeOrder::Tuple{String, Int}... )::Bool
 
-    baseNodes = map( orderPair -> orderPair[ 1 ], nodeOrder )
+    baseNodes = map( orderPair -> orderPair[1], nodeOrder )
 
     if length( baseNodes ) != length( unique( baseNodes ) )
         @warn "Duplicate entries in the base node/priority list, not making any changes."
@@ -721,7 +721,7 @@ function addSimulationBaseNodeOrder!( mpSim::MPsim,
     nodeOrderDict = Dict{String, Int}()
 
     for orderPair in nodeOrder
-        nodeOrderDict[ orderPair[ 1 ] ] = orderPair[ 2 ]
+        nodeOrderDict[orderPair[1]] = orderPair[2]
     end  # for orderPair in nodeOrder
 
     return setSimBaseNodeOrder!( mpSim, nodeOrderDict, false )
@@ -813,7 +813,7 @@ This function returns `true` if the base node priorities have been set successfu
 function setSimulationBaseNodeOrder!( mpSim::MPsim,
     nodeOrder::Tuple{String, Int}... )::Bool
 
-    baseNodes = map( orderPair -> orderPair[ 1 ], nodeOrder )
+    baseNodes = map( orderPair -> orderPair[1], nodeOrder )
 
     if length( baseNodes ) != length( unique( baseNodes ) )
         @warn "Duplicate entries in the transition type/priority list, not making any changes."
@@ -823,7 +823,7 @@ function setSimulationBaseNodeOrder!( mpSim::MPsim,
     nodeOrderDict = Dict{String, Int}()
 
     for orderPair in nodeOrder
-        nodeOrderDict[ orderPair[ 1 ] ] = orderPair[ 2 ]
+        nodeOrderDict[orderPair[1]] = orderPair[2]
     end  # for orderPair in nodeOrder
 
     return setSimBaseNodeOrder!( mpSim, nodeOrderDict, true )
@@ -861,7 +861,7 @@ function setSimulationBaseNodeOrder!( mpSim::MPsim,
     transOrderDict = Dict{String, Int}()
 
     for ii in eachindex( baseNodes )
-        transOrderDict[ baseNodes[ ii ] ] = nodePrios[ ii ]
+        transOrderDict[baseNodes[ii]] = nodePrios[ii]
     end  # for ii in eachindex( baseNodes )
 
     return setSimBaseNodeOrder!( mpSim, transOrderDict, true )
@@ -965,17 +965,17 @@ function removeSimulationRetirement!( mpSim::MPsim, node::String )::Bool
 
     if haskey( mpSim.transitionsBySource, node )
         for transition in filter( transition -> transition.isOutTransition,
-            mpSim.transitionsBySource[ node ] )
+            mpSim.transitionsBySource[node] )
             nameInd = findfirst( map( trans -> transition === trans,
-                mpSim.transitionsByName[ transition.name ] ) )
+                mpSim.transitionsByName[transition.name] ) )
             sourceInd = findfirst( map( trans -> transition === trans,
-                mpSim.transitionsBySource[ node ] ) )
+                mpSim.transitionsBySource[node] ) )
             targetInd = findfirst( map( trans -> transition === trans,
-                mpSim.transitionsByTarget[ "OUT" ] ) )
+                mpSim.transitionsByTarget["OUT"] ) )
 
-            deleteat!( mpSim.transitionsByName[ transition.name ], nameInd )
-            deleteat!( mpSim.transitionsBySource[ node ], sourceInd )
-            deleteat!( mpSim.transitionsByTarget[ "OUT" ], targetInd )
+            deleteat!( mpSim.transitionsByName[transition.name], nameInd )
+            deleteat!( mpSim.transitionsBySource[node], sourceInd )
+            deleteat!( mpSim.transitionsByTarget["OUT"], targetInd )
         end  # for transition in filter( ... )
     end  # if haskey( mpSim.transitionsBySource, node )
 
@@ -994,18 +994,18 @@ This function returns `true`, indicating that all OUT transitions have been succ
 """
 function clearSimulationRetirement!( mpSim::MPsim )::Bool
 
-    for transition in mpSim.transitionsByTarget[ "OUT" ]
+    for transition in mpSim.transitionsByTarget["OUT"]
         nameInd = findfirst( map( trans -> transition === trans,
-            mpSim.transitionsByName[ transition.name ] ) )
+            mpSim.transitionsByName[transition.name] ) )
         sourceInd = findfirst( map( trans -> transition === trans,
-            mpSim.transitionsBySource[ transition.sourceNode ] ) )
+            mpSim.transitionsBySource[transition.sourceNode] ) )
         
-        deleteat!( mpSim.transitionsByName[ transition.name ], nameInd )
-        deleteat!( mpSim.transitionsBySource[ transition.sourceNode ],
+        deleteat!( mpSim.transitionsByName[transition.name], nameInd )
+        deleteat!( mpSim.transitionsBySource[transition.sourceNode],
             sourceInd )
-    end  # for transition in mpSim.transitionsByTarget[ "OUT" ]
+    end  # for transition in mpSim.transitionsByTarget["OUT"]
 
-    empty!( mpSim.transitionsByTarget[ "OUT" ] )
+    empty!( mpSim.transitionsByTarget["OUT"] )
     mpSim.retirement = Retirement()
     return true
 
@@ -1042,8 +1042,8 @@ function removeSimulationAttrition!( mpSim::MPsim,
     attritionList::String... )::Bool
 
     tmpAttritionNames = collect( attritionList )
-    tmpAttritionNames[ map( attrition -> lowercase( attrition ) ∈
-        [ "", "default" ], tmpAttritionNames ) ] .= "default"
+    tmpAttritionNames[map( attrition -> lowercase( attrition ) ∈
+        ["", "default"], tmpAttritionNames )] .= "default"
     
     if !any( haskey.( Ref( mpSim.attritionSchemes ), tmpAttritionNames ) )
         return false
@@ -1052,7 +1052,7 @@ function removeSimulationAttrition!( mpSim::MPsim,
     delete!.( Ref( mpSim.attritionSchemes ), tmpAttritionNames )
 
     if "default" ∈ tmpAttritionNames
-        mpSim.attritionSchemes[ "default" ] = Attrition()
+        mpSim.attritionSchemes["default"] = Attrition()
     end  # if "default" ∈ tmpAttritionNames
 
     mpSim.isStale = true

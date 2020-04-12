@@ -1,11 +1,11 @@
 function wipeConfigTable( mpSim::MPsim )
 
-    SQLite.execute!( mpSim.simDB, "DROP TABLE IF EXISTS config" )
+    DBInterface.execute( mpSim.simDB, "DROP TABLE IF EXISTS config" )
     sqliteCmd = string( "CREATE TABLE config(",
         "\n    parName VARCHAR(32),",
         "\n    parType VARCHAR(32),",
         "\n    parValue TEXT )" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # wipeConfigTable( mpSim )
 
@@ -20,7 +20,7 @@ function storeGeneralPars( mpSim::MPsim )
         "\n    ('Sim length', 'General', '", mpSim.simLength, "'),",
         "\n    ('Current time', 'General', '", now( mpSim ), "'),",
         "\n    ('DB commits', 'General', '", mpSim.nCommits, "')" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeGeneralPars( mpSim )
 
@@ -32,7 +32,7 @@ function storeAttributes( mpSim::MPsim )
     end  # if isempty( mpSim.attributeList )
 
     sqliteCmd = map( collect( keys( mpSim.attributeList ) ) ) do name
-        attribute = mpSim.attributeList[ name ]
+        attribute = mpSim.attributeList[name]
         return string( "\n    ('", name, "', 'Attribute', '[",
             join( attribute.possibleValues, "," ), "];[",
             join( string.( attribute.initValues, ":",
@@ -41,7 +41,7 @@ function storeAttributes( mpSim::MPsim )
 
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( sqliteCmd, "," ) )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeAttributres( mpSim )
 
@@ -49,14 +49,14 @@ end  # storeAttributres( mpSim )
 function storeAttrition( mpSim )
 
     sqliteCmd = map( collect( keys( mpSim.attritionSchemes ) ) ) do name
-        attrition = mpSim.attritionSchemes[ name ]
+        attrition = mpSim.attritionSchemes[name]
         return string( "\n    ('", name, "', 'Attrition', '", attrition.period,     ";[", join( string.( attrition.curvePoints, ":", attrition.rates ),
             "," ), "]')" )
     end  # map( ... ) do name
 
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( sqliteCmd, "," ) )        
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeAttrition( mpSim )
 
@@ -64,23 +64,23 @@ end  # storeAttrition( mpSim )
 function storeNodes( mpSim::MPsim )
 
     baseNodeCmd = map( collect( keys( mpSim.baseNodeList ) ) ) do name
-        node = mpSim.baseNodeList[ name ]
+        node = mpSim.baseNodeList[name]
         tmpCmd = join( map( attr -> string( attr, ":",
-            node.requirements[ attr ] ), collect( keys( node.requirements ) ) ),
+            node.requirements[attr] ), collect( keys( node.requirements ) ) ),
             "," )
         return string( "\n    ('", name, "', 'Base Node', '", node.target, ";",
             node.attrition, ";[", tmpCmd, "]')" )
     end  # map( ... ) do name
 
     orderCmd = map( collect( keys( mpSim.baseNodeOrder ) ) ) do name
-        return string( name, ":", mpSim.baseNodeOrder[ name ] )
+        return string( name, ":", mpSim.baseNodeOrder[name] )
     end  # map( ... ) do name
 
     orderCmd = string( "\n    ('Order', 'Base Node Order', '",
         join( orderCmd, ";" ), "')" )
 
     compNodeCmd = map( collect( keys( mpSim.compoundNodeList ) ) ) do name
-        node = mpSim.compoundNodeList[ name ]
+        node = mpSim.compoundNodeList[name]
         return string( "\n    ('", name, "', 'Compound Node', '[",
             join( node.baseNodeList, "," ), "];", node.nodeTarget, "')" )
     end  # map( ... ) do name
@@ -88,7 +88,7 @@ function storeNodes( mpSim::MPsim )
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( baseNodeCmd, "," ), isempty( baseNodeCmd ) ? "" : ",",
         orderCmd, isempty( compNodeCmd ) ? "" : ",", join( compNodeCmd, "," ) )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeNodes( mpSim )
 
@@ -100,7 +100,7 @@ function storeRecruitment( mpSim::MPsim )
     end  # if isempty( mpSim.recruitmentByName )
 
     sqliteCmd = map( collect( keys( mpSim.recruitmentByName ) ) ) do name
-        recruitmentList = mpSim.recruitmentByName[ name ]
+        recruitmentList = mpSim.recruitmentByName[name]
 
         return map( recruitmentList ) do recruitment
             # recNrConfig = nothing
@@ -112,7 +112,7 @@ function storeRecruitment( mpSim::MPsim )
                 recNrConfig = map( collect( keys(
                     recruitment.recruitmentDistNodes ) ) ) do amount
                     return string( amount, ":",
-                        recruitment.recruitmentDistNodes[ amount ] )
+                        recruitment.recruitmentDistNodes[amount] )
                 end  # map( ... ) do amount
 
                 recNrConfig = string( recruitment.recruitmentDistType, ";[",
@@ -121,7 +121,7 @@ function storeRecruitment( mpSim::MPsim )
 
             recAgeConfig = map( collect( keys(
                 recruitment.ageDistNodes ) ) ) do age
-                return string( age, ":", recruitment.ageDistNodes[ age ] )
+                return string( age, ":", recruitment.ageDistNodes[age] )
             end  # map( ... ) do age
             
             recAgeConfig = string( recruitment.ageDistType, ";[",
@@ -136,7 +136,7 @@ function storeRecruitment( mpSim::MPsim )
 
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( join.( sqliteCmd, "," ), "," ) )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeRecruitment( mpSim )
 
@@ -144,10 +144,10 @@ end  # storeRecruitment( mpSim )
 function storeTransitions( mpSim )
 
     transCmd = map( collect( keys( mpSim.transitionsByName ) ) ) do name
-        tmpCmd = map( mpSim.transitionsByName[ name ] ) do trans
+        tmpCmd = map( mpSim.transitionsByName[name] ) do trans
             conditionsStr = map( trans.extraConditions ) do condition
                 return string( condition.attribute, ":",
-                    relationEntries[ condition.operator ], ":",
+                    relationEntries[condition.operator], ":",
                     condition.value isa Vector ? join( condition.value, ":" ) :
                         condition.value )
             end  # map( trans.extraConditions ) do condition
@@ -155,7 +155,7 @@ function storeTransitions( mpSim )
             changesStr =
                 map( collect( keys( trans.extraChanges ) ) ) do attribute
                     return string( attribute, ":",
-                        trans.extraChanges[ attribute ] )
+                        trans.extraChanges[attribute] )
             end  # map( ... ) do attribute
 
             tmpStr = string( "'", trans.sourceNode, ";",
@@ -173,7 +173,7 @@ function storeTransitions( mpSim )
     end  # map( ... ) do name
 
     orderCmd = map( collect( keys( mpSim.baseNodeOrder ) ) ) do name
-        return string( name, ":", mpSim.baseNodeOrder[ name ] )
+        return string( name, ":", mpSim.baseNodeOrder[name] )
     end  # map( ... ) do name
 
     orderCmd = string( "\n    ('Order', 'Transition Order', '",
@@ -182,7 +182,7 @@ function storeTransitions( mpSim )
     sqliteCmd = string( "INSERT INTO config (parName, parType, parValue)",
         " VALUES", join( transCmd, "," ), isempty( transCmd ) ? "" : ",",
         orderCmd )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeTransitions( mpSim )
 
@@ -193,6 +193,6 @@ function storeRetirement( mpSim )
         " VALUES ('Retirement', 'Retirement', '", mpSim.retirement.freq, ";",
         mpSim.retirement.offset, ";", mpSim.retirement.maxCareerLength, ";",
         mpSim.retirement.retirementAge, ";", mpSim.retirement.isEither, "')" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
 end  # storeRetirement( mpSim )

@@ -168,7 +168,7 @@ mutable struct ManpowerSimulation
         newMPsim.valName = "value"
 
         # This line ensures that foreign key logic works.
-        SQLite.execute!( newMPsim.simDB, "PRAGMA foreign_keys = ON" )
+        DBInterface.execute( newMPsim.simDB, "PRAGMA foreign_keys = ON" )
 
         return newMPsim
 

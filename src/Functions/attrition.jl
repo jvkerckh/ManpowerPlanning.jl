@@ -42,8 +42,8 @@ function setAttritionRate!( attrition::Attrition, rate::Real )::Bool
         return false
     end  # if !( 0.0 <= rate < 1.0 )
 
-    attrition.curvePoints = [ 0.0 ]
-    attrition.rates = [ rate ]
+    attrition.curvePoints = [0.0]
+    attrition.rates = [rate]
     computeDistPars( attrition )
     return true
 
@@ -92,12 +92,12 @@ function setAttritionCurve!( attrition::Attrition,
     curve::Dict{T1, T2} )::Bool where T1 <: Real where T2 <: Real
 
     terms = Float64.( sort( collect( keys( curve ) ) ) )
-    rates = Float64.( map( term -> curve[ term ], terms ) )
+    rates = Float64.( map( term -> curve[term], terms ) )
 
     # Filter unsuitable attrition rates.
     isRateOkay = 0 .<= rates .< 1
-    terms = terms[ isRateOkay ]
-    rates = rates[ isRateOkay ]
+    terms = terms[isRateOkay]
+    rates = rates[isRateOkay]
 
     # If no suitable ones remain, make no changes.
     if isempty( terms )
@@ -113,16 +113,16 @@ function setAttritionCurve!( attrition::Attrition,
         terms = vcat( 0.0, terms )
         rates = vcat( 0.0, rates )
     else
-        terms = terms[ zeroInd:end ]
-        terms[ 1 ] = 0.0
-        rates = rates[ zeroInd:end ]
+        terms = terms[zeroInd:end]
+        terms[1] = 0.0
+        rates = rates[zeroInd:end]
     end  # if zeroInd isa Nothing
 
     # Filter out successive attrition rates that are the same.
     isDifferentFromPrevious = vcat( true,
-        rates[ 2:end ] .!= rates[ 1:(end - 1) ] )
-    attrition.curvePoints = terms[ isDifferentFromPrevious ]
-    attrition.rates = rates[ isDifferentFromPrevious ]
+        rates[2:end] .!= rates[1:(end - 1)] )
+    attrition.curvePoints = terms[isDifferentFromPrevious]
+    attrition.rates = rates[isDifferentFromPrevious]
     computeDistPars( attrition )
     return true
 
@@ -156,17 +156,17 @@ function setAttritionCurve!( attrition::Attrition,
     end  # if size( curve, 2 ) != 2
 
     # Check for duplicate terms.
-    if length( curve[ :, 1 ] ) != length( unique( curve[ :, 1 ] ) )
+    if length( curve[:, 1] ) != length( unique( curve[:, 1] ) )
         @warn "Duplicate entries in the terms of the attrition curve, not making any changes."
         return false
-    end  # if length( curve[ :, 1 ] ) != length( unique( curve[ :, 1 ] ) )
+    end  # if length( curve[:, 1] ) != length( unique( curve[:, 1] ) )
 
     # Generate curve dictionary.
     curveDict = Dict{Float64, Float64}()
 
-    for ii in eachindex( curve[ :, 1 ] )
-        curveDict[ curve[ ii, 1 ] ] = curve[ ii, 2 ]
-    end  # for ii in eachindex( curve[ :, 1 ] )
+    for ii in eachindex( curve[:, 1] )
+        curveDict[curve[ii, 1]] = curve[ii, 2]
+    end  # for ii in eachindex( curve[:, 1] )
 
     return setAttritionCurve!( attrition, curveDict )
 
@@ -185,13 +185,13 @@ function Base.show( io::IO, attrition::Attrition )::Nothing
     print( io, "\n  Attrition period: ", attrition.period )
 
     if length( attrition.rates ) == 1
-        print( io, "\n  Attrition rate: ", attrition.rates[ 1 ] * 100.0, "%" )
+        print( io, "\n  Attrition rate: ", attrition.rates[1] * 100.0, "%" )
     else
         print( io, "\n  Attrition curve" )
 
         for ii in eachindex( attrition.rates )
-            print( io, "\n    term: ", attrition.curvePoints[ ii ], ";" )
-            print( io, " rate: ", attrition.rates[ ii ] * 100, "%" )
+            print( io, "\n    term: ", attrition.curvePoints[ii], ";" )
+            print( io, " rate: ", attrition.rates[ii] * 100, "%" )
         end  # for ii in eachindex( attrition.rates )
     end  # if length( attrition.rates ) == 1
 

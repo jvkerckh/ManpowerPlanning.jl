@@ -34,11 +34,11 @@ struct MPcondition
     function MPcondition( attribute::String, operator::Function,
         value::Union{Real, String, Vector{String}} )::MPcondition
 
-        if ( value isa Real ) && ( operator ∉ [ ==, !=, <, <=, >, >= ] )
+        if ( value isa Real ) && ( operator ∉ [==, !=, <, <=, >, >=] )
             error( "A numeric value permits only ==, !=, <, <=, >, and >= as operators." )
-        elseif ( value isa String ) && ( operator ∉ [ ==, != ] )
+        elseif ( value isa String ) && ( operator ∉ [==, !=] )
             error( "A string value permits only == and != as operators." )
-        elseif ( value isa Vector{String} ) && ( operator ∉ [ ∈, ∉ ] )
+        elseif ( value isa Vector{String} ) && ( operator ∉ [∈, ∉] )
             error( "A vector of string values permits only ∈ and ∉ as operators." )
         end  # if ( value isa Real ) && ...
 

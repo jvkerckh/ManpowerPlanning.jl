@@ -40,7 +40,7 @@ The function returns `true`, indicating the source node is successfully set.
 function setSubpopulationSourceNode!( subpopulation::Subpopulation,
     sourceNode::String )::Bool
 
-    subpopulation.sourceNode = lowercase( sourceNode ) ∈ [ "active", "" ] ?
+    subpopulation.sourceNode = lowercase( sourceNode ) ∈ ["active", ""] ?
         "active" : sourceNode
     return true
 
@@ -140,13 +140,13 @@ function Base.show( io::IO, subpopulation::Subpopulation )
     print( io, "Subpopulation: ", subpopulation.name )
     print( io, "\n  Root node: ", subpopulation.sourceNode )
 
-    if !all( [ isempty( subpopulation.timeConds ),
+    if !all( [isempty( subpopulation.timeConds ),
         isempty( subpopulation.historyConds ),
-        isempty( subpopulation.attributeConds ) ] )
+        isempty( subpopulation.attributeConds )] )
         print( io, "\n  Conditions\n    ", join( vcat( subpopulation.timeConds,
             subpopulation.historyConds, subpopulation.attributeConds ),
             "\n    " ) )
-    end  # if !all( [ ... ] )
+    end  # if !all( [...] )
 
     return
 

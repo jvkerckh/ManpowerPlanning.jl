@@ -25,9 +25,9 @@ addSimulationRecruitment!( mpSim, recruitment )
 @testset "Basic attrition test" begin
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test !all( report[ :, Symbol( "active => external" ) ] .== 0 ) &&
-        !all( report[ :, Symbol( "attrition: node A => external" ) ] .== 0 )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test !all( report[:, Symbol( "active => external" )] .== 0 ) &&
+        !all( report[:, Symbol( "attrition: node A => external" )] .== 0 )
 end  # @testset "Basic attrition test"
 
 @testset "Piecewise attrition test" begin
@@ -37,8 +37,8 @@ end  # @testset "Basic attrition test"
     addSimulationAttrition!( mpSim, attrition )
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ 12:end, Symbol( "active => external" ) ] .== 0 )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[12:end, Symbol( "active => external" )] .== 0 )
 end  # @testset "Piecewise attrition test"
 
 @testset "Segregated attrition test" begin
@@ -71,7 +71,7 @@ end  # @testset "Piecewise attrition test"
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
     report = nodeFluxReport( mpSim, 12, :out, "node A", "node B" )
-    @test all( report[ "node A" ][ :, Symbol( "node A => other" ) ] .== 0 )
+    @test all( report["node A"][:, Symbol( "node A => other" )] .== 0 )
 end  # @testset "Segregated attrition test"
 
 mpSim = ManpowerSimulation( "sim" )
@@ -101,43 +101,46 @@ addSimulationRecruitment!( mpSim, recruitment )
     addSimulationAttrition!( mpSim, attrition )
 
     @test verifySimulation!( mpSim )
-    testDistribution = Truncated( Exponential( -12 / log(0.9) ), 0, 300.0 )
+    testDistribution = truncated( Exponential( -12 / log(0.9) ), 0, 300.0 )
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    attritionTimes = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[
-        :timeIndex ] )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
+    attritionTimes = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB,
+        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[:,
+        :timeIndex] )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
-    @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 102, 98, 88, 57, 62, 57, 47, 38, 48, 39, 32, 34, 38, 24, 22, 19, 20,
-        16, 24, 14, 8, 13, 14, 10, 8 ] )
+    @test all( report[2:end, Symbol( "active => external" )] .==
+        [102, 98, 88, 57, 62, 57, 47, 38, 48, 39, 32, 34, 38, 24, 22, 19, 20,
+        16, 24, 14, 8, 13, 14, 10, 8] )
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    attritionTimes = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[
-        :timeIndex ] )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
+    attritionTimes = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB,
+        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[:,
+        :timeIndex] )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
-    @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 86, 91, 86, 74, 71, 65, 43, 53, 44, 38, 39, 30, 27, 25, 30, 20, 11,
-        11, 13, 13, 16, 9, 9, 7, 11 ] )
+    @test all( report[2:end, Symbol( "active => external" )] .==
+        [86, 91, 86, 74, 71, 65, 43, 53, 44, 38, 39, 30, 27, 25, 30, 20, 11,
+        11, 13, 13, 16, 9, 9, 7, 11] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    attritionTimes = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[
-        :timeIndex ] )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
+    attritionTimes = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB,
+        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[:,
+        :timeIndex] )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
-    @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 81, 96, 83, 74, 56, 49, 47, 57, 44, 44, 29, 32, 34, 38, 18, 16, 18,
-        19, 20, 17, 8, 6, 11, 8, 12 ] )
+    @test all( report[2:end, Symbol( "active => external" )] .==
+        [81, 96, 83, 74, 56, 49, 47, 57, 44, 44, 29, 32, 34, 38, 18, 16, 18,
+        19, 20, 17, 8, 6, 11, 8, 12] )
 end  # @testset "Distribution test I"
 
 @testset "Distribution test II" begin
@@ -147,51 +150,54 @@ end  # @testset "Distribution test I"
     addSimulationAttrition!( mpSim, attrition )
 
     @test verifySimulation!( mpSim )
-    testDistribution1 = Truncated( Exponential( -12 / log(0.9) ), 0, 120.0 )
+    testDistribution1 = truncated( Exponential( -12 / log(0.9) ), 0, 120.0 )
     p1 = 1 - 0.9^10
-    testDistribution2 = Truncated( Exponential( -12 / log(0.75) ), 180.0,
+    testDistribution2 = truncated( Exponential( -12 / log(0.75) ), 180.0,
         240.0 )
     p2 = 0.9^10 * ( 1 - 0.75^5 )
-    p = [ p1, p2 ]
+    p = [p1, p2]
     p ./= sum( p )
-    testDistribution = MixtureModel( [ testDistribution1, testDistribution2 ],
+    testDistribution = MixtureModel( [testDistribution1, testDistribution2],
         p )
     
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    attritionTimes = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[
-        :timeIndex ] )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
+    attritionTimes = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB,
+        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[:,
+        :timeIndex] )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
-    @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 102, 98, 88, 57, 62, 57, 47, 38, 48, 39, 0, 0, 0, 0, 0, 90, 70, 50,
-        41, 30, 0, 0, 0, 0, 0 ] )
+    @test all( report[2:end, Symbol( "active => external" )] .==
+        [102, 98, 88, 57, 62, 57, 47, 38, 48, 39, 0, 0, 0, 0, 0, 90, 70, 50,
+        41, 30, 0, 0, 0, 0, 0] )
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    attritionTimes = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[
-        :timeIndex ] )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
+    attritionTimes = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB,
+        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[:,
+        :timeIndex] )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
-    @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 86, 91, 86, 74, 71, 65, 43, 53, 44, 38, 0, 0, 0, 0, 0, 88, 72, 36, 37,
-        24, 0, 0, 0, 0, 0 ] )
+    @test all( report[2:end, Symbol( "active => external" )] .==
+        [86, 91, 86, 74, 71, 65, 43, 53, 44, 38, 0, 0, 0, 0, 0, 88, 72, 36, 37,
+        24, 0, 0, 0, 0, 0] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    attritionTimes = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[
-        :timeIndex ] )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
+    attritionTimes = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB,
+        "SELECT * FROM Transitions_Sim WHERE targetNode IS NULL" ) )[:,
+        :timeIndex] )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
     @test pvalue( ExactOneSampleKSTest( attritionTimes, testDistribution ) ) >
         0.05
-    @test all( report[ 2:end, Symbol( "active => external" ) ] .==
-        [ 81, 96, 83, 74, 56, 49, 47, 57, 44, 44, 0, 0, 0, 0, 0, 87, 69, 52, 41,
-        24, 0, 0, 0, 0, 0 ] )
+    @test all( report[2:end, Symbol( "active => external" )] .==
+        [81, 96, 83, 74, 56, 49, 47, 57, 44, 44, 0, 0, 0, 0, 0, 87, 69, 52, 41,
+        24, 0, 0, 0, 0, 0] )
 end  # @testset "Distribution test II"
 
 Random.seed!()

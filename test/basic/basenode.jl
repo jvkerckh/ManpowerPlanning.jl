@@ -3,8 +3,8 @@
 @testset "BaseNode" begin
     @test_deprecated State( "State" )
     node = BaseNode( "Node" )
-    @test all( [ node.name == "Node", node.target == -1,
-        isempty( node.requirements ) ] )
+    @test all( [node.name == "Node", node.target == -1,
+        isempty( node.requirements )] )
 end  # @testset "Constructor"
 
 node = BaseNode( "State" )
@@ -36,18 +36,18 @@ end  # @testset "function setNodeAttritionScheme!"
 @testset "function addNodeRequirement!" begin
     @test_deprecated addRequirement!( node, "rank category", "officer" )
     @test haskey( node.requirements, "rank category" ) &&
-        ( node.requirements[ "rank category" ] == "officer" )
+        ( node.requirements["rank category"] == "officer" )
     addNodeRequirement!( node, "rank", "captain" )
     @test haskey( node.requirements, "rank" ) && 
-        ( node.requirements[ "rank" ] == "captain" )
+        ( node.requirements["rank"] == "captain" )
     addNodeRequirement!( node, ("branch", "ground force"), ("rank", "major") )
-    @test all( [ haskey( node.requirements, "branch" ),
-        node.requirements[ "branch" ] == "ground force",
-        node.requirements[ "rank" ] == "major" ] )
+    @test all( [haskey( node.requirements, "branch" ),
+        node.requirements["branch"] == "ground force",
+        node.requirements["rank"] == "major"] )
     @test !addNodeRequirement!( node, ("sub branch", "artillery"),
         ("rank", "lieutenant"), ("sub branch", "engineers") )
     @test !haskey( node.requirements, "sub branch" ) &&
-        ( node.requirements[ "rank" ] == "major" )
+        ( node.requirements["rank"] == "major" )
 end  # @testset "function addNodeRequirement!"
 
 @testset "function removeNodeRequirement!" begin
@@ -65,26 +65,26 @@ end  # @testset "function clearNodeRequirements!"
 
 @testset "function setNodeRequirements!" begin
     setNodeRequirements!( node, Dict( "rank" => "captain", "grade" => "A" ) )
-    @test all( [ length( node.requirements ) == 2,
+    @test all( [length( node.requirements ) == 2,
         haskey( node.requirements, "rank" ),
         haskey( node.requirements, "grade" ),
-        node.requirements[ "rank" ] == "captain",
-        node.requirements[ "grade" ] == "A" ] )
+        node.requirements["rank"] == "captain",
+        node.requirements["grade"] == "A"] )
     setNodeRequirements!( node, ("rank", "corporal"), ("branch", "air") )
-    @test all( [ length( node.requirements ) == 2,
+    @test all( [length( node.requirements ) == 2,
         haskey( node.requirements, "rank" ),
         haskey( node.requirements, "branch" ),
-        node.requirements[ "rank" ] == "corporal",
-        node.requirements[ "branch" ] == "air" ] )
-    setNodeRequirements!( node, [ "grade" ], [ "D" ] )
-    @test all( [ length( node.requirements ) == 1,
+        node.requirements["rank"] == "corporal",
+        node.requirements["branch"] == "air"] )
+    setNodeRequirements!( node, ["grade"], ["D"] )
+    @test all( [length( node.requirements ) == 1,
         haskey( node.requirements, "grade" ),
-        node.requirements[ "grade" ] == "D" ] )
+        node.requirements["grade"] == "D"] )
     @test !setNodeRequirements!( node, ("rank", "private"), ("grade", "D"),
         ("rank", "corporal") )
-    @test !setNodeRequirements!( node, [ "rank", "grade", "rank" ],
-        [ "lieutenant", "A", "colonel" ] )
-    @test !setNodeRequirements!( node, [ "rank" ], [ "colonel", "A" ] )
+    @test !setNodeRequirements!( node, ["rank", "grade", "rank"],
+        ["lieutenant", "A", "colonel"] )
+    @test !setNodeRequirements!( node, ["rank"], ["colonel", "A"] )
 end  # @testset "function setNodeRequirements!"
 
 @testset "function isPersonnelOfNode" begin

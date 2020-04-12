@@ -50,7 +50,7 @@ function addPossibleAttributeValue!( attribute::Attribute,
         return false
     end  # if all( inList )
 
-    append!( attribute.possibleValues, tmpVals[ .!inList ] )
+    append!( attribute.possibleValues, tmpVals[.!inList] )
     return true
 
 end  # addPossibleAttributeValue!( attribute, values )
@@ -134,8 +134,8 @@ This function returns `true` if it successfully adds initial values and/or updat
 function addInitialAttributeValue!( attribute::Attribute,
     valWeights::Tuple{String, Float64}... )::Bool
 
-    newVals = map( valWeight -> valWeight[ 1 ], collect( valWeights ) )
-    newWeights = map( valWeight -> valWeight[ 2 ], collect( valWeights ) )
+    newVals = map( valWeight -> valWeight[1], collect( valWeights ) )
+    newWeights = map( valWeight -> valWeight[2], collect( valWeights ) )
     addPossibleAttributeValue!( attribute, newVals... )
 
     if length( newVals ) != length( unique( newVals ) )
@@ -145,8 +145,8 @@ function addInitialAttributeValue!( attribute::Attribute,
 
     # Filter out values with negative weights.
     isPosWeight = newWeights .> 0
-    newVals = newVals[ isPosWeight ]
-    newWeights = newWeights[ isPosWeight ]
+    newVals = newVals[isPosWeight]
+    newWeights = newWeights[isPosWeight]
 
     if isempty( newVals )
         return false
@@ -154,13 +154,13 @@ function addInitialAttributeValue!( attribute::Attribute,
 
     # Add the new values to the list of initial values.
     isNewVal = map( newVal -> newVal ∉ attribute.initValues, newVals )
-    append!( attribute.initValues, newVals[ isNewVal ] )
+    append!( attribute.initValues, newVals[isNewVal] )
     append!( attribute.initValueWeights, zeros( Float64, count( isNewVal ) ) )
 
     # Add/update the weights where needed.
     valInds = findfirst.( map( newVal -> newVal .== attribute.initValues,
         newVals ) )
-    attribute.initValueWeights[ valInds ] = newWeights
+    attribute.initValueWeights[valInds] = newWeights
 
     createInitialValueDistribution( attribute )
     return true
@@ -243,7 +243,7 @@ This function returns `true` if the list of initial values is successfully set, 
 function setInitialAttributeValues!( attribute::Attribute,
     valWeights::Dict{String, T} )::Bool where T <: Real
 
-    newVals = filter( val -> valWeights[ val ] > 0,
+    newVals = filter( val -> valWeights[val] > 0,
         collect( keys( valWeights ) ) )
 
     if isempty( newVals )
@@ -252,7 +252,7 @@ function setInitialAttributeValues!( attribute::Attribute,
 
     addPossibleAttributeValue!( attribute, newVals... )
     attribute.initValues = newVals
-    attribute.initValueWeights = map( val -> Float64( valWeights[ val ] ),
+    attribute.initValueWeights = map( val -> Float64( valWeights[val] ),
         newVals )
     createInitialValueDistribution( attribute )
     return true
@@ -275,7 +275,7 @@ function setInitialAttributeValues!( attribute::Attribute,
     valWeights::Tuple{String, Float64}... )::Bool
 
     # Check for duplicates.
-    newVals = map( valWeight -> valWeight[ 1 ], collect( valWeights ) )
+    newVals = map( valWeight -> valWeight[1], collect( valWeights ) )
 
     if length( newVals ) != length( unique( newVals ) )
         @warn "Duplicate entries in the value/weight list, not making any changes."
@@ -286,7 +286,7 @@ function setInitialAttributeValues!( attribute::Attribute,
     valWeightDict = Dict{String, Float64}()
 
     for valWeight in valWeights
-        valWeightDict[ valWeight[ 1 ] ] = valWeight[ 2 ]
+        valWeightDict[valWeight[1]] = valWeight[2]
     end  # for valWeight in valWeights
 
     return setInitialAttributeValues!( attribute, valWeightDict )
@@ -328,7 +328,7 @@ function setInitialAttributeValues!( attribute::Attribute,
     valWeightDict = Dict{String, Float64}()
 
     for ii in eachindex( values )
-        valWeightDict[ values[ ii ] ] = weights[ ii ]
+        valWeightDict[values[ii]] = weights[ii]
     end  # for ii in eachindex( values )
 
     return setInitialAttributeValues!( attribute, valWeightDict )
@@ -357,9 +357,9 @@ function Base.show( io::IO, attribute::Attribute )::Nothing
         sum( attribute.initValueWeights )
 
     for ii in eachindex( attribute.initValues )
-        print( io, "\n    ", attribute.initValues[ ii ], " (weight ",
-            attribute.initValueWeights[ ii ], " / ",
-            round( initValueProbs[ ii ], sigdigits = 4 ), "%)" )
+        print( io, "\n    ", attribute.initValues[ii], " (weight ",
+            attribute.initValueWeights[ii], " / ",
+            round( initValueProbs[ii], sigdigits = 4 ), "%)" )
     end  # for ii in eachindex( attribute.initValues )
 
     return

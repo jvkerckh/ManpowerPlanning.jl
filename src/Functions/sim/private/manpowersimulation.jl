@@ -4,16 +4,16 @@ function resetSimulation( mpSim::MPsim )
 
     # Clear the "inNodeSince" from every node.
     for name in keys( mpSim.baseNodeList )
-        node = mpSim.baseNodeList[ name ]
+        node = mpSim.baseNodeList[name]
         empty!( node.inNodeSince )
     end
 
     # Wipe the tables if needed.
-    SQLite.execute!( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
+    DBInterface.execute( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
         mpSim.histDBname, "`" ) )
-    SQLite.execute!( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
+    DBInterface.execute( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
         mpSim.transDBname, "`" ) )
-    SQLite.execute!( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
+    DBInterface.execute( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
         mpSim.persDBname, "`" ) )
 
     # Reset the population number of the simulation.
@@ -31,7 +31,7 @@ function resetSimulation( mpSim::MPsim )
         join( string.( "\n    `", collect( keys( mpSim.attributeList ) )
             , "` VARCHAR(64)," ) ),
         "\n    status VARCHAR(16) )" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     sqliteCmd = string( "CREATE TABLE `", mpSim.transDBname, "`(",
         "\n    `", mpSim.idKey, "` VARCHAR(32),",
@@ -41,7 +41,7 @@ function resetSimulation( mpSim::MPsim )
         "\n    targetNode VARCHAR(64),",
         "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
         mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     sqliteCmd = string( "CREATE TABLE `", mpSim.histDBname, "`(",
         "\n    `", mpSim.idKey, "` VARCHAR(32),",
@@ -50,7 +50,7 @@ function resetSimulation( mpSim::MPsim )
         "\n    value VARCHAR(64),",
         "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
         mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
-    SQLite.execute!( mpSim.simDB, sqliteCmd )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     # Set database to new style.
     mpSim.isOldDB = false

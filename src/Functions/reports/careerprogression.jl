@@ -16,7 +16,7 @@ function generateCareerProgression( mpSim::MPsim,
 
     queryCmd = string( "SELECT `", mpSim.idKey, "`, ageAtRecruitment FROM `", mpSim.persDBname, "` WHERE `",
         mpSim.idKey, "` IN ('", join( idList, "', '" ), "')" )
-    recruitmentAges = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
+    recruitmentAges = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
     result = Dict{String, Tuple{Float64, DataFrame}}()
 
     if isempty( recruitmentAges )
@@ -28,14 +28,14 @@ function generateCareerProgression( mpSim::MPsim,
         "\n    startState IS NOT 'active' AND",
         "\n    endState IS NOT 'active' AND",
         "`", mpSim.idKey, "` IN ('",
-        join( recruitmentAges[ :, idSymbol ], "', '" ), "')",
+        join( recruitmentAges[:, idSymbol], "', '" ), "')",
         "\n    ORDER BY `", mpSim.idKey, "`, timeIndex" )
-    careerPaths = DataFrame( SQLite.Query( mpSim.simDB, queryCmd ) )
+    careerPaths = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
 
     for ii in 1:size( recruitmentAges, 1 )
-        id = recruitmentAges[ ii, idSymbol ]
-        careerPath = careerPaths[ careerPaths[ :, idSymbol ] .== id, : ]
-        result[ id ] = (recruitmentAges[ ii, :ageAtRecruitment], careerPath)
+        id = recruitmentAges[ii, idSymbol]
+        careerPath = careerPaths[careerPaths[:, idSymbol] .== id, :]
+        result[id] = (recruitmentAges[ii, :ageAtRecruitment], careerPath)
     end  # for ii in 1:size( recruitmentAges, 1 )
 
     return result

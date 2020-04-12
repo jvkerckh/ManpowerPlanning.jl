@@ -9,16 +9,16 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
     end  # if !verifySimulation!( mpSim )
 
     mpSim.showInfo = showInfo
-    SQLite.execute!( mpSim.simDB, "BEGIN TRANSACTION" )
+    DBInterface.execute( mpSim.simDB, "BEGIN TRANSACTION" )
 
     try
         resetSimulation( mpSim )
 
         # Initialise the recruitment processes.
         for name in keys( mpSim.recruitmentByName )
-            for recruitment in mpSim.recruitmentByName[ name ]
+            for recruitment in mpSim.recruitmentByName[name]
                 @process recruitProcess( mpSim.sim, recruitment, mpSim )
-            end  # for recruitment in mpSim.recruitmentByName[ name ]
+            end  # for recruitment in mpSim.recruitmentByName[name]
         end  # for name in keys( mpSim.recruitmentByName )
 
         # Initialise the default retirement process.
@@ -31,19 +31,19 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
         orderTransitions!( mpSim )
 
         for name in keys( mpSim.transitionsByName )
-            for transition in mpSim.transitionsByName[ name ]
+            for transition in mpSim.transitionsByName[name]
                 @process transitionProcess( mpSim.sim, transition, mpSim )
-            end  # for transition in mpSim.transitionsByName[ name ]
+            end  # for transition in mpSim.transitionsByName[name]
         end  # for name in keys( mpSim.transitionsByName )
 
         # Execute the simulation.
         run( mpSim.sim )
     catch err
-        SQLite.execute!( mpSim.simDB, "COMMIT" )
+        DBInterface.execute( mpSim.simDB, "COMMIT" )
         rethrow( err )
     end  # try
 
-    SQLite.execute!( mpSim.simDB, "COMMIT" )
+    DBInterface.execute( mpSim.simDB, "COMMIT" )
 
     if mpSim.showInfo
         println( "Attrition execution processes took ",

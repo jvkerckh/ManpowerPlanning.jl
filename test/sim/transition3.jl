@@ -4,15 +4,15 @@
     mpSim = ManpowerSimulation()
 
     attribute = Attribute( "Level" )
-    setPossibleAttributeValues!( attribute, [ "A", "B" ] )
+    setPossibleAttributeValues!( attribute, ["A", "B"] )
     addSimulationAttribute!( mpSim, attribute )
 
     node = BaseNode( "A" )
-    setNodeRequirements!( node, [ "Level" ], [ "A" ] )
+    setNodeRequirements!( node, ["Level"], ["A"] )
     addSimulationBaseNode!( mpSim, node )
 
     node = BaseNode( "B" )
-    setNodeRequirements!( node, [ "Level" ], [ "B" ] )
+    setNodeRequirements!( node, ["Level"], ["B"] )
     setNodeTarget!( node, 40 )
     addSimulationBaseNode!( mpSim, node )
 
@@ -45,9 +45,9 @@
     run( mpSim, saveConfig = false )
 
     report = nodePopReport( mpSim, 12, "A", "B" )
-    @test all( report[ :, :A ] .==
+    @test all( report[:, :A] .==
         vcat( 10, 20, fill( 30, 5 ), 40, 50, fill( 60, 17 ) ) ) &&
-        all( report[ :, :B ] .== vcat( 0, 0, 0, 10:10:30, fill( 40, 20 ) ) )
+        all( report[:, :B] .== vcat( 0, 0, 0, 10:10:30, fill( 40, 20 ) ) )
     
     clearSimulationTransitions!( mpSim )
 
@@ -67,34 +67,34 @@
 
     run( mpSim, saveConfig = false )
     report = nodePopReport( mpSim, 12, "A", "B" )
-    @test all( report[ :, :A ] .==
+    @test all( report[:, :A] .==
         vcat( 10, 20, fill( 30, 5 ), 40, 50, fill( 60, 17 ) ) ) &&
-        all( report[ :, :B ] .== vcat( 0, 0, 0, 10:10:30, fill( 40, 20 ) ) )
+        all( report[:, :B] .== vcat( 0, 0, 0, 10:10:30, fill( 40, 20 ) ) )
 end  # @testset "OUT before IN priority test"
 
 @testset "OUT transitions priority test" begin
     mpSim = ManpowerSimulation()
 
     attribute = Attribute( "Level" )
-    setPossibleAttributeValues!( attribute, [ "A", "B" ] )
+    setPossibleAttributeValues!( attribute, ["A", "B"] )
     addSimulationAttribute!( mpSim, attribute )
 
     attribute = Attribute( "Branch" )
-    setPossibleAttributeValues!( attribute, [ "none", "A", "B" ] )
+    setPossibleAttributeValues!( attribute, ["none", "A", "B"] )
     setInitialAttributeValues!( attribute, Dict( "none" => 1.0 ) )
     addSimulationAttribute!( mpSim, attribute )
 
     node = BaseNode( "A" )
-    setNodeRequirements!( node, [ "Level" ], [ "A" ] )
+    setNodeRequirements!( node, ["Level"], ["A"] )
     addSimulationBaseNode!( mpSim, node )
 
     node = BaseNode( "B" )
-    setNodeRequirements!( node, [ "Level", "Branch" ], [ "B", "A" ] )
+    setNodeRequirements!( node, ["Level", "Branch"], ["B", "A"] )
     setNodeTarget!( node, -1 )
     addSimulationBaseNode!( mpSim, node )
 
     node = BaseNode( "C" )
-    setNodeRequirements!( node, [ "Level", "Branch" ], [ "B", "B" ] )
+    setNodeRequirements!( node, ["Level", "Branch"], ["B", "B"] )
     setNodeTarget!( node, -1 )
     addSimulationBaseNode!( mpSim, node )
 
@@ -132,10 +132,10 @@ end  # @testset "OUT before IN priority test"
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
 
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "A" ][ 2 ]
-    @test all( report[ :, Symbol( "trans1: A => B" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["A"][2]
+    @test all( report[:, Symbol( "trans1: A => B" )] .==
         vcat( 0, 0, 0, fill( 2, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: A => C" ) ] .==
+        all( report[:, Symbol( "trans2: A => C" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) )
     
     clearSimulationRecruitment!( mpSim )
@@ -143,10 +143,10 @@ end  # @testset "OUT before IN priority test"
     addSimulationRecruitment!( mpSim, recruitment )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "A" ][ 2 ]
-    @test all( report[ :, Symbol( "trans1: A => B" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["A"][2]
+    @test all( report[:, Symbol( "trans1: A => B" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: A => C" ) ] .==
+        all( report[:, Symbol( "trans2: A => C" )] .==
         vcat( 0, 0, 0, fill( 6, 23 ) ) )
 
     clearSimulationRecruitment!( mpSim )
@@ -154,10 +154,10 @@ end  # @testset "OUT before IN priority test"
     addSimulationRecruitment!( mpSim, recruitment )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "A" ][ 2 ]
-    @test all( report[ :, Symbol( "trans1: A => B" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["A"][2]
+    @test all( report[:, Symbol( "trans1: A => B" )] .==
         vcat( 0, 0, 0, fill( 6, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: A => C" ) ] .==
+        all( report[:, Symbol( "trans2: A => C" )] .==
         vcat( 0, 0, 0, fill( 8, 23 ) ) )
 
     clearSimulationRecruitment!( mpSim )
@@ -165,10 +165,10 @@ end  # @testset "OUT before IN priority test"
     addSimulationRecruitment!( mpSim, recruitment )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "A" ][ 2 ]
-    @test all( report[ :, Symbol( "trans1: A => B" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["A"][2]
+    @test all( report[:, Symbol( "trans1: A => B" )] .==
         vcat( 0, 0, 0, fill( 8, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: A => C" ) ] .==
+        all( report[:, Symbol( "trans2: A => C" )] .==
         vcat( 0, 0, 0, fill( 8, 23 ) ) )
 
     clearSimulationRecruitment!( mpSim )
@@ -192,10 +192,10 @@ end  # @testset "OUT before IN priority test"
     addSimulationTransition!( mpSim, transition )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "A" ][ 2 ]
-    @test all( report[ :, Symbol( "trans: A => B" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["A"][2]
+    @test all( report[:, Symbol( "trans: A => B" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans: A => C" ) ] .==
+        all( report[:, Symbol( "trans: A => C" )] .==
         vcat( 0, 0, 0, fill( 6, 23 ) ) )
 end  # @testset ""OUT transitions priority test""
 
@@ -203,23 +203,23 @@ end  # @testset ""OUT transitions priority test""
     mpSim = ManpowerSimulation()
 
     attribute = Attribute( "Level" )
-    setPossibleAttributeValues!( attribute, [ "A", "B" ] )
+    setPossibleAttributeValues!( attribute, ["A", "B"] )
     addSimulationAttribute!( mpSim, attribute )
 
     attribute = Attribute( "Branch" )
-    setPossibleAttributeValues!( attribute, [ "A", "B" ] )
+    setPossibleAttributeValues!( attribute, ["A", "B"] )
     addSimulationAttribute!( mpSim, attribute )
 
     node = BaseNode( "A" )
-    setNodeRequirements!( node, [ "Level", "Branch" ], [ "A", "A" ] )
+    setNodeRequirements!( node, ["Level", "Branch"], ["A", "A"] )
     addSimulationBaseNode!( mpSim, node )
 
     node = BaseNode( "B" )
-    setNodeRequirements!( node, [ "Level", "Branch" ], [ "A", "B" ] )
+    setNodeRequirements!( node, ["Level", "Branch"], ["A", "B"] )
     addSimulationBaseNode!( mpSim, node )
 
     node = BaseNode( "C" )
-    setNodeRequirements!( node, [ "Level" ], [ "B" ] )
+    setNodeRequirements!( node, ["Level"], ["B"] )
     setNodeTarget!( node, 6 )
     addSimulationBaseNode!( mpSim, node )
 
@@ -269,40 +269,40 @@ end  # @testset ""OUT transitions priority test""
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
 
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "C" ][ 1 ]
-    @test all( report[ :, Symbol( "trans1: A => C" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["C"][1]
+    @test all( report[:, Symbol( "trans1: A => C" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: B => C" ) ] .==
+        all( report[:, Symbol( "trans2: B => C" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) )
 
     setNodeTarget!( node, 10 )
     addSimulationBaseNode!( mpSim, node )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "C" ][ 1 ]
-    @test all( report[ :, Symbol( "trans1: A => C" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["C"][1]
+    @test all( report[:, Symbol( "trans1: A => C" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: B => C" ) ] .==
+        all( report[:, Symbol( "trans2: B => C" )] .==
         vcat( 0, 0, 0, fill( 6, 23 ) ) )
 
     setNodeTarget!( node, 14 )
     addSimulationBaseNode!( mpSim, node )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "C" ][ 1 ]
-    @test all( report[ :, Symbol( "trans1: A => C" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["C"][1]
+    @test all( report[:, Symbol( "trans1: A => C" )] .==
         vcat( 0, 0, 0, fill( 6, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: B => C" ) ] .==
+        all( report[:, Symbol( "trans2: B => C" )] .==
         vcat( 0, 0, 0, fill( 8, 23 ) ) )
 
     setNodeTarget!( node, 18 )
     addSimulationBaseNode!( mpSim, node )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "C" ][ 1 ]
-    @test all( report[ :, Symbol( "trans1: A => C" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["C"][1]
+    @test all( report[:, Symbol( "trans1: A => C" )] .==
         vcat( 0, 0, 0, fill( 8, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans2: B => C" ) ] .==
+        all( report[:, Symbol( "trans2: B => C" )] .==
         vcat( 0, 0, 0, fill( 8, 23 ) ) )
     
     clearSimulationTransitions!( mpSim )
@@ -329,10 +329,10 @@ end  # @testset ""OUT transitions priority test""
     addSimulationTransition!( mpSim, transition )
 
     run( mpSim, saveConfig = false )
-    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[ 2 ][ "C" ][ 1 ]
-    @test all( report[ :, Symbol( "trans: A => C" ) ] .==
+    report = nodeEvolutionReport( mpSim, 12, "A", "B", "C" )[2]["C"][1]
+    @test all( report[:, Symbol( "trans: A => C" )] .==
         vcat( 0, 0, 0, fill( 4, 23 ) ) ) &&
-        all( report[ :, Symbol( "trans: B => C" ) ] .==
+        all( report[:, Symbol( "trans: B => C" )] .==
         vcat( 0, 0, 0, fill( 6, 23 ) ) )
 end  # @testset "IN transition priority test"
 

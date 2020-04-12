@@ -26,7 +26,7 @@ This function returns a `Dict{String, DataFrame}`, where the keys are the valid 
 function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     fluxType::KeyType, nodes::String... )::Dict{String, DataFrame}
 
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
     result = Dict{String, DataFrame}()
     fluxType = Symbol( fluxType )
@@ -36,9 +36,9 @@ function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return result
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
@@ -48,7 +48,7 @@ function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     end  # if fluxType ∉ fluxTypes
 
     nodes = filter( collect( nodes ) ) do nodeName
-        return ( lowercase( nodeName ) ∈ [ "active", "" ] ) ||
+        return ( lowercase( nodeName ) ∈ ["active", ""] ) ||
             ( fluxType === :within ? false :
                 haskey( mpSim.baseNodeList, nodeName ) ) ||
             haskey( mpSim.compoundNodeList, nodeName )
@@ -62,7 +62,7 @@ function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     nodes = unique( nodes )
 
     for nodeName in nodes
-        result[ nodeName ] = generateNodeFluxReport( mpSim, timeGrid, fluxType,
+        result[nodeName] = generateNodeFluxReport( mpSim, timeGrid, fluxType,
             nodeName )
     end  # for nodeName in nodes
 

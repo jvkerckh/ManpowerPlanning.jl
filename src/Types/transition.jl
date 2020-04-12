@@ -78,7 +78,7 @@ mutable struct Transition
         newTrans.hasPriority = false
         newTrans.extraConditions = Vector{MPcondition}()
         newTrans.extraChanges = Dict{String, String}()
-        newTrans.probabilityList = [ 1.0 ]
+        newTrans.probabilityList = [1.0]
         newTrans.priority = one( Int8 )
         return newTrans
 

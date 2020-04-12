@@ -21,9 +21,9 @@ addSimulationBaseNode!( mpSim, node )
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :in, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "external => active" ) ] .== 10 ) &&
-        all( report[ :, Symbol( "recruitment A: external => node A" ) ] .== 10 )
+    report = nodeFluxReport( mpSim, 12, :in, "active" )["active"]
+    @test all( report[:, Symbol( "external => active" )] .== 10 ) &&
+        all( report[:, Symbol( "recruitment A: external => node A" )] .== 10 )
 end  # @testset "Basic recruitment test"
 
 @testset "Recruitment schedule" begin
@@ -36,9 +36,9 @@ end  # @testset "Basic recruitment test"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :in, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "external => active" ) ] .==
-        repeat( [ 10, 0 ], 13 ) )
+    report = nodeFluxReport( mpSim, 12, :in, "active" )["active"]
+    @test all( report[:, Symbol( "external => active" )] .==
+        repeat( [10, 0], 13 ) )
 
     clearSimulationRecruitment!( mpSim )
     recruitment = Recruitment( "recruitment A" )
@@ -49,9 +49,9 @@ end  # @testset "Basic recruitment test"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :in, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "external => active" ) ] .==
-        repeat( [ 0, 10 ], 13 ) )
+    report = nodeFluxReport( mpSim, 12, :in, "active" )["active"]
+    @test all( report[:, Symbol( "external => active" )] .==
+        repeat( [0, 10], 13 ) )
 
 end  # @testset "Recruitment schedule"
 
@@ -65,8 +65,8 @@ end  # @testset "Recruitment schedule"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 12, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     targetRec = vcat( fill( 10, 5 ), fill( 5, 21 ) )
     @test all( report .== targetRec )
 end  # @testset "Adaptive recruitment test"
@@ -83,27 +83,27 @@ end  # @testset "Adaptive recruitment test"
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
-    reportCounts = counts( Vector{Int}( report ), 5:10 )[ [ 1, end ] ]
-    @test pvalue( ChisqTest( reportCounts, [ 1/3, 2/3 ] ) ) > 0.05
-    @test all( reportCounts .== [ 101, 200 ] )
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
+    reportCounts = counts( Vector{Int}( report ), 5:10 )[[1, end]]
+    @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
+    @test all( reportCounts .== [101, 200] )
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
-    reportCounts = counts( Vector{Int}( report ), 5:10 )[ [ 1, end ] ]
-    @test pvalue( ChisqTest( reportCounts, [ 1/3, 2/3 ] ) ) > 0.05
-    @test all( reportCounts .== [ 106, 195 ] )
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
+    reportCounts = counts( Vector{Int}( report ), 5:10 )[[1, end]]
+    @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
+    @test all( reportCounts .== [106, 195] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
-    reportCounts = counts( Vector{Int}( report ), 5:10 )[ [ 1, end ] ]
-    @test pvalue( ChisqTest( reportCounts, [ 1/3, 2/3 ] ) ) > 0.05
-    @test all( reportCounts .== [ 97, 204 ] )
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
+    reportCounts = counts( Vector{Int}( report ), 5:10 )[[1, end]]
+    @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
+    @test all( reportCounts .== [97, 204] )
 end  # @testset "Disc random recruitment test"
 
 @testset "PUnif random recruitment test" begin
@@ -116,32 +116,32 @@ end  # @testset "Disc random recruitment test"
     addSimulationRecruitment!( mpSim, recruitment )
 
     @test verifySimulation!( mpSim )
-    p = [ 1.0, 1.0, 1.0, 2.0, 2.0, 2.0 ]
+    p = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0]
     p /= sum( p )
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 35, 37, 35, 68, 57, 69 ] )
+    @test all( reportCounts .== [35, 37, 35, 68, 57, 69] )
    
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 38, 23, 32, 67, 68, 73 ] )
+    @test all( reportCounts .== [38, 23, 32, 67, 68, 73] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 44, 31, 34, 63, 67, 62 ] )
+    @test all( reportCounts .== [44, 31, 34, 63, 67, 62] )
 end  # @testset "PUnif random recruitment test"
 
 @testset "PLin random recruitment test" begin
@@ -153,32 +153,32 @@ end  # @testset "PUnif random recruitment test"
     addSimulationRecruitment!( mpSim, recruitment )
 
     @test verifySimulation!( mpSim )
-    p = [ 1.0, 3.0, 5.0, 7.0, 9.0, 11.0 ]
+    p = [1.0, 3.0, 5.0, 7.0, 9.0, 11.0]
     p /= sum( p )
 
     Random.seed!( 3141593 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 11, 27, 44, 58, 72, 89 ] )
+    @test all( reportCounts .== [11, 27, 44, 58, 72, 89] )
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 9, 24, 46, 53, 76, 93 ] )
+    @test all( reportCounts .== [9, 24, 46, 53, 76, 93] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 1, :in, "active" )[ "active" ]
-    report = report[ :, Symbol( "external => active" ) ]
+    report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
+    report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [ 6, 31, 41, 55, 78, 90 ] )
+    @test all( reportCounts .== [6, 31, 41, 55, 78, 90] )
 end  # @testset "PLin random recruitment test"
 
 setSimulationLength!( mpSim, 12 )
@@ -196,8 +196,8 @@ Random.seed!()
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = subpopulationAgeReport( mpSim, [ 0.0 ], 12, :age, subpop )[ "All" ]
-    @test report[ 1, Symbol( 60.0 ) ] == 1000
+    report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
+    @test report[1, Symbol( 60.0 )] == 1000
 end  # @testset "Fixed Age recruitment test"
 
 @testset "Disc random age recruitment test" begin
@@ -214,31 +214,31 @@ end  # @testset "Fixed Age recruitment test"
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    report = subpopulationAgeReport( mpSim, [ 0.0 ], 12, :age, subpop )[ "All" ]
-    reportCounts = Vector{Int}( [ report[ 1, Symbol( 60.0 ) ],
-        report[ 1, Symbol( 120.0 ) ] ] )
-    @test pvalue( ChisqTest( reportCounts, [ 1/3, 2/3 ] ) ) > 0.05
-    @test all( reportCounts .== [ 336, 664 ] )
+    report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
+    reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
+        report[1, Symbol( 120.0 )]] )
+    @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
+    @test all( reportCounts .== [336, 664] )
 
     for age in 72.0:12.0:108.0
-        @test report[ 1, Symbol( age ) ] == 0
+        @test report[1, Symbol( age )] == 0
     end  # for age in 72.0:12.0:108.0
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    report = subpopulationAgeReport( mpSim, [ 0.0 ], 12, :age, subpop )[ "All" ]
-    reportCounts = Vector{Int}( [ report[ 1, Symbol( 60.0 ) ],
-        report[ 1, Symbol( 120.0 ) ] ] )
-    @test pvalue( ChisqTest( reportCounts, [ 1/3, 2/3 ] ) ) > 0.05
-    @test all( reportCounts .== [ 331, 669 ] )
+    report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
+    reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
+        report[1, Symbol( 120.0 )]] )
+    @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
+    @test all( reportCounts .== [331, 669] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    report = subpopulationAgeReport( mpSim, [ 0.0 ], 12, :age, subpop )[ "All" ]
-    reportCounts = Vector{Int}( [ report[ 1, Symbol( 60.0 ) ],
-        report[ 1, Symbol( 120.0 ) ] ] )
-    @test pvalue( ChisqTest( reportCounts, [ 1/3, 2/3 ] ) ) > 0.05
-    @test all( reportCounts .== [ 319, 681 ] )
+    report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
+    reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
+        report[1, Symbol( 120.0 )]] )
+    @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
+    @test all( reportCounts .== [319, 681] )
 end  # @testset "Disc random age recruitment test"
 
 @testset "PUnif random age recruitment test" begin
@@ -254,27 +254,27 @@ end  # @testset "Disc random age recruitment test"
     @test verifySimulation!( mpSim )
     testDistribution1 = Uniform( 60, 96 )
     testDistribution2 = Uniform( 96, 120 )
-    testDistribution = MixtureModel( [ testDistribution1, testDistribution2 ],
-        [ 0.25, 0.75 ] )
+    testDistribution = MixtureModel( [testDistribution1, testDistribution2],
+        [0.25, 0.75] )
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 end  # @testset "PUnif random age recruitment test"
@@ -294,22 +294,22 @@ end  # @testset "PUnif random age recruitment test"
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 end  # @testset "PLin random age recruitment test"
@@ -329,22 +329,22 @@ end  # @testset "PLin random age recruitment test"
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
-    recruitmentAges = Vector{Float64}( DataFrame( SQLite.Query( mpSim.simDB,
-        "SELECT * FROM Personnel_Sim" ) )[ :ageAtRecruitment ] )
+    recruitmentAges = Vector{Float64}( DataFrame( DBInterface.execute(
+        mpSim.simDB, "SELECT * FROM Personnel_Sim" ) )[:, :ageAtRecruitment] )
     @test pvalue( ExactOneSampleKSTest( recruitmentAges, testDistribution ) ) >
         0.05
 end  # @testset "PLin random age recruitment test 2"
@@ -364,35 +364,35 @@ end  # @testset "PLin random age recruitment test 2"
     subpop1 = Subpopulation( "B/A" )
     subpop2 = Subpopulation( "B/B" )
     subpop3 = Subpopulation( "B/C" )
-    addSubpopulationCondition!.( [ subpop1, subpop2, subpop3 ],
-        MPcondition.( "attribute B", ==, [ "A", "B", "C" ] ) )
-    setSubpopulationSourceNode!.( [ subpop1, subpop2, subpop3 ], "node A" )
+    addSubpopulationCondition!.( [subpop1, subpop2, subpop3],
+        MPcondition.( "attribute B", ==, ["A", "B", "C"] ) )
+    setSubpopulationSourceNode!.( [subpop1, subpop2, subpop3], "node A" )
 
     @test verifySimulation!( mpSim )
 
     Random.seed!( 3141592 )
     run( mpSim, saveConfig = false )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
-    reportCounts = Int.( [ report[ 1, Symbol( "B/A" ) ],
-        report[ 1, Symbol( "B/B" ) ], report[ 1, Symbol( "B/C" ) ] ] )
-    @test pvalue( ChisqTest( reportCounts, [ 1/4, 1/2, 1/4 ] ) ) > 0.05
-    @test all( reportCounts .== [ 235, 509, 256 ] )
+    reportCounts = Int.( [report[1, Symbol( "B/A" )],
+        report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
+    @test pvalue( ChisqTest( reportCounts, [1/4, 1/2, 1/4] ) ) > 0.05
+    @test all( reportCounts .== [235, 509, 256] )
 
     Random.seed!( 2718281 )
     run( mpSim, saveConfig = false )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
-    reportCounts = Int.( [ report[ 1, Symbol( "B/A" ) ],
-        report[ 1, Symbol( "B/B" ) ], report[ 1, Symbol( "B/C" ) ] ] )
-    @test pvalue( ChisqTest( reportCounts, [ 1/4, 1/2, 1/4 ] ) ) > 0.05
-    @test all( reportCounts .== [ 257, 499, 244 ] )
+    reportCounts = Int.( [report[1, Symbol( "B/A" )],
+        report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
+    @test pvalue( ChisqTest( reportCounts, [1/4, 1/2, 1/4] ) ) > 0.05
+    @test all( reportCounts .== [257, 499, 244] )
 
     Random.seed!( 1414213 )
     run( mpSim, saveConfig = false )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
-    reportCounts = Int.( [ report[ 1, Symbol( "B/A" ) ],
-        report[ 1, Symbol( "B/B" ) ], report[ 1, Symbol( "B/C" ) ] ] )
-    @test pvalue( ChisqTest( reportCounts, [ 1/4, 1/2, 1/4 ] ) ) > 0.05
-    @test all( reportCounts .== [ 248, 494, 258 ] )
+    reportCounts = Int.( [report[1, Symbol( "B/A" )],
+        report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
+    @test pvalue( ChisqTest( reportCounts, [1/4, 1/2, 1/4] ) ) > 0.05
+    @test all( reportCounts .== [248, 494, 258] )
 end  # @testset "Attribute initialisation test"
 
 Random.seed!()

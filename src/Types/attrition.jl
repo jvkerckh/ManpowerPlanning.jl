@@ -40,8 +40,8 @@ mutable struct Attrition
         newAttr = new()
         newAttr.name = name
         newAttr.period = 1.0
-        newAttr.curvePoints = [ 0.0 ]
-        newAttr.rates = [ 0.0 ]
+        newAttr.curvePoints = [0.0]
+        newAttr.rates = [0.0]
         computeDistPars( newAttr )
         return newAttr
 

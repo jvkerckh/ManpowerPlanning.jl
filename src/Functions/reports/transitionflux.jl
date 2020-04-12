@@ -26,7 +26,7 @@ The function returns a `DataFrame` holding the flux report. The first column are
 function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     transitions::TransitionType... )::DataFrame
 
-    timeGrid = timeGrid[ 0.0 .<= timeGrid .<= now( mpSim ) ]
+    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
@@ -34,9 +34,9 @@ function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return DataFrame()
     end  # if isempty( timeGrid )
 
-    if timeGrid[ end ] > 0.0
+    if timeGrid[end] > 0.0
         push!( timeGrid, 0.0 )
-    end  # if timeGrid[ end ] > 0.0
+    end  # if timeGrid[end] > 0.0
 
     reverse!( timeGrid )
 
@@ -52,14 +52,14 @@ function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     results = zeros( Int, length( timeGrid ), length( transitions ) )
 
     for ii in eachindex( transitions )
-        results[ :, ii ] = createTransitionFluxReport( mpSim, timeGrid,
-            transitions[ ii ] )
+        results[:, ii] = createTransitionFluxReport( mpSim, timeGrid,
+            transitions[ii] )
     end  # for transition in transitions
 
     transitionNames = vcat( "timeStart", "timePoint",
         generateTransitionName.( transitions ) )
 
-    return DataFrame( hcat( vcat( 0, timeGrid[ 1:(end - 1) ] ), timeGrid,
+    return DataFrame( hcat( vcat( 0, timeGrid[1:(end - 1)] ), timeGrid,
         results ), Symbol.( transitionNames ) )
 
 end  # transitionFluxReport( mpSim, timeGrid, transitions )

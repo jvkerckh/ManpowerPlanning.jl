@@ -26,10 +26,10 @@ addSimulationBaseNode!( mpSim, node )
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "active => external" ) ] .==
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[:, Symbol( "active => external" )] .==
         vcat( zeros( 10 ), fill( 10, 16 ) ) ) &&
-        all( report[ :, Symbol( "retirement: node A => external" ) ] .==
+        all( report[:, Symbol( "retirement: node A => external" )] .==
         vcat( zeros( 10 ), fill( 10, 16 ) ) )
 end  # @testset "Retirement at tenure"
 
@@ -41,9 +41,9 @@ end  # @testset "Retirement at tenure"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "active => external" ) ] .==
-        vcat( zeros( 10 ), 10, 0, repeat( [ 20, 0 ], 7 ) ) )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[:, Symbol( "active => external" )] .==
+        vcat( zeros( 10 ), 10, 0, repeat( [20, 0], 7 ) ) )
     
     retirement = Retirement()
     setRetirementCareerLength!( retirement, 120 )
@@ -52,9 +52,9 @@ end  # @testset "Retirement at tenure"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "active => external" ) ] .==
-        vcat( zeros( 10 ), repeat( [ 0, 20 ], 8 ) ) )
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[:, Symbol( "active => external" )] .==
+        vcat( zeros( 10 ), repeat( [0, 20], 8 ) ) )
 end  # @testset "Retirement schedule"
 
 @testset "Retirement at age" begin
@@ -73,8 +73,8 @@ end  # @testset "Retirement schedule"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "active => external" ) ] .==
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[:, Symbol( "active => external" )] .==
         vcat( zeros( 10 ), fill( 10, 16 ) ) )
 end  # @testset "Retirement at age"
 
@@ -105,10 +105,10 @@ end  # @testset "Retirement at age"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "retirement: node A => external" ) ] .==
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[:, Symbol( "retirement: node A => external" )] .==
         vcat( fill( 0, 10 ), fill( 10, 16 ) ) ) &&
-        all( report[ :, Symbol( "retirement: node B => external" ) ] .==
+        all( report[:, Symbol( "retirement: node B => external" )] .==
         vcat( fill( 0, 7 ), fill( 10, 19 ) ) )
 
     retirement = Retirement()
@@ -120,10 +120,10 @@ end  # @testset "Retirement at age"
 
     @test verifySimulation!( mpSim )
     run( mpSim, saveConfig = false )
-    report = nodeFluxReport( mpSim, 12, :out, "active" )[ "active" ]
-    @test all( report[ :, Symbol( "retirement: node A => external" ) ] .==
+    report = nodeFluxReport( mpSim, 12, :out, "active" )["active"]
+    @test all( report[:, Symbol( "retirement: node A => external" )] .==
         vcat( fill( 0, 12 ), fill( 10, 14 ) ) ) &&
-        all( report[ :, Symbol( "retirement: node B => external" ) ] .==
+        all( report[:, Symbol( "retirement: node B => external" )] .==
         vcat( fill( 0, 10 ), fill( 10, 16 ) ) )
 end  # @testset "Retirement at age/tenure"
 

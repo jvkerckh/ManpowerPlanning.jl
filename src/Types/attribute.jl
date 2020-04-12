@@ -41,7 +41,7 @@ mutable struct Attribute
         newAttr.possibleValues = Vector{String}()
         newAttr.initValues = Vector{String}()
         newAttr.initValueWeights = Vector{Float64}()
-        newAttr.initValueDist = Categorical( [ 1.0 ] )
+        newAttr.initValueDist = Categorical( [1.0] )
         return newAttr
 
     end  # Attribute( name )

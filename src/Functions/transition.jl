@@ -252,7 +252,7 @@ This function returns `true` if the attribute changes have been successfully add
 function addTransitionAttributeChange!( transition::Transition,
     attrVals::NTuple{2, String}... )::Bool
 
-    newAttrs = map( attrVal -> attrVal[ 1 ], collect( attrVals ) )
+    newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
 
     if length( newAttrs ) != length( unique( newAttrs ) )
         @warn "Duplicate entries in the attribute/value list, not making any changes."
@@ -260,7 +260,7 @@ function addTransitionAttributeChange!( transition::Transition,
     end  # if length( newAttrs ) != length( unique( newAttrs ) )
 
     for attrVal in attrVals
-        transition.extraChanges[ attrVal[ 1 ] ] = attrVal[ 2 ]
+        transition.extraChanges[attrVal[1]] = attrVal[2]
     end  # for attrVal in attrVals
 
     return true
@@ -318,7 +318,7 @@ This function returns `true` if the list of changes has been successfully set, a
 function setTransitionAttributeChanges!( transition::Transition, attrVals::NTuple{2, String}... )::Bool
 
     # Check for duplicates.
-    newAttrs = map( attrVal -> attrVal[ 1 ], collect( attrVals ) )
+    newAttrs = map( attrVal -> attrVal[1], collect( attrVals ) )
 
     if length( newAttrs ) != length( unique( newAttrs ) )
         @warn "Duplicate entries in the attribute/value list, not making any changes."
@@ -329,7 +329,7 @@ function setTransitionAttributeChanges!( transition::Transition, attrVals::NTupl
     attrValDict = Dict{String, String}()
 
     for attrVal in attrVals
-        attrValDict[ attrVal[ 1 ] ] = attrVal[ 2 ]
+        attrValDict[attrVal[1]] = attrVal[2]
     end  # for attrVal in attrVals
 
     return setTransitionAttributeChanges!( transition, attrValDict )
@@ -367,7 +367,7 @@ function setTransitionAttributeChanges!( transition::Transition,
     attrValDict = Dict{String, String}()
 
     for ii in eachindex( attributes )
-        attrValDict[ attributes[ ii ] ] = values[ ii ]
+        attrValDict[attributes[ii]] = values[ii]
     end  # for ii in eachindex( attributes )
 
     return setTransitionAttributeChanges!( transition, attrValDict )
@@ -420,7 +420,7 @@ function Base.show( io::IO, transition::Transition )
     if !isempty( transition.extraChanges )
         print( io, "\n  Extra changes: ",
             join( map( attr -> string( attr, " to ",
-            transition.extraChanges[ attr ] ),
+            transition.extraChanges[attr] ),
             collect( keys( transition.extraChanges ) ) ), ", " ) )
     end  # if !isempty( transition.extraChanges )
 
