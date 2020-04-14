@@ -531,12 +531,13 @@ end  # setSimAttrition!( mpSim, attritionList, wipeConfig )
 
 function validateDatabaseAge!( mpSim::MPsim )
 
-    if mpSim.persDBname ∈ SQLite.tables( mpSim.simDB )[:name]
+    if haskey( SQLite.tables( mpSim.simDB ), :name ) &&
+        ( mpSim.persDBname ∈ SQLite.tables( mpSim.simDB )[:name] )
         mpSim.isOldDB = "startState" ∈ SQLite.columns( mpSim.simDB,
             mpSim.transDBname )[:name]
     else
         mpSim.isOldDB = false
-    end  # mpSim.persDBname ∈ SQLite.tables( mpSim.simDB )[:name]
+    end  # haskey( SQLite.tables( mpSim.simDB ), :name ) && ...
 
     if mpSim.isOldDB
         @warn "Old style simulation results database. This style will be deprecated in a future version."
