@@ -31,6 +31,9 @@ end  # @testset "function nodePopReport"
     @test [:active, :Career, Symbol( "A junior" )] ⊆ names( report[1] )
     @test all( haskey.( Ref( report[2] ),
         ["active", "Career", "A junior"] ) )
+    @test all( [length( report[2]["active"] ) == 2,
+        length( report[2]["Career"] ) == 4,
+        length( report[2]["A junior"] ) == 2] )
 end  # @testset "function nodeEvolutionReport"
 
 println()

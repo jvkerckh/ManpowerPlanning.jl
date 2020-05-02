@@ -92,14 +92,14 @@ This function will issue a warning and not generate any report in the following 
 1. There are no positive time points in the time grid;
 2. None of the entered nodes are actual nodes in the simulation.
 
-This function returns a `Tuple` consisting of a `DataFrame` and a dictionary. the `DataFrame`is the population report for all the valid nodes, and the dictionary is a `Dict{String,NTuple{2,DataFrame}}`. The keys of the dictionary are the names of the nodes, and the corresponding value is the report on the in and out fluxes for the node. In case the function issues a warning, its return value will be a `Tuple` with empty objects of the correct type.
+This function returns a `Tuple` consisting of a `DataFrame` and a dictionary. the `DataFrame`is the population report for all the valid nodes, and the dictionary is a `Dict{String,Tuple}`. The keys of the dictionary are the names of the nodes, and the corresponding value is the report on the in and out fluxes for the node if the node is a base node. If the report is a compound node, it also adds a report on the transitions within the compound node, and a composition report. In case the function issues a warning, its return value will be a `Tuple` with empty objects of the correct type.
 """
 function nodeEvolutionReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    nodes::String... )::Tuple{DataFrame, Dict{String,NTuple{2,DataFrame}}}
+    nodes::String... )::Tuple{DataFrame, Dict{String,Tuple}}
 
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
-    fluxReport = Dict{String,NTuple{2,DataFrame}}()
+    fluxReport = Dict{String,Tuple}()
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."
@@ -129,9 +129,16 @@ function nodeEvolutionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     inFluxes = nodeFluxReport( mpSim, timeGrid, :in, nodes... )
     outFluxes = nodeFluxReport( mpSim, timeGrid, :out, nodes... )
     popReport = createPopReport( nodes, timeGrid, inFluxes, outFluxes )
+    withinFluxes = nodeFluxReport( mpSim, timeGrid, :within, nodes... )
+    compReport = nodeCompositionReport( mpSim, timeGrid, nodes... )
 
     for node in nodes
-        fluxReport[node] = (inFluxes[node], outFluxes[node])
+        if haskey( mpSim.compoundNodeList, node )
+            fluxReport[node] = (inFluxes[node], outFluxes[node],
+                withinFluxes[node], compReport[node])
+        else
+            fluxReport[node] = (inFluxes[node], outFluxes[node])
+        end  # if haskey( mpSim.compoundNodeList, node )
     end  # for node in nodes
 
     return (popReport, fluxReport)
