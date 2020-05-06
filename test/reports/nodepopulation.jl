@@ -7,8 +7,8 @@
     @test isempty( nodePopReport( mpSim, -12, "active", "Career", "Blort",
         "A junior" ) )
     report = nodePopReport( mpSim, 12, "active", "Career", "Blort", "A junior" )
-    @test ( :Blort ∉ names( report ) ) && ( [:active, :Career,
-        Symbol( "A junior" )] ⊆ names( report ) )
+    @test ( :Blort ∉ names( report ) ) &&
+        ( ["active", "Career", "A junior"] ⊆ names( report ) )
     @test all( report[:, :active] .== vcat( 30, 60, 84, 108, 124, 140, 156,
         172, 188, 204, 196, fill( 188, 15 ) ) )
     @test all( report[:, Symbol( "A junior" )] .==
@@ -28,7 +28,7 @@ end  # @testset "function nodePopReport"
     @test isempty( report[1] ) && isempty( report[2] )
     report = nodeEvolutionReport( mpSim, 12, "active", "Career", "Blort",
         "A junior" )
-    @test [:active, :Career, Symbol( "A junior" )] ⊆ names( report[1] )
+    @test ["active", "Career", "A junior"] ⊆ names( report[1] )
     @test all( haskey.( Ref( report[2] ),
         ["active", "Career", "A junior"] ) )
     @test all( [length( report[2]["active"] ) == 2,

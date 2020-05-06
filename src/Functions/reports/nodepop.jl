@@ -124,13 +124,22 @@ function nodeEvolutionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     end  # if isempty( nodes )
 
     nodes = unique( nodes )
+    compoundNodes = filter( node -> haskey( mpSim.compoundNodeList, node ),
+        nodes )
 
     # Create reports.
     inFluxes = nodeFluxReport( mpSim, timeGrid, :in, nodes... )
     outFluxes = nodeFluxReport( mpSim, timeGrid, :out, nodes... )
     popReport = createPopReport( nodes, timeGrid, inFluxes, outFluxes )
-    withinFluxes = nodeFluxReport( mpSim, timeGrid, :within, nodes... )
-    compReport = nodeCompositionReport( mpSim, timeGrid, nodes... )
+
+    withinFluxes = nothing
+    compReport = nothing
+
+    if !isempty( compoundNodes )
+        withinFluxes = nodeFluxReport( mpSim, timeGrid, :within,
+            compoundNodes... )
+        compReport = nodeCompositionReport( mpSim, timeGrid, compoundNodes... )
+    end  # if !isempty( compoundNodes )
 
     for node in nodes
         if haskey( mpSim.compoundNodeList, node )

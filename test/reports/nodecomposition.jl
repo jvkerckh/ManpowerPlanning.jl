@@ -9,8 +9,7 @@
     report = nodeCompositionReport( mpSim, 12, "A junior", "Empty", "Foo",
         "B senior", "Career", "Branch A", "Bar" )
     @test haskey( report, "Base nodes" ) &&
-        ( Symbol.( ["A junior", "B senior"] ) ⊆
-        names( report["Base nodes"] ) )
+        ( ["A junior", "B senior"] ⊆ names( report["Base nodes"] ) )
     @test all( [haskey( report, "Career" ), haskey( report, "Branch A" ),
         !haskey( report, "Foo" ), !haskey( report, "Bar" ),
         haskey( report, "Empty" )] )

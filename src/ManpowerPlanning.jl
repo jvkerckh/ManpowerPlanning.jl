@@ -14,22 +14,8 @@ module ManpowerPlanning
     using ResumableFunctions
     using SimJulia
     using SQLite
-    
-    # using IterTools
-    # using Plots
-    # using GraphIO
-    # using EzXML
-    # using GraphPlot
-    # using Compose
-    # using Gadfly
-    # using Luxor
-    # using Polynomials
-    # using FileIO
-    # using StatsBase
-    # using XLSX
-    # using ExcelWrapper
 
-    version = v"2.3.1"
+    version = v"2.3.2"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
