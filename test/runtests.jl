@@ -33,6 +33,7 @@ include( "basic/manpowersimulation.jl" )
 
 end  # @testset "Basic test of types"
 
+
 @testset "Test of simulation reports" begin
 
 include( "reports/simconfig.jl" )
@@ -47,6 +48,7 @@ include( "reports/subpopulationage.jl" )
 
 end  # @testset "Test of simulation reports"
 
+
 @testset "Test of simulation processes" begin
 
 include( "sim/basic.jl" )
@@ -59,6 +61,15 @@ include( "sim/transition3.jl" )
 include( "sim/transition4.jl" )
 
 end  # @testset "Test of simulation processes"
+
+
+@testset "Snapshot test" begin
+
+include( "snapshot/simconfig.jl" )
+include( "snapshot/snapshot.jl" )
+include( "snapshot/snapshotsim.jl" )
+
+end  # @testset "Snapshot test"
 
 end  # @testset "Full test"
 

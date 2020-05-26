@@ -12,7 +12,9 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
     DBInterface.execute( mpSim.simDB, "BEGIN TRANSACTION" )
 
     try
-        resetSimulation( mpSim )
+        if ( now( mpSim ) != 0 ) || ( mpSim.orgSize == 0 )
+            resetSimulation( mpSim )
+        end  # if ( now( mpSim ) != 0 ) || ...
 
         # Initialise the recruitment processes.
         for name in keys( mpSim.recruitmentByName )
@@ -55,12 +57,14 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
         saveSimulationConfiguration( mpSim )
     end  # if saveConfig
 
+    mpSim.isVirgin = true
     return
 
 end  # run( mpSim, showInfo, saveConfig )
 
 
 include( joinpath( simPath, "dboperations.jl" ) )
+include( joinpath( simPath, "snapshot.jl" ) )
 include( joinpath( simPrivPath, "attrition.jl" ) )
 include( joinpath( simPrivPath, "attribute.jl" ) )
 include( joinpath( simPrivPath, "recruitment.jl" ) )

@@ -1,3 +1,4 @@
+const ColIndex = Union{Int, AbstractString}
 const KeyType = Union{Symbol, String}
 const TransitionType = Union{String, NTuple{2,String}, NTuple{3,String}}
 # const DbIndexType = Union{String, Integer}

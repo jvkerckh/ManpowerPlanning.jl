@@ -8,9 +8,15 @@
         recruitment.targetNode, "' " )
 
     # Preparatory steps.
-    timeToWait = recruitment.offset
     priority = recruitment.priority -
         ( recruitment.isAdaptive ? 1 : 0 ) * mpSim.nPriorities
+    timeToWait = recruitment.offset
+        
+    # If an initial population snapshot is uploaded, and it contains zero-time
+    #   events, don't execute zero-time recruitment.
+    if ( timeToWait == 0 ) && !mpSim.isVirgin
+        timeToWait += recruitment.freq
+    end  # if ( timeToWait == 0 ) && ...
 
     # Process loop.
     while now( sim ) + timeToWait <= mpSim.simLength

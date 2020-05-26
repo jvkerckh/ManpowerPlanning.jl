@@ -12,12 +12,46 @@ function generateTimeToAttrition( attrition::Attrition, nVals::Int )
         attrTime = attrition.curvePoints[nSection]
         attrTime -= log( urand[ii] / attrition.gammas[nSection] ) /
             attrition.lambdas[nSection]
-        return attrTime * attrition.period
+        return attrTime #* attrition.period
     end  # map( 1:nVals ) do ii
 
-    return result ./ attrition.period
+    return result #./ attrition.period
 
 end  # generateTimeToAttrition( attrition, nVals )
+
+function generateTimeToAttrition( attrition::Attrition,
+    excessTimes::Vector{T} ) where T <: Real
+
+    if isempty( excessTimes )
+        return Vector{Float64}()
+    end  # if isempty( excessTimes )
+
+    eSections = map( et -> findlast( attrition.curvePoints .<= et ),
+        excessTimes )
+    urand = rand( length( excessTimes ) )
+    urand .*= attrition.gammas[eSections]
+
+    result = map( eachindex( excessTimes ) ) do ii
+        eSection = eSections[ii]
+        condprob = exp( -attrition.lambdas[eSection] *
+            ( excessTimes[ii] - attrition.curvePoints[eSection] ) )
+        nSection = findlast( urand[ii] * condprob .<= attrition.gammas )
+
+        if attrition.lambdas[nSection] == 0
+            return +Inf
+        end  # if attrition.lambdas[nSection] == 0
+
+        attrTime = attrition.curvePoints[nSection]
+        attrTime += ( excessTimes[ii] - attrition.curvePoints[eSection] ) *
+            attrition.lambdas[eSection] / attrition.lambdas[nSection]
+        attrTime -= log( urand[ii] / attrition.gammas[nSection] ) /
+            attrition.lambdas[nSection]
+        return attrTime
+    end  # map( eachindex( excessTimes ) ) do ii
+
+    return result
+
+end  # generateTimeToAttrition( attrition, excessTimes )
 
 
 @resumable function checkAttritionProcess( sim::Simulation, mpSim::MPsim )

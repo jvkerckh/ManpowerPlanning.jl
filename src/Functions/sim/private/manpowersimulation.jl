@@ -19,6 +19,7 @@ function resetSimulation( mpSim::MPsim )
     # Reset the population number of the simulation.
     mpSim.orgSize = 0
     mpSim.dbSize = 0
+    mpSim.isVirgin = true
     
     # Create the tables.
     sqliteCmd = string( "CREATE TABLE `", mpSim.persDBname, "`(",

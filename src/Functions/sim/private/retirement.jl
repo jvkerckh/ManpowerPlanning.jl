@@ -13,9 +13,15 @@
     retName = string( "Default retirement process " )
 
     # Preparatory steps.
-    timeToWait = retirement.offset
     priority = typemax( Int )
-    
+    timeToWait = retirement.offset
+
+    # If an initial population snapshot is uploaded, and it contains zero-time
+    #   events, don't execute zero-time retirement.
+    if ( timeToWait == 0 ) && !mpSim.isVirgin
+        timeToWait += retirement.freq
+    end  # if ( timeToWait == 0 ) && ...
+
     # Process loop.
     while now( sim ) + timeToWait <= mpSim.simLength
         processTime += now() - tStart

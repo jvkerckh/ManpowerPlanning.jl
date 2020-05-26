@@ -14,8 +14,9 @@ module ManpowerPlanning
     using ResumableFunctions
     using SimJulia
     using SQLite
+    using XLSX
 
-    version = v"2.3.2"
+    version = v"2.4.0"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,

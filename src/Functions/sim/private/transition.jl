@@ -153,21 +153,26 @@ end  # orderTransitions!( mpSim )
     tStart = now()
 
     # Initialize the schedule.
-    timeOfCheck = now( sim ) - transition.offset
-    timeOfCheck = ceil( timeOfCheck / transition.freq ) * transition.freq +
-        transition.offset
     priority = transition.priority
     priorityShift = ( transition.hasPriority ? 0 : 1 ) * mpSim.nPriorities
     maxAttempts = transition.maxAttempts == 0 ?
         length( transition.probabilityList ) : transition.maxAttempts
     nAttempts = Dict{String,Int}()
 
-    while timeOfCheck <= mpSim.simLength
+    timeToWait = transition.offset
+
+    # If an initial population snapshot is uploaded, and it contains zero-time
+    #   events, don't execute zero-time transition.
+    if ( timeToWait == 0 ) && !mpSim.isVirgin
+        timeToWait += transition.freq
+    end  # if ( timeToWait == 0 ) && ...
+
+    while now( sim ) + timeToWait <= mpSim.simLength
         processTime += now() - tStart
-        @yield( timeout( sim, timeOfCheck - now( sim ), priority = priority -
+        @yield( timeout( sim, timeToWait, priority = priority -
             ( transition.minFlux == 0 ? priorityShift : 0 ) ) )
         tStart = now()
-        timeOfCheck += transition.freq
+        timeToWait = transition.freq
 
         # Identify all persons who're in the start state long enough and are not
         #   already going to transition to another state.
@@ -194,7 +199,7 @@ end  # orderTransitions!( mpSim )
         transitionIDs = determineAdditionalIDs( transition, checkedIDs,
             transitionLevels, mpSim )
         performTransitions( mpSim, transition, transitionIDs )
-    end  # while timeOfCheck <= mpSim.simLength
+    end  # while now( sim ) + timeToWait <= mpSim.simLength
 
     processTime += now() - tStart
 
