@@ -16,7 +16,7 @@ module ManpowerPlanning
     using SQLite
     using XLSX
 
-    version = v"2.4.0"
+    version = v"2.5.0"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -58,6 +58,6 @@ module ManpowerPlanning
     include( joinpath( funcPath, "reports.jl" ) )
 
     # Deprecated functions
-    include( joinpath( funcPath, "deprecated.jl" ) )
+    # include( joinpath( funcPath, "deprecated.jl" ) )
 
 end  # module ManpowerPlanning

@@ -1,7 +1,6 @@
 @testset "BaseNode" begin
 
 @testset "BaseNode" begin
-    @test_deprecated State( "State" )
     node = BaseNode( "Node" )
     @test all( [node.name == "Node", node.target == -1,
         isempty( node.requirements )] )
@@ -10,14 +9,14 @@ end  # @testset "Constructor"
 node = BaseNode( "State" )
 
 @testset "function setNodeName!" begin
-    @test_deprecated setName!( node, "Beep" )
+    setNodeName!( node, "Beep" )
     @test node.name == "Beep"
     setNodeName!( node, "Node" )
     @test node.name == "Node"
 end  # @testset "function setNodeName!"
 
 @testset "function setNodeTarget!" begin
-    @test_deprecated setStateTarget!( node, 1000 )
+    setNodeTarget!( node, 1000 )
     @test node.target == 1000
     setNodeTarget!( node, -5 )
     @test node.target == -1
@@ -26,15 +25,14 @@ end  # @testset "function setNodeName!"
 end  # @testset "function setNodeTarget!"
 
 @testset "function setNodeAttritionScheme!" begin
-    attrition1 = Attrition( "Attrition 1" )
-    @test_deprecated setStateAttritionScheme!( node, attrition1 )
+    setNodeAttritionScheme!( node, "Attrition 1" )
     @test node.attrition === "Attrition 1"
     setNodeAttritionScheme!( node, "Attrition 2" )
     @test node.attrition === "Attrition 2"
 end  # @testset "function setNodeAttritionScheme!"
 
 @testset "function addNodeRequirement!" begin
-    @test_deprecated addRequirement!( node, "rank category", "officer" )
+    addNodeRequirement!( node, "rank category", "officer" )
     @test haskey( node.requirements, "rank category" ) &&
         ( node.requirements["rank category"] == "officer" )
     addNodeRequirement!( node, "rank", "captain" )
@@ -51,7 +49,7 @@ end  # @testset "function setNodeAttritionScheme!"
 end  # @testset "function addNodeRequirement!"
 
 @testset "function removeNodeRequirement!" begin
-    @test_deprecated removeRequirement!( node, "rank category" )
+    removeNodeRequirement!( node, "rank category" )
     @test !haskey( node.requirements, "rank category" )
     removeNodeRequirement!( node, "branch", "rank category" )
     @test !haskey( node.requirements, "branch" )

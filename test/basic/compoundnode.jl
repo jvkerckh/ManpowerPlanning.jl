@@ -1,7 +1,6 @@
 @testset "CompoundNode" begin
 
 @testset "Constructor" begin
-    @test_deprecated CompoundState( "Test" )
     compoundNode = CompoundNode( "Compound node" )
     @test all( [compoundNode.name == "Compound node",
         isempty( compoundNode.baseNodeList ), compoundNode.nodeTarget == -1] )
@@ -10,7 +9,7 @@ end  # @testset "Constructor"
 compoundNode = CompoundNode( "Compound node" )
 
 @testset "function addCompoundNodeComponent!" begin
-    @test_deprecated addStateToCompound!( compoundNode, "Air Officer",
+    addCompoundNodeComponent!( compoundNode, "Air Officer",
         "Air Non-Com", "Air Officer" )
     @test ( length( compoundNode.baseNodeList ) == 2 ) &&
         ( ["Air Officer", "Air Non-Com"] ⊆ compoundNode.baseNodeList )
@@ -21,7 +20,7 @@ compoundNode = CompoundNode( "Compound node" )
 end  # @testset "function addCompoundNodeComponent!"
 
 @testset "function removeCompoundNodeComponent!" begin
-    @test_deprecated removeStateFromCompound!( compoundNode, "Air Officer",
+    removeCompoundNodeComponent!( compoundNode, "Air Officer",
         "Air General" )
     @test ( length( compoundNode.baseNodeList ) == 2 ) &&
         ( "Air Officer" ∉ compoundNode.baseNodeList )
@@ -33,7 +32,7 @@ end  # @testset "function addCompoundNodeComponent!"
 end  # @testset "function removeCompoundNodeComponent!"
 
 @testset "function clearCompoundNodeComponents!" begin
-    @test_deprecated clearStatesFromCompound!( compoundNode )
+    clearCompoundNodeComponents!( compoundNode )
     @test isempty( compoundNode.baseNodeList)
 end  # @testset "function clearCompoundNodeComponents!"
 
@@ -49,12 +48,12 @@ end  # @testset "function clearCompoundNodeComponents!"
         compoundNode.baseNodeList )
 end  # @testset "function setCompoundNodeComponents!"
 
-@testset "function setCompoundNodeTarget" begin
-    @test_deprecated setStateTarget!( compoundNode, 1000 )
+@testset "function setCompoundNodeTarget!" begin
+    setCompoundNodeTarget!( compoundNode, 1000 )
     @test compoundNode.nodeTarget == 1000
     setCompoundNodeTarget!( compoundNode, -500 )
     @test compoundNode.nodeTarget == -1
-end  # @testset "function setCompoundNodeTarget"
+end  # @testset "function setCompoundNodeTarget!"
 
 end  # @testset "CompoundNode"
 

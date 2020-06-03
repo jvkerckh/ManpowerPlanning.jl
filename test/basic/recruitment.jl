@@ -15,7 +15,7 @@ end  # @testset "function Constructor"
 recruitment = Recruitment( "Recruitment" )
 
 @testset "function setRecruitmentSchedule!" begin
-    @test_deprecated setRecruitmentSchedule( recruitment, 12 )
+    setRecruitmentSchedule!( recruitment, 12 )
     @test ( recruitment.freq == 12.0 ) && ( recruitment.offset == 0.0 )
     setRecruitmentSchedule!( recruitment, 6, 8 )
     @test ( recruitment.freq == 6.0 ) && ( recruitment.offset == 2.0 )
@@ -30,7 +30,7 @@ end  # @testset "function setRecruitmentSchedule!"
 end  # @testset "function setRecruitmentTarget!"
 
 @testset "function setRecruitmentAdaptiveRange!" begin
-    @test_deprecated setRecruitmentLimits( recruitment, 20 )
+    setRecruitmentAdaptiveRange!( recruitment, 20 )
     @test all( [recruitment.isAdaptive, recruitment.minRecruitment == 20,
         recruitment.maxRecruitment == -1] )
     setRecruitmentAdaptiveRange!( recruitment, -20, -20 )
@@ -45,7 +45,7 @@ end  # @testset "function setRecruitmentTarget!"
 end  # @testset "function setRecruitmentAdaptiveRange!"
 
 @testset "function setRecruitmentFixed!" begin
-    @test_deprecated setRecruitmentFixed( recruitment, 50 )
+    setRecruitmentFixed!( recruitment, 50 )
     @test all( [!recruitment.isAdaptive,
         recruitment.recruitmentDistType === :disc,
         recruitment.recruitmentDistNodes == Dict( 50 => 1.0 )] )
@@ -56,8 +56,8 @@ end  # @testset "function setRecruitmentAdaptiveRange!"
 end  # @testset "function setRecruitmentFixed!"
 
 @testset "function setRecruitmentDist!" begin
-    @test_deprecated setRecruitmentDistribution( recruitment,
-        Dict( 50 => 1.0, 75 => 2.0, 100 => 1.0 ), :disc )
+    setRecruitmentDist!( recruitment, :disc,
+        Dict( 50 => 1.0, 75 => 2.0, 100 => 1.0 ) )
     @test ( recruitment.recruitmentDistType === :disc ) &&
         ( recruitment.recruitmentDistNodes ==
             Dict( 50 => 1.0, 75 => 2.0, 100 => 1.0 ) )

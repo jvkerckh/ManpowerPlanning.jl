@@ -11,9 +11,9 @@ end  # @testset "Constructor"
 attrition = Attrition( "Attrition" )
 
 @testset "function setAttritionRate!" begin
-    @test_deprecated setAttritionRate( attrition, 0.04 )
+    setAttritionRate!( attrition, 0.04 )
     @test attrition.rates == [0.04]
-    @test setAttritionRate!( attrition, 0.025 )
+    setAttritionRate!( attrition, 0.025 )
     @test all( [attrition.rates == [0.025],
         attrition.lambdas == [- log( 0.975 )],
         attrition.gammas == [1.0]] )
@@ -22,21 +22,20 @@ attrition = Attrition( "Attrition" )
 end  # @testset "function setAttritionRate!"
 
 @testset "function setAttritionPeriod!" begin
-    @test_deprecated setAttritionPeriod( attrition, 12 )
+    setAttritionPeriod!( attrition, 12 )
     @test ( attrition.period == 12 ) &&
         ( attrition.lambdas == [- log( 0.975 ) / 12] )
-    @test setAttritionPeriod!( attrition, 6 )
+    setAttritionPeriod!( attrition, 6 )
     @test attrition.period == 6 &&
         ( attrition.lambdas == [- log( 0.975 ) / 6] )
     @test !setAttritionPeriod!( attrition, -6 )
 end  # @testset "function setAttritionRate!"
 
 @testset "function setAttritionCurve!" begin
-    @test_deprecated setAttritionCurve( attrition,
-        Dict( 0.0 => 0.05, 24.0 => 0.03 ) )
+    setAttritionCurve!( attrition, Dict( 0.0 => 0.05, 24.0 => 0.03 ) )
     @test ( attrition.curvePoints == [0.0, 24.0] ) &&
         ( attrition.rates == [0.05, 0.03] )
-    @test_deprecated setAttritionCurve( attrition, [0.0 0.04; 30.0 0.025] )
+    setAttritionCurve!( attrition, [0.0 0.04; 30.0 0.025] )
     @test ( attrition.curvePoints == [0.0, 30.0] ) &&
         ( attrition.rates == [0.04, 0.025] )
     @test setAttritionCurve!( attrition, [6.0 0.01; 30.0 0.02] )

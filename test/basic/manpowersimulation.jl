@@ -16,7 +16,7 @@ end  # @testset "function isSimulationConsistent"
 end  # @testset "function verifySimulation!"
 
 @testset "function setSimulationKey!" begin
-    @test_deprecated setKey( mpSim, "testKey" )
+    setSimulationKey!( mpSim, "testKey" )
     @test mpSim.idKey == "testKey"
     setSimulationKey!( mpSim, :testKey2 )
     @test mpSim.idKey == "testKey2"
@@ -47,7 +47,7 @@ setPossibleAttributeValues!( attribute4,
     ["Gauss rifle", "Necrodermis", "Tesla rifle"] )
 
 @testset "function addSimulationAttribute!" begin
-    @test_deprecated addAttribute!( mpSim, attribute1 )
+    addSimulationAttribute!( mpSim, attribute1 )
     @test haskey( mpSim.attributeList, "Attribute 1" ) &&
         ( mpSim.attributeList["Attribute 1"] === attribute1 )
     @test !isSimulationConsistent( mpSim )
@@ -70,7 +70,7 @@ end  # @testset "function addSimulationAttribute!"
 end  # @testset "function removeSimulationAttribute!"
 
 @testset "function clearSimulationAttributes!" begin
-    @test_deprecated clearAttributes!( mpSim )
+    clearSimulationAttributes!( mpSim )
     @test isempty( mpSim.attributeList )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
@@ -93,7 +93,7 @@ node3 = BaseNode( "Base Node 3" )
 node4 = BaseNode( "Base Node 1" )
 
 @testset "function addSimulationBaseNode!" begin
-    @test_deprecated addState!( mpSim, node1 )
+    addSimulationBaseNode!( mpSim, node1 )
     @test haskey( mpSim.baseNodeList, "Base Node 1" ) &&
         ( mpSim.baseNodeList["Base Node 1"] === node1 )
     @test !isSimulationConsistent( mpSim )
@@ -122,7 +122,7 @@ end  # @testset "function addSimulationBaseNode!"
 end  # @testset "function removeSimulationBaseNode!"
 
 @testset "function clearSimulationBaseNodes!" begin
-    @test_deprecated clearStates!( mpSim )
+    clearSimulationBaseNodes!( mpSim )
     @test isempty( mpSim.baseNodeList )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
@@ -144,7 +144,7 @@ node6 = CompoundNode( "Compound Node 2" )
 node7 = CompoundNode( "Compound Node 1" )
 
 @testset "function addSimulationCompoundNode!" begin
-    @test_deprecated addCompoundState!( mpSim, node5 )
+    addSimulationCompoundNode!( mpSim, node5 )
     @test haskey( mpSim.compoundNodeList, "Compound Node 1" ) &&
         ( mpSim.compoundNodeList["Compound Node 1"] === node5 )
     @test !isSimulationConsistent( mpSim )
@@ -157,7 +157,7 @@ node7 = CompoundNode( "Compound Node 1" )
 end  # @testset "function addSimulationCompoundNode!"
 
 @testset "function removeSimulationCompoundNode!" begin
-    @test_deprecated removeCompoundState!( mpSim, "Compound Node 1" )
+    removeSimulationCompoundNode!( mpSim, "Compound Node 1" )
     @test !haskey( mpSim.compoundNodeList, "Compound Node 1" )
     @test !isSimulationConsistent( mpSim )
     @test !removeSimulationCompoundNode!( mpSim, "Compound Node 2",
@@ -166,7 +166,7 @@ end  # @testset "function addSimulationCompoundNode!"
 end  # @testset "function removeSimulationCompoundNode!"
 
 @testset "function clearSimulationCompoundNodes!" begin
-    @test_deprecated clearCompoundStates!( mpSim )
+    clearSimulationCompoundNodes!( mpSim )
     @test isempty( mpSim.compoundNodeList )
     @test !isSimulationConsistent( mpSim )
     @test verifySimulation!( mpSim )
@@ -190,7 +190,7 @@ recruitment3 = Recruitment( "Recruitment 3" )
 recruitment4 = Recruitment( "Recruitment 1" )
 
 @testset "function addSimulationRecruitment!" begin
-    @test_deprecated addRecruitmentScheme!( mpSim, recruitment1 )
+    addSimulationRecruitment!( mpSim, recruitment1 )
     @test !addSimulationRecruitment!( mpSim, recruitment1, recruitment2,
         recruitment3 )
     setRecruitmentTarget!( recruitment1, "Base Node 1" )
@@ -215,7 +215,7 @@ recruitment4 = Recruitment( "Recruitment 1" )
 end  # @testset "function addSimulationRecruitment!"
 
 @testset "function clearSimulationRecruitment!" begin
-    @test_deprecated clearRecruitmentSchemes!( mpSim )
+    clearSimulationRecruitment!( mpSim )
     @test isempty( mpSim.recruitmentByName ) &&
         isempty( mpSim.recruitmentByTarget )
     @test verifySimulation!( mpSim )
@@ -244,7 +244,7 @@ transition7 = Transition( "Transition 7", "Base Node 1", "Base Node 2" )
 transition8 = Transition( "Transition 8", "Base Node 1", "Base Node 2" )
 
 @testset "function addSimulationTransition!" begin
-    @test_deprecated addTransition!( mpSim, transition1 )
+    addSimulationTransition!( mpSim, transition1 )
     @test !addSimulationTransition!( mpSim, transition1, transition3,
         transition5 )
     setTransitionNode!( transition1, "Base Node 3" )
@@ -297,7 +297,7 @@ transition8 = Transition( "Transition 8", "Base Node 1", "Base Node 2" )
 end  # @testset "function addSimulationTransition!"
 
 @testset "function clearSimulationTransitions!" begin
-    @test_deprecated clearTransitions!( mpSim )
+    clearSimulationTransitions!( mpSim )
     @test all( [isempty( mpSim.transitionsByName ),
         isempty( mpSim.transitionsBySource ),
         length( mpSim.transitionsByTarget ) == 1,
@@ -397,14 +397,14 @@ end  # @testset "function clearSimulationAttrition!"
 end  # @testset "function setSimulationAttrition!"
 
 @testset "function setSimulationLength!" begin
-    @test_deprecated setSimulationLength( mpSim, 300 )
+    setSimulationLength!( mpSim, 300 )
     @test mpSim.simLength == 300.0
     @test !setSimulationLength!( mpSim, -240 )
     @test mpSim.simLength == 300.0
 end  # @testset "function setSimulationLength!"
 
 @testset "function setSimulationPersonnelTarget!" begin
-    @test_deprecated setPersonnelCap( mpSim, 1000 )
+    setSimulationPersonnelTarget!( mpSim, 1000 )
     @test mpSim.personnelTarget == 1000
     setSimulationPersonnelTarget!( mpSim,  -2000 )
     @test mpSim.personnelTarget == 0

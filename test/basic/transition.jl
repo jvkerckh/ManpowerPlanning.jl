@@ -16,21 +16,21 @@ end  # @testset "Constructor"
 transition = Transition( "Transition", "dummy", "dummy" )
 
 @testset "function setTransitionNode!" begin
-    @test_deprecated setState( transition, BaseNode( "Node A" ) )
+    setTransitionNode!( transition, "Node A" )
     @test transition.sourceNode == "Node A"
     setTransitionNode!( transition, "Node B", true )
     @test transition.targetNode == "Node B"
 end  # @testset "function setTransitionNode!"
 
 @testset "function setTransitionIsOut!" begin
-    @test_deprecated setIsOutTrans!( transition, true )
+    setTransitionIsOut!( transition, true )
     @test transition.isOutTransition
     setTransitionIsOut!( transition, false )
     @test !transition.isOutTransition
 end  # @testset "function setTransitionIsOut!"
 
 @testset "function setTransitionSchedule!" begin
-    @test_deprecated setSchedule( transition, 12, 4 )
+    setTransitionSchedule!( transition, 12, 4 )
     @test ( transition.freq == 12.0 ) && ( transition.offset == 4.0 )
     setTransitionSchedule!( transition, 6 )
     @test ( transition.freq == 6.0 ) && ( transition.offset == 0.0 )
@@ -43,14 +43,14 @@ end  # @testset "function setTransitionIsOut!"
 end  # @testset "function setTransitionSchedule!"
 
 @testset "function setTransitionMaxAttempts!" begin
-    @test_deprecated setMaxAttempts( transition, 5 )
+    setTransitionMaxAttempts!( transition, 5 )
     @test transition.maxAttempts == 5
     setTransitionMaxAttempts!( transition, -10 )
     @test transition.maxAttempts == -1
 end  # @testset "function setTransitionMaxAttempts!"
 
 @testset "function setTransitionFluxLimits!" begin
-    @test_deprecated setFluxBounds( transition, 10, 100 )
+    setTransitionFluxLimits!( transition, 10, 100 )
     @test ( transition.minFlux == 10 ) && ( transition.maxFlux == 100 )
     setTransitionFluxLimits!( transition, -50, -10 )
     @test ( transition.minFlux == 0 ) && ( transition.maxFlux == -1 )
@@ -59,7 +59,7 @@ end  # @testset "function setTransitionMaxAttempts!"
 end  # @testset "function setTransitionFluxLimits!"
 
 @testset "function setTransitionHasPriority!" begin
-    @test_deprecated setHasPriority( transition, true )
+    setTransitionHasPriority!( transition, true )
     @test transition.hasPriority && ( transition.priority < 0 )
     setTransitionHasPriority!( transition, false )
     @test !transition.hasPriority && ( transition.priority > 0 )
@@ -67,7 +67,7 @@ end  # @testset "function setTransitionHasPriority!"
 
 @testset "function addTransitionCondition!" begin
     cond = MPcondition( "rank", ==, "captain" )
-    @test_deprecated addCondition!( transition, cond )
+    addTransitionCondition!( transition, cond )
     @test ( length( transition.extraConditions ) == 1 ) &&
         ( cond ∈ transition.extraConditions )
     cond = MPcondition( "branch", ∈, ["air", "navy"] )
@@ -75,10 +75,10 @@ end  # @testset "function setTransitionHasPriority!"
     @test cond ∈ transition.extraConditions 
 end  # @testset "function addTransitionCondition!"
 
-@testset "function clearTransitionCondition!" begin
-    @test_deprecated clearConditions!( transition )
+@testset "function clearTransitionConditions!" begin
+    clearTransitionConditions!( transition )
     @test isempty( transition.extraConditions )
-end  # @testset "function clearTransitionCondition!"
+end  # @testset "function clearTransitionConditions!"
 
 @testset "function setTransitionConditions!" begin
     cond1 = MPcondition( "rank", ==, "adjutant" )
@@ -89,7 +89,7 @@ end  # @testset "function clearTransitionCondition!"
 end  # @testset "function setTransitionConditions!"
 
 @testset "function addTransitionAttributeChange!" begin
-    @test_deprecated addAttributeChange!( transition, "rank", "chief adjutant" )
+    addTransitionAttributeChange!( transition, ("rank", "chief adjutant") )
     @test haskey( transition.extraChanges, "rank" ) &&
         ( transition.extraChanges["rank"] == "chief adjutant" )
     addTransitionAttributeChange!( transition, ("branch", "navy"),
@@ -101,7 +101,7 @@ end  # @testset "function setTransitionConditions!"
 end  # @testset "function addTransitionAttributeChange!"
 
 @testset "function clearTransitionAttributeChanges!" begin
-    @test_deprecated clearAttributeChanges!( transition )
+    clearTransitionAttributeChanges!( transition )
     @test isempty( transition.extraChanges )
 end  # @testset "function clearTransitionAttributeChanges!"
 
@@ -133,8 +133,7 @@ end  # @testset "function clearTransitionAttributeChanges!"
 end  # @testset "function setTransitionAttributeChanges!"
 
 @testset "function setTransitionProbabilities!" begin
-    @test_deprecated setTransProbabilities( transition, [0.3, 1.2, -0.5, 0.9,
-        1.0] )
+    setTransitionProbabilities!( transition, [0.3, 1.2, -0.5, 0.9, 1.0] )
     @test transition.probabilityList == [0.3, 0.9, 1.0]
     setTransitionProbabilities!( transition, [0.2, 0.5, 1.0] )
     @test transition.probabilityList == [0.2, 0.5, 1.0]

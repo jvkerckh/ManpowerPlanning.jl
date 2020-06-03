@@ -1,7 +1,6 @@
 @testset "Attribute" begin
 
 @testset "Constructor" begin
-    @test_deprecated PersonnelAttribute( "Attribute" )
     attribute = Attribute( "Attribute" )
     @test all( [attribute.name == "Attribute",
         isempty( attribute.possibleValues ), isempty( attribute.initValues ),
@@ -33,7 +32,7 @@ end  # @testset "function removePossibleAttributeValue!"
 end  # @testset "function clearPossibleAttributeValues!"
 
 @testset "function setPossibleAttributeValues!" begin
-    @test_deprecated setPossibleValues!( attribute, ["beep", "boop"] )
+    setPossibleAttributeValues!( attribute, ["beep", "boop"] )
     @test attribute.possibleValues == ["beep", "boop"]
     setPossibleAttributeValues!( attribute, ["foo", "bar"] )
     @test attribute.possibleValues == ["foo", "bar"]
