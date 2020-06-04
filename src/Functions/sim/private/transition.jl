@@ -297,7 +297,7 @@ function determineTransitionLevels( transition::Transition,
     tresholds =  transition.probabilityList[
         min.( length( transition.probabilityList ),
         getindex.( Ref( nAttempts ), eligibleIDs ) )]
-    modProbs = rand( length( eligibleIDs ) ) ./ tresholds
+    modProbs = rand( transition.probRNG, length( eligibleIDs ) ) ./ tresholds
     setindex!.( Ref( probDict ), modProbs, eligibleIDs )
     return probDict
 

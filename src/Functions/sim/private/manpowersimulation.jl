@@ -1,3 +1,75 @@
+function seedSimulation!( mpSim::MPsim, seed::Integer, sysEnt::Bool )
+
+    # Seed the simulation.
+    mpSim.seedRNG = seed < 0 ? MersenneTwister() : MersenneTwister( seed )
+    # println( "Simulation seed ", seed )
+
+    for name in sort( collect( keys( mpSim.recruitmentByName ) ) )
+        for recruitment in mpSim.recruitmentByName[name]
+            recSeed = sysEnt ? nothing : rand( mpSim.seedRNG, UInt64 )
+            recruitment.recRNG = MersenneTwister( recSeed )
+            recDist = recruitmentDists[recruitment.recruitmentDistType][3]
+            recDistNodes = recruitment.recruitmentDistNodes
+            recruitment.recruitmentDist = recDist( recruitment, recDistNodes,
+                sort( collect( keys( recDistNodes ) ) ) )
+
+            ageSeed = sysEnt ? nothing : rand( mpSim.seedRNG, UInt64 )
+            recruitment.ageRNG = MersenneTwister( ageSeed )
+            ageDist = recruitmentDists[recruitment.ageDistType][4]
+            ageDistNodes = recruitment.ageDistNodes
+            recruitment.ageDist = ageDist( recruitment, ageDistNodes,
+                sort( collect( keys( ageDistNodes ) ) ) )
+            
+            # println( "Seeds for recruitment ", name, ": ", recSeed, " and ",
+            #     ageSeed )
+            # println( "First draws for recruitment ", name, ": ",
+            #     rand( recruitment.recRNG, Int32 ), " and ",
+            #     rand( recruitment.ageRNG, Int32 ) )
+            # println( "First draws for recruitment ", name, ": ",
+            #     recruitment.recruitmentDist(), " and ",
+            #     recruitment.ageDist( 1 ) )
+        end  # for recruitment in mpSim.recruitmentByName[name]
+    end  # for name in keys( mpSim.recruitmentByName )
+
+    # Seed the attributes.
+    for name in sort( collect( keys( mpSim.attributeList ) ) )
+        attSeed = sysEnt ? nothing : rand( mpSim.seedRNG, UInt64 )
+        attribute = mpSim.attributeList[name]
+        attribute.initRNG = MersenneTwister( attSeed )
+
+        # println( "Seed for attribute ", name, ": ", attSeed )
+        # println( "First draw for attribute ", name, ": ",
+        #     rand( attribute.initRNG, Int32 ) )
+    end  # for name in keys( mpSim.attributeList )
+
+    # Seed the attrition times.
+    for name in sort( collect( keys( mpSim.attritionSchemes ) ) )
+        attSeed = sysEnt ? nothing : rand( mpSim.seedRNG, UInt64 )
+        attrition = mpSim.attritionSchemes[name]
+        attrition.timeRNG = MersenneTwister( attSeed )
+
+        # println( "Seed for attrition ", name, ": ", attSeed )
+        # println( "First draw for attrition ", name, ": ",
+        #     rand( attrition.timeRNG, Int32 ) )
+    end  # for name in keys( mpSim.attritionSchemes )
+
+    # Seed the transitions.
+    for name in sort( collect( keys( mpSim.transitionsByName ) ) )
+        for transition in mpSim.transitionsByName[name]
+            transSeed = sysEnt ? nothing : rand( mpSim.seedRNG, UInt64 )
+            transition.probRNG = MersenneTwister( transSeed )
+
+            # println( "Seed for transition ", name, ": ", transSeed )
+            # println( "First draw for transition ", name, ": ",
+            #     rand( transition.probRNG, Int32 ) )
+        end  # for transition in mpSim.transitionsByName[name]
+    end  # for name in keys( mpSim.transitionsByName )
+
+    # println()
+
+end  # seedSimulation!( mpSim, seed, sysEnt )
+
+
 function resetSimulation( mpSim::MPsim )
 
     mpSim.sim = Simulation()

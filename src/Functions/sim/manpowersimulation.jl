@@ -1,5 +1,5 @@
-function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
-    saveConfig::Bool = true )::Nothing
+function SimJulia.run( mpSim::MPsim, showInfo::Bool=false;
+    saveConfig::Bool=true, seed::Integer=-1, sysEnt::Bool=false )::Nothing
 
     if !verifySimulation!( mpSim )
         error( "Simulation configuration is inconsistent, cannot run." )
@@ -9,6 +9,7 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
     end  # if !verifySimulation!( mpSim )
 
     mpSim.showInfo = showInfo
+    seedSimulation!( mpSim, seed, sysEnt )
     DBInterface.execute( mpSim.simDB, "BEGIN TRANSACTION" )
 
     try
@@ -60,7 +61,7 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool = false;
     mpSim.isVirgin = true
     return
 
-end  # run( mpSim, showInfo, saveConfig )
+end  # run( mpSim, showInfo, saveConfig, seed, sysEnt )
 
 
 include( joinpath( simPath, "dboperations.jl" ) )

@@ -57,6 +57,7 @@ mutable struct Transition
     probabilityList::Vector{Float64}
     
     priority::Int
+    probRNG::MersenneTwister
 
 
     # Basic constructor.
@@ -80,6 +81,7 @@ mutable struct Transition
         newTrans.extraChanges = Dict{String,String}()
         newTrans.probabilityList = [1.0]
         newTrans.priority = 1
+        newTrans.probRNG = MersenneTwister()
         return newTrans
 
     end  # Transition( name, sourceNode, targetNode, freq, offset, maxAttempts,

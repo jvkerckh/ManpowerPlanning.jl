@@ -11,12 +11,13 @@ module ManpowerPlanning
     using HierarchicalGraphPlot
     using LightGraphs
     using MetaGraphs
+    using Random
     using ResumableFunctions
     using SimJulia
     using SQLite
     using XLSX
 
-    version = v"2.5.0"
+    version = v"2.6.0"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,

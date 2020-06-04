@@ -101,16 +101,7 @@ mutable struct ManpowerSimulation
     sNode::String
     tNode::String
     valName::String
-
-    catFileName::String
-
-    # This is the name of the parameter configuration file. If this is an empty
-    #   string, the simulation must be configured manually.
-    # catFileName::String
-    # parFileName::String
-
-    # The start date of the simulation.
-    # simStartDate::Date
+    seedRNG::MersenneTwister
 
 
     function ManpowerSimulation( simName::String = "simulation" )::MPsim
@@ -155,6 +146,7 @@ mutable struct ManpowerSimulation
         newMPsim.sNode = "sourceNode"
         newMPsim.tNode = "targetNode"
         newMPsim.valName = "value"
+        newMPsim.seedRNG = MersenneTwister()
 
         # This line ensures that foreign key logic works.
         DBInterface.execute( newMPsim.simDB, "PRAGMA foreign_keys = ON" )

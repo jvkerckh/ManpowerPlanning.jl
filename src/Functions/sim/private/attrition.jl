@@ -1,6 +1,6 @@
 function generateTimeToAttrition( attrition::Attrition, nVals::Int )
 
-    urand = rand( nVals )
+    urand = rand( attrition.timeRNG, nVals )
     nSections = map( u -> findlast( u .<= attrition.gammas ), urand )
     result = map( 1:nVals ) do ii
         nSection = nSections[ii]
@@ -28,7 +28,7 @@ function generateTimeToAttrition( attrition::Attrition,
 
     eSections = map( et -> findlast( attrition.curvePoints .<= et ),
         excessTimes )
-    urand = rand( length( excessTimes ) )
+    urand = rand( attrition.condtimeRNG, length( excessTimes ) )
     urand .*= attrition.gammas[eSections]
 
     result = map( eachindex( excessTimes ) ) do ii

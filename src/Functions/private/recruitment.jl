@@ -53,12 +53,13 @@ function setRecDist!( recruitment::Recruitment, distType::Symbol,
         recruitment.isAdaptive = false
         recruitment.recruitmentDistType = distType
         recruitment.recruitmentDistNodes = tmpDistNodes
-        recruitment.recruitmentDist = recDist( tmpDistNodes, tmpNodes )    
+        recruitment.recruitmentDist = recDist( recruitment, tmpDistNodes,
+            tmpNodes )
     else
         ageDist = recruitmentDists[distType][4]
         recruitment.ageDistType = distType
         recruitment.ageDistNodes = tmpDistNodes
-        recruitment.ageDist = ageDist( tmpDistNodes, tmpNodes )
+        recruitment.ageDist = ageDist( recruitment, tmpDistNodes, tmpNodes )
     end  # if T === Int
 
     return true
@@ -66,7 +67,8 @@ function setRecDist!( recruitment::Recruitment, distType::Symbol,
 end  # setRecDist!( recruitment, distType, distNodes )
 
 
-function recDiscDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
+function recDiscDist( recruitment::Recruitment, distNodes::Dict{Int,Float64},
+    nodes::Vector{Int} )
 
     # No need to involve a distribution if there's only one node.
     if length( nodes ) == 1
@@ -78,20 +80,21 @@ function recDiscDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
     pNodes /= sum( pNodes )
 
     return function()
-        return nodes[rand( Categorical( pNodes ) )]
+        return nodes[rand( recruitment.recRNG, Categorical( pNodes ) )]
     end  # anonymous function()
 
-end  # recDiscDist( distNodes, nodes )
+end  # recDiscDist( recruitment, distNodes, nodes )
 
 
-function recPUnifDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
+function recPUnifDist( recruitment::Recruitment, distNodes::Dict{Int,Float64},
+    nodes::Vector{Int} )
 
     if length( nodes ) == 2
         intLength = nodes[2] - nodes[1]
 
         return function()
             return intLength == 1 ? nodes[1] :
-                rand( nodes[1]:( nodes[2] - 1 ) )
+                rand( recruitment.recRNG, nodes[1]:( nodes[2] - 1 ) )
         end  # anonymous function()
     end  # if length( nodes ) == 2
 
@@ -100,16 +103,17 @@ function recPUnifDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
     pInts /= sum( pInts )
 
     return function()
-        intInd = rand( Categorical( pInts ) )
+        intInd = rand( recruitment.recRNG, Categorical( pInts ) )
         intLength = nodes[intInd + 1] - nodes[intInd]
         return intLength == 1 ? nodes[intInd] :
-            rand( nodes[intInd]:( nodes[intInd + 1] - 1 ) )
+            rand( recruitment.recRNG, nodes[intInd]:( nodes[intInd + 1] - 1 ) )
     end  # anonymous function()
 
-end  # recPUnifDist( distNodes, nodes )
+end  # recPUnifDist( recruitment, distNodes, nodes )
 
 
-function recPLinDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
+function recPLinDist( recruitment::Recruitment, distNodes::Dict{Int,Float64},
+    nodes::Vector{Int} )
 
     # Get the point probabilities of the intervals.
     pointWeights = map( node -> distNodes[node], nodes )
@@ -121,7 +125,7 @@ function recPLinDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
     bracketProbs = bracketWeights / sum( bracketWeights )
 
     return function()
-        intInd = rand( Categorical( bracketProbs ) )
+        intInd = rand( recruitment.recRNG, Categorical( bracketProbs ) )
 
         if intInd == length( bracketProbs )
             return nodes[end]
@@ -132,40 +136,15 @@ function recPLinDist( distNodes::Dict{Int,Float64}, nodes::Vector{Int} )
         posProbs *= collect( 0:nodeDiffs[intInd] )
         posProbs = posProbs .+ pointWeights[intInd]
         posProbs /= bracketWeights[intInd]
-        return nodes[intInd] + rand( Categorical( posProbs ) ) - 1
+        return nodes[intInd] + rand( recruitment.recRNG,
+            Categorical( posProbs ) ) - 1
     end  # anonymous function()
 
-
-    weightDiff = pointWeights[2:end] - pointWeights[1:(end-1)]
-    bracketWeights = map(
-        ii -> 0.5 * ( pointWeights[ii + 1] * ( nodeDiff[ii] + 1.0 ) +
-        pointWeights[ii] * ( nodeDiff[ii] - 1.0 ) ),
-        1:length( weightDiff ) )
-    cumulWeights = cumsum( vcat( pointWeights[1], bracketWeights ) )
-
-    recScheme.distNodes = function()
-        weight = rand( Uniform( 0, cumulWeights[end] ) )
-        intI = findlast( weight .>= cumulWeights )
-
-        if intI == 0
-            return nodes[1]
-        end  # if intI == 0
-
-        wTilde = weight - cumulWeights[intI]
-        weightNodeRatio = weightDiff[intI] / nodeDiff[intI]
-        polyEq = Poly( [-wTilde, pointWeights[intI] + weightNodeRatio / 2,
-            weightNodeRatio / 2] )
-        pos = filter( root -> 0 <= root < nodeDiff[intI],
-            roots( polyEq ) )[1]
-
-        return nodes[intI] + ceil( Int, pos )
-    end
-
-end  # recPLinDist( distNodes, nodes )
+end  # recPLinDist( recruitment, distNodes, nodes )
 
 
-function ageDiscDist( distNodes::Dict{Float64,Float64},
-    nodes::Vector{Float64} )
+function ageDiscDist( recruitment::Recruitment,
+    distNodes::Dict{Float64,Float64}, nodes::Vector{Float64} )
 
     # No need to involve a distribution if there's only one node.
     if length( nodes ) == 1
@@ -177,20 +156,20 @@ function ageDiscDist( distNodes::Dict{Float64,Float64},
     pNodes /= sum( pNodes )
 
     return function( n::Integer )
-        return nodes[rand( Categorical( pNodes ), n )]
+        return nodes[rand( recruitment.ageRNG, Categorical( pNodes ), n )]
     end  # anonymous function( n )
 
-end  # ageDiscDist( distNodes, nodes )
+end  # ageDiscDist( recruitment, distNodes, nodes )
 
 
-function agePUnifDist( distNodes::Dict{Float64,Float64},
-    nodes::Vector{Float64} )
+function agePUnifDist( recruitment::Recruitment,
+    distNodes::Dict{Float64,Float64}, nodes::Vector{Float64} )
 
     if length( nodes ) == 2
         intLength = nodes[2] - nodes[1]
 
         return function( n::Integer )
-            return rand( n ) * intLength .+ nodes[1]
+            return rand( recruitment.ageRNG, n ) * intLength .+ nodes[1]
         end  # anonymous function( n )
     end  # if length( nodes ) == 2
 
@@ -199,16 +178,16 @@ function agePUnifDist( distNodes::Dict{Float64,Float64},
     pInts /= sum( pInts )
 
     return function( n::Integer )
-        intInds = rand( Categorical( pInts ), n )
+        intInds = rand( recruitment.ageRNG, Categorical( pInts ), n )
         intLengths = nodes[intInds .+ 1] - nodes[intInds]
-        return rand( n ) .* intLengths + nodes[intInds]
+        return rand( recruitment.ageRNG, n ) .* intLengths + nodes[intInds]
     end  # anonymous function( n )
 
-end  # agePUnifDist( distNodes, nodes )
+end  # agePUnifDist( recruitment, distNodes, nodes )
 
 
-function agePLinDist( distNodes::Dict{Float64,Float64},
-    nodes::Vector{Float64} )
+function agePLinDist( recruitment::Recruitment,
+    distNodes::Dict{Float64,Float64}, nodes::Vector{Float64} )
 
     # Get the probabilities of each interval.
     pointWeights = map( node -> distNodes[node], nodes )
@@ -217,12 +196,12 @@ function agePLinDist( distNodes::Dict{Float64,Float64},
     bracketProbs = bracketWeights / sum( bracketWeights )
 
     return function( n::Integer )
-        intInds = rand( Categorical( bracketProbs ), n )
+        intInds = rand( recruitment.ageRNG, Categorical( bracketProbs ), n )
         isDiffWeights = pointWeights[intInds .+ 1] .!= pointWeights[intInds]
         diffInds = intInds[isDiffWeights]
         diffIndsP = diffInds .+ 1
         sameInds = intInds[.!isDiffWeights]
-        result = rand( n )
+        result = rand( recruitment.ageRNG, n )
 
         # First, add the entries with equal weights in both endpoints of the
         #   containing interval.
@@ -245,7 +224,7 @@ function agePLinDist( distNodes::Dict{Float64,Float64},
         return result
     end  # anonymous function( n )
 
-end  # agePLinDist( distNodes, nodes )
+end  # agePLinDist( recruitment, distNodes, nodes )
 
 
 const recruitmentDists = Dict(

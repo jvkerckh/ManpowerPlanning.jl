@@ -33,6 +33,8 @@ mutable struct Attrition
 
     lambdas::Vector{Float64}
     gammas::Vector{Float64}
+    timeRNG::MersenneTwister
+    condtimeRNG::MersenneTwister
 
 
     function Attrition( name::String = "default" )::Attrition
@@ -42,6 +44,8 @@ mutable struct Attrition
         newAttr.period = 1.0
         newAttr.curvePoints = [0.0]
         newAttr.rates = [0.0]
+        newAttr.timeRNG = MersenneTwister()
+        newAttr.condtimeRNG = MersenneTwister()
         computeDistPars( newAttr )
         return newAttr
 

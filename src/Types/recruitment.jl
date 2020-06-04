@@ -42,6 +42,8 @@ mutable struct Recruitment
     recruitmentDist::Function
     ageDist::Function
     priority::Int
+    recRNG::MersenneTwister
+    ageRNG::MersenneTwister
 
 
     function Recruitment( name::String )
@@ -62,6 +64,8 @@ mutable struct Recruitment
         newRec.recruitmentDist = function() return 0 end
         newRec.ageDist = function( n::Integer ) return zeros( Float64, n ) end
         newRec.priority = 1
+        newRec.recRNG = MersenneTwister()
+        newRec.ageRNG = MersenneTwister()
         return newRec
 
     end  # Recruitment( freq, offset )

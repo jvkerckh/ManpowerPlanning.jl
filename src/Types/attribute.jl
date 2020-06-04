@@ -28,7 +28,9 @@ mutable struct Attribute
     possibleValues::Vector{String}
     initValues::Vector{String}
     initValueWeights::Vector{Float64}
+
     initValueDist::Categorical
+    initRNG::MersenneTwister
 
 
     # Basic constructor.
@@ -42,6 +44,7 @@ mutable struct Attribute
         newAttr.initValues = Vector{String}()
         newAttr.initValueWeights = Vector{Float64}()
         newAttr.initValueDist = Categorical( [1.0] )
+        newAttr.initRNG = MersenneTwister()
         return newAttr
 
     end  # Attribute( name )

@@ -1,5 +1,9 @@
 @testset "Transition probability tests" begin
 
+piseed = floor( Int, pi * 1_000_000 )
+eseed = floor( Int, exp( 1 ) * 1_000_000 )
+s2seed = floor( Int, sqrt( 2 ) * 1_000_000 )
+
 @testset "Trans prob test I" begin
     mpSim = ManpowerSimulation()
 
@@ -34,38 +38,50 @@
     setSimulationLength!( mpSim, 60.0 )
     @test verifySimulation!( mpSim )
 
-    Random.seed!( 3141592 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
     popReport = report[1]
     fluxReport = report[2]["B"][1]
     nn, np = popReport[2, :A], popReport[2, :B]
-    @test pvalue( OneSampleZTest( np / nt, p0 * ( 1 - p0 ) * nt, nt, p0 ) ) >
-        0.05
-    @test all( fluxReport[:, Symbol( "trans: A => B" )] .==
-        [0, 601, 0, 0, 0, 0] )
+    pval = pvalue( OneSampleZTest( np / nt, p0 * ( 1 - p0 ) * nt, nt, p0 ) )
+    @test pval > 0.05
+    @test all( fluxReport[:, "trans: A => B"] .== [0, 630, 0, 0, 0, 0] )
 
-    Random.seed!( 2718282 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    popReport = report[1]
+    fluxReport = report[2]["B"][1]
+    nn, np = popReport[2, :A], popReport[2, :B]
+    @test pval ==
+        pvalue( OneSampleZTest( np / nt, p0 * ( 1 - p0 ) * nt, nt, p0 ) )
+    @test all( fluxReport[:, "trans: A => B"] .== [0, 630, 0, 0, 0, 0] )
+
+    run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    popReport = report[1]
+    fluxReport = report[2]["B"][1]
+    nn, np = popReport[2, :A], popReport[2, :B]
+    @test pval !=
+        pvalue( OneSampleZTest( np / nt, p0 * ( 1 - p0 ) * nt, nt, p0 ) )
+    @test fluxReport[:, "trans: A => B"] != [0, 630, 0, 0, 0, 0]
+
+    run( mpSim, saveConfig=false, seed=eseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
     popReport = report[1]
     fluxReport = report[2]["B"][1]
     nn, np = popReport[2, :A], popReport[2, :B]
     @test pvalue( OneSampleZTest( np / nt, p0 * ( 1 - p0 ) * nt, nt, p0 ) ) >
         0.05
-    @test all( fluxReport[:, Symbol( "trans: A => B" )] .==
-        [0, 600, 0, 0, 0, 0] )
+    @test all( fluxReport[:, "trans: A => B"] .== [0, 598, 0, 0, 0, 0] )
     
-    Random.seed!( 1414214 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
     popReport = report[1]
     fluxReport = report[2]["B"][1]
     nn, np = popReport[2, :A], popReport[2, :B]
     @test pvalue( OneSampleZTest( np / nt, p0 * ( 1 - p0 ) * nt, nt, p0 ) ) >
         0.05
-    @test all( fluxReport[:, Symbol( "trans: A => B" )] .==
-        [0, 609, 0, 0, 0, 0] )
+    @test all( fluxReport[:, "trans: A => B"] .== [0, 614, 0, 0, 0, 0] )
 end  # @testset "Trans prob test I"
 
 @testset "Trans prob test II" begin
@@ -104,32 +120,46 @@ end  # @testset "Trans prob test I"
     p .*= cumprod( vcat( 1, 1 .- p[1:(end - 1)] ) )
     p = vcat( p, 1.0 - sum( p ) )
 
-    Random.seed!( 3141592 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
-    @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 460, 0, 0, 0] )
+    pval = pvalue( ChisqTest( countReport, p ) )
+    @test pval > 0.05
+    @test all( fluxReport .== [0, 253, 454, 0, 0, 0] )
 
-    Random.seed!( 2718282 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:3]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) == pval
+    @test all( fluxReport .== [0, 253, 454, 0, 0, 0] )
+
+    run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:3]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) != pval
+    @test fluxReport != [0, 253, 454, 0, 0, 0] 
+
+    run( mpSim, saveConfig=false, seed=eseed )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 444, 0, 0, 0] )
+    @test all( fluxReport .== [0, 260, 447, 0, 0, 0] )
     
-    Random.seed!( 1414214 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 261, 438, 0, 0, 0] )
+    @test all( fluxReport .== [0, 263, 452, 0, 0, 0] )
 end  # @testset "Trans prob test II"
 
 @testset "Trans prob test III" begin
@@ -168,32 +198,46 @@ end  # @testset "Trans prob test II"
     p .*= cumprod( vcat( 1, 1 .- p[1:(end - 1)] ) )
     p = vcat( p, 1.0 - sum( p ) )
 
-    Random.seed!( 3141592 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
-    @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 460, 0, 0, 0] )
+    pval = pvalue( ChisqTest( countReport, p ) )
+    @test pval > 0.05
+    @test all( fluxReport .== [0, 253, 454, 0, 0, 0] )
 
-    Random.seed!( 2718282 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:3]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) == pval
+    @test all( fluxReport .== [0, 253, 454, 0, 0, 0] )
+
+    run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:3]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) != pval
+    @test fluxReport != [0, 253, 454, 0, 0, 0]
+
+    run( mpSim, saveConfig=false, seed=eseed )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 444, 0, 0, 0] )
+    @test all( fluxReport .== [0, 260, 447, 0, 0, 0] )
     
-    Random.seed!( 1414214 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 261, 438, 0, 0, 0] )
+    @test all( fluxReport .== [0, 263, 452, 0, 0, 0] )
 end  # @testset "Trans prob test III"
 
 @testset "Trans prob test IV" begin
@@ -233,32 +277,46 @@ end  # @testset "Trans prob test III"
     p .*= cumprod( vcat( 1, 1 .- p[1:(end - 1)] ) )
     p = vcat( p, 1.0 - sum( p ) )
 
-    Random.seed!( 3141592 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
-    @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 460, 0, 0, 0] )
+    pval = pvalue( ChisqTest( countReport, p ) )
+    @test pval > 0.05
+    @test all( fluxReport .== [0, 253, 454, 0, 0, 0] )
 
-    Random.seed!( 2718282 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:3]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) == pval
+    @test all( fluxReport .== [0, 253, 454, 0, 0, 0] )
+
+    run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:3]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) != pval
+    @test fluxReport != [0, 253, 454, 0, 0, 0]
+
+    run( mpSim, saveConfig=false, seed=eseed )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 444, 0, 0, 0] )
+    @test all( fluxReport .== [0, 260, 447, 0, 0, 0] )
     
-    Random.seed!( 1414214 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:3]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 261, 438, 0, 0, 0] )
+    @test all( fluxReport .== [0, 263, 452, 0, 0, 0] )
 end  # @testset "Trans prob test IV"
 
 @testset "Trans prob test V" begin
@@ -298,32 +356,46 @@ end  # @testset "Trans prob test IV"
     p .*= cumprod( vcat( 1, 1 .- p[1:(end - 1)] ) )
     p = vcat( p, 1.0 - sum( p ) )
 
-    Random.seed!( 3141592 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:4]
     countReport = vcat( countReport, nt - sum( countReport ) )
-    @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 381, 175, 0, 0] )
+    pval = pvalue( ChisqTest( countReport, p ) )
+    @test pval > 0.05
+    @test all( fluxReport .== [0, 253, 391, 179, 0, 0] )
 
-    Random.seed!( 2718282 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:4]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) == pval
+    @test all( fluxReport .== [0, 253, 391, 179, 0, 0] )
+
+    run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:4]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) != pval
+    @test fluxReport != [0, 253, 391, 179, 0, 0]
+
+    run( mpSim, saveConfig=false, seed=eseed )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:4]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 381, 183, 0, 0] )
+    @test all( fluxReport .== [0, 260, 366, 189, 0, 0] )
     
-    Random.seed!( 1414214 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:4]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 261, 369, 174, 0, 0] )
+    @test all( fluxReport .== [0, 263, 377, 171, 0, 0] )
 end  # @testset "Trans prob test V"
 
 @testset "Trans prob test VI" begin
@@ -363,32 +435,46 @@ end  # @testset "Trans prob test V"
     p .*= cumprod( vcat( 1, 1 .- p[1:(end - 1)] ) )
     p = vcat( p, 1.0 - sum( p ) )
 
-    Random.seed!( 3141592 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:end]
     countReport = vcat( countReport, nt - sum( countReport ) )
-    @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 381, 175, 108, 33] )
+    pval = pvalue( ChisqTest( countReport, p ) )
+    @test pval > 0.05
+    @test all( fluxReport .== [0, 253, 391, 179, 81, 46] )
 
-    Random.seed!( 2718282 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=piseed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:end]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) == pval
+    @test all( fluxReport .== [0, 253, 391, 179, 81, 46] )
+
+    run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
+    countReport = fluxReport[2:end]
+    countReport = vcat( countReport, nt - sum( countReport ) )
+    @test pvalue( ChisqTest( countReport, p ) ) != pval
+    @test fluxReport != [0, 253, 391, 179, 81, 46]
+
+    run( mpSim, saveConfig=false, seed=eseed )
+    report = nodeEvolutionReport( mpSim, 12, "A", "B" )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:end]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 258, 381, 183, 87, 49] )
+    @test all( fluxReport .== [0, 260, 366, 189, 94, 52] )
     
-    Random.seed!( 1414214 )
-    run( mpSim, saveConfig = false )
+    run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeEvolutionReport( mpSim, 12, "A", "B" )
-    fluxReport = Int.( report[2]["B"][1][:, Symbol( "trans: A => B" )] )
+    fluxReport = Int.( report[2]["B"][1][:, "trans: A => B"] )
     countReport = fluxReport[2:end]
     countReport = vcat( countReport, nt - sum( countReport ) )
     @test pvalue( ChisqTest( countReport, p ) ) > 0.05
-    @test all( fluxReport .== [0, 261, 369, 174, 111, 35] )
+    @test all( fluxReport .== [0, 263, 377, 171, 84, 51] )
 end  # @testset "Trans prob test VI"
 
 println()
