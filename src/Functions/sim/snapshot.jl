@@ -2,6 +2,26 @@ export uploadSnapshot
 
 
 # Order of specialCols: 1. idCol, 2. lastChangeCol, 3. tenureCol, 4. ageCol, 5. node
+"""
+```
+uploadSnapshot(
+    mpSim::MPsim,
+    snapname::AbstractString,
+    sheetname::AbstractString,
+    colsToImport::Union{Vector{ColIndex}, Vector{String}, Vector{Int}},
+    specialCols::NTuple{5,ColIndex};
+    validateData::Bool=true,
+    generateSimData::Bool=false )
+```
+This function uploads the Excel snapshot in tab `sheetname` of file `snapname` to the manpower simulation `mpSim`. The function imports the columns in `colsToImport`, which can be given as a mix of column number or column refererence. The columns in `specialCols` will also be imported, and these are, in order,
+1. the unique ID
+2. the time since the last transition
+3. the tenure
+4. the current age
+5. the current node
+
+Duplicate IDs get ignored, and missing IDs or times get generated with a best guess. The optional parameters are `validateData`, which flags records and attributes containing values that haven't been defined in the simulation if `true`, and `generateSimData`, which tries to generate new attributes and values based on the snapshot.
+"""
 function uploadSnapshot( mpSim::MPsim, snapname::AbstractString,
     sheetname::AbstractString,
     colsToImport::Union{Vector{ColIndex}, Vector{String}, Vector{Int}},

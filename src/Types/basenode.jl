@@ -18,7 +18,7 @@ Constructor:
 ```
 BaseNode( name::String )
 ```
-This constructor generates a `BaseNode` with name `name` and population target `target`. If the entered population target is < 0, this will be interpreted as no target.
+This constructor generates a `BaseNode` with name `name`.
 """
 mutable struct BaseNode
 

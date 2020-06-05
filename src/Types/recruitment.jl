@@ -19,11 +19,19 @@ The type contains the following fields:
 * `ageDistType::Symbol`: the type of the distribution of the ages of the recruited people. Supported types are `:disc` (pointwise), `:pUnif` (piecewise uniform), and `:pLin` (piecewise linear). This is only used for non-adaptive recruitment schemes. Default = `:disc`
 * `ageDistNodes::Dict{Float64,Float64}`: the nodes of the distribution of the ages of the recruited people. These are given as age/weight pairs. Default: Dict( 0.0 => 1.0 )
 
-Three additional fields are used to speed up computations:
+Several additional fields are used to speed up computations:
 * `isAdaptive::Bool`: a flag indicating whether the recruitment scheme is adaptive or not.
 * `recruitmentDist::Function`: the function that draws a sample from the distribution of the number of people to recruit.
 * `ageDist::Function`: the function that draws a sample from the distrubiton of the recruitment age.
 * `priority::Int`: the priority of the SimJulia process of this recruitment scheme.
+* `recRNG::MersenneTwister`: the random stream that generates the number of people to recruit during each recruitment cycle.
+* `ageRNG::MersenneTwister`: the random stream that generates the ages of the newly recruited personnel members.
+
+Constructor:
+```
+Recruitment( name::String )
+```
+This constructor creates a `Recruitment` object with name `name`, and zero recruitment defined.
 """
 mutable struct Recruitment
 
@@ -68,6 +76,6 @@ mutable struct Recruitment
         newRec.ageRNG = MersenneTwister()
         return newRec
 
-    end  # Recruitment( freq, offset )
+    end  # Recruitment( name )
 
 end  # mutable struct Recruitment

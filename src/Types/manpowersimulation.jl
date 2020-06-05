@@ -37,6 +37,7 @@ Several additional fields are used to speed up computations, retain extra inform
 * `persDBname::String`: the name of the database table holding the personnel records.
 * `histDBname::String`: the name of the database table holding the attribute change history records.
 * `transDBname::String`: the name of the database table holding the transition history records.
+* `catFileName::String`: the name of the catalogue file. Might become obsolete.
 * `isVirgin::Bool`: a flag indicating that the results database is empty.
 * `isStale::Bool`: a flag indicating if the configuration of the simulated organisation has been changed. If any of the other simulation parameters have been changed, it will not alter the freshness of the simulation.
 * `isConsistent::Bool`: a flag indicating whether the simulation is in a consistent state.
@@ -48,6 +49,7 @@ Several additional fields are used to speed up computations, retain extra inform
 * `sNode::String`: the name of the source node field in the database.
 * `tNode::String`: the name of the target node field in the database.
 * `valName::String`: the name of the value field in the history database.
+* `seedRNG::String`: the generator of the seeds for the random streams for each individual process.
 
 These fields cannot be affected directly by the type's set! function, and should NEVER be changed by the user.
 
@@ -90,6 +92,7 @@ mutable struct ManpowerSimulation
     persDBname::String
     histDBname::String
     transDBname::String
+    catFileName::String
     isVirgin::Bool
     isStale::Bool
     isConsistent::Bool
@@ -135,6 +138,7 @@ mutable struct ManpowerSimulation
         newMPsim.persDBname = string( "Personnel_", simName )
         newMPsim.histDBname = string( "History_", simName )
         newMPsim.transDBname = string( "Transitions_", simName )
+        newMPsim.catFileName = ""
         newMPsim.isVirgin = true
         newMPsim.isStale = false
         newMPsim.isConsistent = true

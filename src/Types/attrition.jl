@@ -13,11 +13,13 @@ An object of this type has the following fields:
 * `curvePoints::Vector{Float64}`: the time points of the attrition curve. This curve is always sorted, and the first element is always 0.0.
 * `rates::Vector{Float64}`: the attrition rates in (average) percentage per period undergoing attrition for each time point of the attrition curve.
 
-Additional fields of the type, which are computed based on the above fields, and used to compute the distribution of the time to attrition and sample from it:
+Several additional fields are used to speed up computations:
 * `lambdas::Vector{Float64}`: the average number of attrition events (λ) per period for each piece of the distribution.
 * `gammas::Vector{Float64}`: the probabilities that the time to attrition exceeds each time node of the attrition curve.
+* `timeRNG::MersenneTwister`: the random stream that generates the expected time to attrition for each personnel member after each transition.
+* `condRNG::MersenneTwister`: the random stream that generates the expected time to transition for each personnel member in the initial population snapshot.
 
-Constructors:
+Constructor:
 ```
 Attrition( name::String = "default" )
 ```

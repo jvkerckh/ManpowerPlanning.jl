@@ -12,7 +12,7 @@ The type contains the following fields:
 * `historyConds::Vector{MPcondition}`: the list of conditions relating to the history of personnel members. These are conditions on the node they entered the system in, on nodes they were in during their career, and transitions they did.
 * `attributeConds::Vector{MPcondition}`: the list of conditions relating to the attributes of the personnel members.
 
-Constructor
+Constructor:
 ```
 Subpopulation( name::String )
 ```

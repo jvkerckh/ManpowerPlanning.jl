@@ -12,10 +12,11 @@ The type contains the following fields:
 * `initValues::Vector{String}`: the values that the attribute can take upon initialisation.
 * `initValueWeights::Vector{String}`: the weights of each initial value, in the same order as the `initValues` vector.
 
-An additional field is used to speed up computations:
+Two additional fields are used to speed up computations:
 * `initValueDist::Categorical`: a categorical distribution object which can be sampled whenever an initial value is needed. This object is created in advance and stored to avoid the overhead of computing the probabilities and creating the distribution object every time an initial value must be sampled.
+* `initRNG::MersenneTwister`: the random stream that generates the initial values for the attribute.
 
-Constructors:
+Constructor:
 ```
 Attribute( name::String )
 ```

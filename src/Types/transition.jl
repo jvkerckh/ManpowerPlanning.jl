@@ -21,8 +21,9 @@ The type contains the following fields:
 * `extraChanges::Dict{String,String}`: the extra changes to attributes that happen during the transition.
 * `probabilityList::Vector{Float64}`: the list of probabilities for this transition to occur.
 
-The type has one extra field, computed at the start of the simulation:
+The type has two extra field, computed at the start of the simulation:
 * `priority::Int`: the priority in the simulation on which the transition gets executed. This priority will be 0 (or > 0) for transitions with the `hasPriority` flag set to `true`, and < 0 otherwise. A priority == 1 means it needs to be determined first.
+* `probRNG`: the random stream generating values to determine whhich of the eligible personnel members does the transition.
 
 Constructors:
 ```

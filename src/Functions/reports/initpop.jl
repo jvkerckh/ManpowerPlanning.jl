@@ -2,6 +2,14 @@ export  initPopReport,
         initPopAgeReport
 
 
+"""
+```
+initPopReport( mpSim::MPsim )
+```
+This function creates a composition report on the initial population of the manpower simulation `mpSim`.
+
+This function returns a `DataFrame`, with the nodes to which the members of the initial belong and the number in each node. If there is no population, this function returns an empty `DataFrame`.
+"""
 function initPopReport( mpSim::MPsim )::DataFrame
 
     queryCmd = string( "SELECT targetNode, count( targetNode ) amount FROM `",
@@ -13,6 +21,22 @@ function initPopReport( mpSim::MPsim )::DataFrame
 end  # function initPopReport( mpSim )
 
 
+"""
+```
+initPopAgeReport(
+    mpSim::MPsim,
+    ageRes::Real,
+    ageType::Symbol )
+```
+This function creates an age distribution report on the initial population of the manpower simulation `mpSim`. The report is generated on a grid of ages with resoluion `ageRes`.
+
+The type of age that is reported is determined by `ageType`, which can take these valid values:
+* `:age` for the actual age of the personnel members,
+* `:tenure` for the tenure of the personnel members, and
+* `:timeInNode` for the time the personnel members are in their current base node.
+
+This function returns a `DataFrame`, with the number of personnel members in each age bracket. The last 5 entries in the `DataFrame` are the summary statistics (mean, median, standard deviation, minimum, and maximum) of the ages.
+"""
 function initPopAgeReport( mpSim::MPsim, ageRes::Real,
     ageType::Symbol )::DataFrame
 

@@ -17,7 +17,7 @@ module ManpowerPlanning
     using SQLite
     using XLSX
 
-    version = v"2.6.0"
+    version = v"2.6.1"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
