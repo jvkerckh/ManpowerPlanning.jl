@@ -127,6 +127,4 @@ end  # @testset "Retirement at age"
         vcat( fill( 0, 10 ), fill( 10, 16 ) ) )
 end  # @testset "Retirement at age/tenure"
 
-println()
-
 end  # @testset "Retirement tests"

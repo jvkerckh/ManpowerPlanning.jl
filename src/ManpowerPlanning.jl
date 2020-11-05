@@ -35,6 +35,7 @@ module ManpowerPlanning
         "retirement",
         "compoundnode",
         "manpowersimulation",
+        "multirunsimulation",
         "subpopulation"
     ]
 

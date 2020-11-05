@@ -141,5 +141,3 @@ end  # @testset "function setTransitionAttributeChanges!"
 end  # @testset "function setTransitionProbabilities!"
 
 end  # @testset "Transition"
-
-println()

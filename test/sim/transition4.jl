@@ -477,6 +477,4 @@ end  # @testset "Trans prob test V"
     @test all( fluxReport .== [0, 263, 377, 171, 84, 51] )
 end  # @testset "Trans prob test VI"
 
-println()
-
 end  # @testset "Transition probability tests"

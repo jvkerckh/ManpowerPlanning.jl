@@ -36,5 +36,3 @@ end  # @testset "function setRetirementSchedule!"
 end  # @testset "function setRetirementIsEither!"
 
 end  # @testset "Retirement"
-
-println()

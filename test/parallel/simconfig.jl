@@ -112,11 +112,3 @@ setSimulationTransitionTypeOrder!( mpSim, Dict( "PE" => 1, "Promotion" => 2,
 
 # Miscellaneous configs.
 setSimulationLength!( mpSim, 300 )
-
-@test verifySimulation!( mpSim )
-
-@testset "function saveSimulationConfiguration" begin
-    setSimulationDatabase!( mpSim, joinpath( "reports", "simDBcopy" ) )
-    saveSimulationConfiguration( mpSim )
-    setSimulationDatabase!( mpSim, joinpath( "reports", "simDB" ) )
-end  # @test "function saveSimulationConfiguration"

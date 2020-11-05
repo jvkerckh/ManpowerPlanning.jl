@@ -95,5 +95,3 @@ end  # @testset "function clearInitialAttributeValues!"
 end  # @testset "function setInitialAttributeValues!"
 
 end  # @testset "Attribute"
-
-println()

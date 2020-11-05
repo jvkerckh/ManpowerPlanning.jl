@@ -389,8 +389,5 @@ end  # @testset "function clearSimulationBaseNodeOrder!"
 end  # @testset "function setSimulationBaseNodeOrder!"
 
 @test verifySimulation!( mpSim )
-# MP.orderTransitions!( mpSim )
 
 end  # @testset "Transition order tests"
-
-println()

@@ -246,7 +246,4 @@ end  # @testset "Distribution test I"
         24, 30, 0, 0, 0, 0, 0] )
 end  # @testset "Distribution test II"
 
-Random.seed!()
-println()
-
 end  # @testset "Attrition tests"

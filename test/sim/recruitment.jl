@@ -140,36 +140,36 @@ end  # @testset "Disc random recruitment test"
     report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     pval = pvalue( ChisqTest( reportCounts, p ) )
-    @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [41, 30, 24, 71, 79, 56] )
+    @test pval > 0.05
+    @test all( reportCounts .== [28, 33, 38, 73, 62, 67] )
    
     run( mpSim, saveConfig=false, seed=piseed )
     report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
     report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) == pval
-    @test all( reportCounts .== [41, 30, 24, 71, 79, 56] )
+    @test all( reportCounts .== [28, 33, 38, 73, 62, 67] )
    
     run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
     report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
     report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) != pval
-    @test reportCounts != [41, 30, 24, 71, 79, 56]
+    @test reportCounts != [28, 33, 38, 73, 62, 67]
    
     run( mpSim, saveConfig=false, seed=eseed )
     report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
     report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [38, 27, 33, 56, 79, 68] )
+    @test all( reportCounts .== [38, 27, 36, 49, 77, 74] )
 
     run( mpSim, saveConfig=false, seed=s2seed )
     report = nodeFluxReport( mpSim, 1, :in, "active" )["active"]
     report = report[:, Symbol( "external => active" )]
     reportCounts = counts( Vector{Int}( report ), 5:10 )
     @test pvalue( ChisqTest( reportCounts, p ) ) > 0.05
-    @test all( reportCounts .== [29, 24, 30, 75, 80, 63] )
+    @test all( reportCounts .== [38, 27, 30, 68, 61, 77] )
 end  # @testset "PUnif random recruitment test"
 
 @testset "PLin random recruitment test" begin
@@ -223,7 +223,6 @@ end  # @testset "PLin random recruitment test"
 
 setSimulationLength!( mpSim, 12 )
 subpop = Subpopulation( "All" )
-Random.seed!()
 
 @testset "Fixed age recruitment test" begin
     clearSimulationRecruitment!( mpSim )
@@ -258,7 +257,7 @@ end  # @testset "Fixed Age recruitment test"
         report[1, Symbol( 120.0 )]] )
     pval = pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) )
     @test pval > 0.05
-    @test all( reportCounts .== [351, 649] )
+    @test all( reportCounts .== [344, 656] )
 
     for age in 72.0:12.0:108.0
         @test report[1, Symbol( age )] == 0
@@ -269,28 +268,28 @@ end  # @testset "Fixed Age recruitment test"
     reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
         report[1, Symbol( 120.0 )]] )
     @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) == pval
-    @test all( reportCounts .== [351, 649] )
+    @test all( reportCounts .== [344, 656] )
 
     run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
     report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
     reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
         report[1, Symbol( 120.0 )]] )
     @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) != pval
-    @test reportCounts != [351, 649]
+    @test reportCounts != [344, 656]
 
     run( mpSim, saveConfig=false, seed=eseed )
     report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
     reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
         report[1, Symbol( 120.0 )]] )
     @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
-    @test all( reportCounts .== [326, 674] )
+    @test all( reportCounts .== [346, 654] )
 
     run( mpSim, saveConfig=false, seed=s2seed )
     report = subpopulationAgeReport( mpSim, [0.0], 12, :age, subpop )["All"]
     reportCounts = Vector{Int}( [report[1, Symbol( 60.0 )],
         report[1, Symbol( 120.0 )]] )
     @test pvalue( ChisqTest( reportCounts, [1/3, 2/3] ) ) > 0.05
-    @test all( reportCounts .== [332, 668] )
+    @test all( reportCounts .== [323, 677] )
 end  # @testset "Disc random age recruitment test"
 
 @testset "PUnif random age recruitment test" begin
@@ -454,35 +453,33 @@ end  # @testset "PLin random age recruitment test 2"
     reportCounts = Int.( [report[1, Symbol( "B/A" )],
         report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
     @test pvalue( ChisqTest( reportCounts, [1/4, 1/2, 1/4] ) ) > 0.05
-    @test all( reportCounts .== [231, 533, 236] )
+    @test all( reportCounts .== [250, 486, 264] )
 
     run( mpSim, saveConfig=false, seed=piseed )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
     reportCounts = Int.( [report[1, Symbol( "B/A" )],
         report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
-    @test all( reportCounts .== [231, 533, 236] )
+    @test all( reportCounts .== [250, 486, 264] )
 
     run( mpSim, saveConfig=false, seed=piseed, sysEnt=true )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
     reportCounts = Int.( [report[1, Symbol( "B/A" )],
         report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
-    @test reportCounts != [231, 533, 236]
+    @test reportCounts != [250, 486, 264]
 
     run( mpSim, saveConfig=false, seed=eseed )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
     reportCounts = Int.( [report[1, Symbol( "B/A" )],
         report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
     @test pvalue( ChisqTest( reportCounts, [1/4, 1/2, 1/4] ) ) > 0.05
-    @test all( reportCounts .== [257, 487, 256] )
+    @test all( reportCounts .==[243, 496, 261] )
 
     run( mpSim, saveConfig=false, seed=s2seed )
     report = subpopulationPopReport( mpSim, 12, subpop1, subpop2, subpop3 )
     reportCounts = Int.( [report[1, Symbol( "B/A" )],
         report[1, Symbol( "B/B" )], report[1, Symbol( "B/C" )]] )
     @test pvalue( ChisqTest( reportCounts, [1/4, 1/2, 1/4] ) ) > 0.05
-    @test all( reportCounts .== [258, 495, 247] )
+    @test all( reportCounts .== [248, 500, 252] )
 end  # @testset "Attribute initialisation test"
-
-println()
 
 end  # @testset "Recruitment tests"

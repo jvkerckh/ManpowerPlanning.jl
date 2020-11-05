@@ -12,5 +12,3 @@
     @test now( mpSim ) == mpSim.simLength
     
 end  # @testset "Basic simulation run tests"
-
-println()

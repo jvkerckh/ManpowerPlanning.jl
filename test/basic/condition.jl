@@ -11,5 +11,3 @@
 end  # @testset "Constructor"
 
 end  # @testset "MPcondition"
-
-println()

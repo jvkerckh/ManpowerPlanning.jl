@@ -14,9 +14,7 @@
         !haskey( report, "Foo" ), !haskey( report, "Bar" ),
         haskey( report, "Empty" )] )
     @test ( size( report["Empty"], 2 ) == 2 ) &&
-        all( report["Empty"][:, :Empty] .== 0 )
+        all( report["Empty"][:, "Empty"] .== 0 )
 end  # @testset "function nodeCompositionReport"
-
-println()
 
 end  # @testset "Node composition report"

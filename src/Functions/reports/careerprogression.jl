@@ -14,10 +14,16 @@ This function returns a `Dict{String, Tuple}` where the keys are the IDs that ar
 function generateCareerProgression( mpSim::MPsim,
     idList::String... )::Dict{String,Tuple{Float64,DataFrame}}
 
+    result = Dict{String,Tuple{Float64,DataFrame}}()
+
+    if now( mpSim ) == 0
+        @warn "Simulation hasn't started yet, can't make report."
+        return result
+    end  # if now( mpSim ) == 0
+
     queryCmd = string( "SELECT `", mpSim.idKey, "`, ageAtRecruitment FROM `", mpSim.persDBname, "` WHERE `",
         mpSim.idKey, "` IN ('", join( idList, "', '" ), "')" )
     recruitmentAges = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
-    result = Dict{String,Tuple{Float64,DataFrame}}()
 
     if isempty( recruitmentAges )
         return result
@@ -25,9 +31,7 @@ function generateCareerProgression( mpSim::MPsim,
 
     idSymbol = Symbol( mpSim.idKey )
     queryCmd = string( "SELECT * FROM `", mpSim.transDBname, "` WHERE",
-        "\n    startState IS NOT 'active' AND",
-        "\n    endState IS NOT 'active' AND",
-        "`", mpSim.idKey, "` IN ('",
+        "\n    `", mpSim.idKey, "` IN ('",
         join( recruitmentAges[:, idSymbol], "', '" ), "')",
         "\n    ORDER BY `", mpSim.idKey, "`, timeIndex" )
     careerPaths = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )

@@ -125,5 +125,3 @@ end  # @testset "function setRecruitmentAgeFixed!"
 end  # @testset "function setRecruitmentAgeDist!"
 
 end  # @testset "Recruitment"
-
-println()

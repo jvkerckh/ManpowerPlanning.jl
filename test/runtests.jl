@@ -3,6 +3,7 @@ using Dates
 using Distributions
 using HypothesisTests
 using LightGraphs
+using Logging
 using ManpowerPlanning
 using MetaGraphs
 using Random
@@ -14,6 +15,8 @@ MP = ManpowerPlanning
 
 versionMP()
 println()
+
+disable_logging( Base.CoreLogging.Warn )
 
 tStart = now()
 
@@ -70,6 +73,15 @@ include( "snapshot/snapshot.jl" )
 include( "snapshot/snapshotsim.jl" )
 
 end  # @testset "Snapshot test"
+
+disable_logging( Base.CoreLogging.BelowMinLevel )
+
+@testset "Parallel simulations test" begin
+
+include( "parallel/simconfig.jl" )
+include( "parallel/mrs.jl" )
+
+end  # @testset "Parallel simulations test"
 
 end  # @testset "Full test"
 

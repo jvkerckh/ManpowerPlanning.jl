@@ -95,5 +95,3 @@ end  # @testset "function setNodeRequirements!"
 end  # @testset "function isPersonnelOfNode" begin
 
 end  # @testset "BaseNode"
-
-println()

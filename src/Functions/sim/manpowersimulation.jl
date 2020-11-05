@@ -39,6 +39,10 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool=false;
             end  # for transition in mpSim.transitionsByName[name]
         end  # for name in keys( mpSim.transitionsByName )
 
+        if mpSim.nCommits > 1
+            @process dbCommitProcess( mpSim.sim, mpSim )
+        end
+
         # Execute the simulation.
         run( mpSim.sim )
     catch err
@@ -66,9 +70,11 @@ end  # run( mpSim, showInfo, saveConfig, seed, sysEnt )
 
 include( joinpath( simPath, "dboperations.jl" ) )
 include( joinpath( simPath, "snapshot.jl" ) )
+include( joinpath( simPath, "multirunsimulation.jl" ) )
 include( joinpath( simPrivPath, "attrition.jl" ) )
 include( joinpath( simPrivPath, "attribute.jl" ) )
 include( joinpath( simPrivPath, "recruitment.jl" ) )
 include( joinpath( simPrivPath, "retirement.jl" ) )
 include( joinpath( simPrivPath, "transition.jl" ) )
+include( joinpath( simPrivPath, "dboperations.jl" ) )
 include( joinpath( simPrivPath, "manpowersimulation.jl" ) )

@@ -2,7 +2,7 @@
 #   information of the simulation.
 
 
-export ManpowerSimulation
+export ManpowerSimulation, MPsim
 """
 The 'ManpowerSimulation' type defines a manpower simulation, holding its complete configuration and the `SimJulia.Simulation` object driving the simulation.
 
@@ -162,5 +162,4 @@ mutable struct ManpowerSimulation
 end  # mutable struct ManpowerSimulation
 
 
-export MPsim
 const MPsim = ManpowerSimulation

@@ -9,11 +9,10 @@
     report = nodePopReport( mpSim, 12, "active", "Career", "Blort", "A junior" )
     @test ( :Blort ∉ names( report ) ) &&
         ( ["active", "Career", "A junior"] ⊆ names( report ) )
-    @test all( report[:, :active] .== vcat( 30, 60, 84, 108, 124, 140, 156,
+    @test all( report[:, "active"] .== vcat( 30, 60, 84, 108, 124, 140, 156,
         172, 188, 204, 196, fill( 188, 15 ) ) )
-    @test all( report[:, Symbol( "A junior" )] .==
-        vcat( 10, fill( 20, 25 ) ) )
-    @test all( report[:, :Career] .== vcat( 0, 0, 24, 48, 64, 80, 96, 112,
+    @test all( report[:, "A junior"] .== vcat( 10, fill( 20, 25 ) ) )
+    @test all( report[:, "Career"] .== vcat( 0, 0, 24, 48, 64, 80, 96, 112,
         128, 144, 136, fill( 128, 15 ) ) )
 end  # @testset "function nodePopReport"
 
@@ -35,7 +34,5 @@ end  # @testset "function nodePopReport"
         length( report[2]["Career"] ) == 4,
         length( report[2]["A junior"] ) == 2] )
 end  # @testset "function nodeEvolutionReport"
-
-println()
 
 end  # @testset "Node population reports"

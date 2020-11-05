@@ -19,12 +19,19 @@ This function returns a `DataFrame`, with the first column the time points and t
 function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     subpopulations::Subpopulation... )::DataFrame
 
+    result = DataFrame()
+
+    if now( mpSim ) == 0
+        @warn "Simulation hasn't started yet, can't make report."
+        return result
+    end  # if now( mpSim ) == 0
+
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."
-        return DataFrame()
+        return result
     end  # if isempty( timeGrid )
 
     if timeGrid[end] > 0.0
@@ -41,7 +48,7 @@ function subpopulationPopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     end  # filter( ... ) do subpopulation
 
     if isempty( subpopulations )
-        return DataFrame()
+        return result
     end  # if isempty( subpopulations )
 
     counts = zeros( Int, length( timeGrid ), length( subpopulations ) )

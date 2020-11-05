@@ -19,9 +19,15 @@ This function returns a `Dict{String, DataFrame}`, where the keys are the valid 
 function nodeCompositionReport( mpSim::MPsim, timeGrid::Vector{Float64},
     nodes::String... )::Dict{String,DataFrame}
 
+    result = Dict{String,DataFrame}()
+
+    if now( mpSim ) == 0
+        @warn "Simulation hasn't started yet, can't make report."
+        return result
+    end  # if now( mpSim ) == 0
+
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
-    result = Dict{String,DataFrame}()
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."

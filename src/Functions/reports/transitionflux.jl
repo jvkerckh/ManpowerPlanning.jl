@@ -26,12 +26,19 @@ The function returns a `DataFrame` holding the flux report. The first column are
 function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     transitions::TransitionType... )::DataFrame
 
+    result = DataFrame()
+
+    if now( mpSim ) == 0
+        @warn "Simulation hasn't started yet, can't make report."
+        return result
+    end  # if now( mpSim ) == 0
+
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."
-        return DataFrame()
+        return result
     end  # if isempty( timeGrid )
 
     if timeGrid[end] > 0.0
@@ -45,7 +52,7 @@ function transitionFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
 
     if isempty( transitions )
         @warn "No valid transitions in list, cannot generate report."
-        return DataFrame()
+        return result
     end  # if isempty( transitions )
 
     unique!( transitions )

@@ -42,6 +42,4 @@ end  # @testset "function clearSubpopulationConditions!"
         subpopulation.attributeConds] ) .== 1 )
 end  # @testset "function setSubpopulationConditions!"
 
-println()
-
 end  # @testset "Subpopulation"

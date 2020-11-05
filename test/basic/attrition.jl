@@ -57,5 +57,3 @@ end  # @testset "function setAttritionRate!"
 end  # @testset "function setAttritionCurve!"
 
 end  # @testset "Attrition"
-
-println()

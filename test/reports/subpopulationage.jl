@@ -37,26 +37,26 @@
         !haskey( report, "Subpop7" )
     @test all( map( collect( keys( report ) ) ) do subpopName
         subpopReport = report[subpopName]
-        return all( isa.( subpopReport[:, :min], Missing ) .|
-            ( 240 .<= subpopReport[:, :min] .<= 360 ) )
+        return all( isa.( subpopReport[:, "min"], Missing ) .|
+            ( 240 .<= subpopReport[:, "min"] .<= 360 ) )
     end )
     @test all( map( collect( keys( report ) ) ) do subpopName
         subpopReport = report[subpopName]
-        return all( isa.( subpopReport[:, :max], Missing ) .|
-            ( 240 .<= subpopReport[:, :max] .<= 360 ) )
+        return all( isa.( subpopReport[:, "max"], Missing ) .|
+            ( 240 .<= subpopReport[:, "max"] .<= 360 ) )
     end )
 
     report = subpopulationAgeReport( mpSim, 12, 12, :tenure, subpop1, subpop2,
         subpop3, subpop4, subpop5, subpop6, subpop7 )
     @test all( map( collect( keys( report ) ) ) do subpopName
         subpopReport = report[subpopName]
-        return all( isa.( subpopReport[:, :min], Missing ) .|
-            ( 0 .<= subpopReport[:, :min] .<= 120 ) )
+        return all( isa.( subpopReport[:, "min"], Missing ) .|
+            ( 0 .<= subpopReport[:, "min"] .<= 120 ) )
     end )
     @test all( map( collect( keys( report ) ) ) do subpopName
         subpopReport = report[subpopName]
-        return all( isa.( subpopReport[:, :max], Missing ) .|
-            ( 0 .<= subpopReport[:, :max] .<= 120 ) )
+        return all( isa.( subpopReport[:, "max"], Missing ) .|
+            ( 0 .<= subpopReport[:, "max"] .<= 120 ) )
     end )
     
     report = subpopulationAgeReport( mpSim, 12, 12, :timeInNode, subpop1,
@@ -64,16 +64,14 @@
     
     @test all( map( collect( keys( report ) ) ) do subpopName
         subpopReport = report[subpopName]
-        return all( isa.( subpopReport[:, :min], Missing ) .|
-            ( 0 .<= subpopReport[:, :min] .<= 120 ) )
+        return all( isa.( subpopReport[:, "min"], Missing ) .|
+            ( 0 .<= subpopReport[:, "min"] .<= 120 ) )
     end )
     @test all( map( collect( keys( report ) ) ) do subpopName
         subpopReport = report[subpopName]
-        return all( isa.( subpopReport[:, :max], Missing ) .|
-            ( 0 .<= subpopReport[:, :max] .<= 120 ) )
+        return all( isa.( subpopReport[:, "max"], Missing ) .|
+            ( 0 .<= subpopReport[:, "max"] .<= 120 ) )
     end )
 end  # @testset "function subpopulationAgeReport"
-
-println()
 
 end  # @testset "Subpopulation age report"

@@ -336,6 +336,4 @@ end  # @testset ""OUT transitions priority test""
         vcat( 0, 0, 0, fill( 6, 23 ) ) )
 end  # @testset "IN transition priority test"
 
-println()
-
 end  # @testset "Transition priority tests"

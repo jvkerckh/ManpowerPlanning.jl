@@ -56,5 +56,3 @@ end  # @testset "function setCompoundNodeComponents!"
 end  # @testset "function setCompoundNodeTarget!"
 
 end  # @testset "CompoundNode"
-
-println()

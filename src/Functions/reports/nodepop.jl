@@ -22,12 +22,19 @@ This function returns a `DataFrame`, with the first column the time points and t
 function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
     nodes::String... )::DataFrame
 
+    result = DataFrame()
+
+    if now( mpSim ) == 0
+        @warn "Simulation hasn't started yet, can't make report."
+        return result
+    end  # if now( mpSim ) == 0
+
     timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
     timeGrid = unique( sort( timeGrid, rev = true ) )
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."
-        return DataFrame()
+        return result
     end  # if isempty( timeGrid )
 
     if timeGrid[end] > 0.0
@@ -44,7 +51,7 @@ function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
 
     if isempty( nodes )
         @warn "No valid nodes in node list, cannot generate report."
-        return DataFrame()
+        return result
     end  # if isempty( nodes )
 
     nodes = unique( nodes )

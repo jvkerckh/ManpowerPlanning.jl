@@ -499,6 +499,4 @@ end  # @testset "# of attempts test"
 
 end  # @testset "Extra changes test"
 
-println()
-
 end  # @testset "Transition process tests"

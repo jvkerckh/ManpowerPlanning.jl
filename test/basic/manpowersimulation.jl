@@ -421,5 +421,3 @@ end  # @testset "function setSimulationDatabaseName!"
 end  # @testset "function setSimulationShowInfo!"
 
 end  # @testset "ManpowerSimulation"
-
-println()
