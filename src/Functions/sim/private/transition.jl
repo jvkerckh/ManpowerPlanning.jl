@@ -2,16 +2,16 @@ function orderTransitions!( mpSim::MPsim )
 
     transitions = vcat( getindex.( Ref( mpSim.transitionsByName ),
         collect( keys( mpSim.transitionsByName ) ) )... )
+    reflextrans = filter( trans -> trans.sourceNode == trans.targetNode,
+        transitions )
+    filter!( trans -> trans ∉ reflextrans, transitions )
     recruitment = vcat( getindex.( Ref( mpSim.recruitmentByName ),
         collect( keys( mpSim.recruitmentByName ) ) )... )
     
     transGraph = MetaDiGraph( length( transitions ) + length( recruitment ) )
 
     # Don't take any action if there are no transitions.
-    if nv( transGraph ) == 0
-        return
-    end  # if nv( transGraph ) == 0
-
+    nv( transGraph ) == 0 && return
     jj = 1
 
     for trans in transitions
@@ -57,10 +57,7 @@ function orderTransitions!( mpSim::MPsim )
 
     for source in uniqueSources
         transFromSource = findall( sources .== source )
-
-        if length( transFromSource ) < 2
-            continue
-        end  # if length( transFromSource ) < 2
+        length(transFromSource) < 2 && continue
 
         for trans1 in transFromSource, trans2 in transFromSource
             if haskey( transOrder, names[trans1] ) &&
@@ -75,10 +72,7 @@ function orderTransitions!( mpSim::MPsim )
 
         for name in uniqueNames
             transNameSource = transFromSource[transNames .== name]
-
-            if length( transNameSource ) < 2
-                continue
-            end  # if length( transNameSource ) < 2
+            length(transNameSource) < 2 && continue
 
             for trans1 in transNameSource, trans2 in transNameSource
                 if haskey( nodeOrder, targets[trans1] ) &&
@@ -93,10 +87,7 @@ function orderTransitions!( mpSim::MPsim )
 
     for target in uniqueTargets
         transToTarget = findall( targets .== target )
-
-        if length( transToTarget ) < 2
-            continue
-        end  # if length( transToTarget ) < 2
+        length(transToTarget) < 2 && continue
 
         for trans1 in transToTarget, trans2 in transToTarget
             if haskey( transOrder, names[trans1] ) &&
@@ -112,9 +103,7 @@ function orderTransitions!( mpSim::MPsim )
         for name in uniqueNames
             transNameTarget = transToTarget[transNames .== name]
 
-            if length( transNameTarget ) < 2
-                continue
-            end  # if length( transNameTarget ) < 2
+            length( transNameTarget ) < 2 && continue
 
             for trans1 in transNameTarget, trans2 in transNameTarget
                 if haskey( nodeOrder, sources[trans1] ) &&
@@ -176,9 +165,10 @@ end  # orderTransitions!( mpSim )
 
         # Identify all persons who're in the start state long enough and are not
         #   already going to transition to another state.
-        eligibleIDs = getEligibleIDs( transition, nAttempts, maxAttempts,
-            mpSim )
-        checkedIDs = checkExtraConditions( transition, eligibleIDs, mpSim )
+        # eligibleIDs = getEligibleIDs( transition, nAttempts, maxAttempts,
+        #     mpSim )
+        # checkedIDs = checkExtraConditions( transition, eligibleIDs, mpSim )
+        checkedIDs = getEligibleIDs( transition, nAttempts, maxAttempts, mpSim )
         updateAttemptsAndIDs!( nAttempts, maxAttempts, checkedIDs )
 
         # Assign a modified probability to each person.
@@ -212,6 +202,31 @@ end  # transitionProcess( sim, transition, mpSim )
 
 
 function getEligibleIDs( transition::Transition, nAttempts::Dict{String,Int},
+    maxAttempts::Int, mpSim::MPsim )
+    sourceNode = mpSim.baseNodeList[transition.sourceNode]
+    eligibleIDs = collect( keys( sourceNode.inNodeSince ) )
+
+    # Check if attempts have been exhausted (important if transition doesn't
+    #   fire after exhaustion of attempts).
+    # The first condition means 0 attempts so far.
+    maxAttempts > 0 && filter!( id -> !haskey( nAttempts, id ) ||
+        ( nAttempts[id] < maxAttempts ), eligibleIDs )
+    isempty(eligibleIDs) && return eligibleIDs
+    
+    # Check extra conditions.
+    queryCmd = string( "SELECT *, ageAtRecruitment + ", now(mpSim),
+        " - timeEntered age, ", now(mpSim), " - timeEntered tenure, ",
+        now(mpSim), " - inNodeSince `time in node` FROM `",
+        mpSim.persDBname, "` WHERE ",
+        "\n    `", mpSim.idKey, "` IN ('", join( eligibleIDs, "', '" ), "')",
+        "\n        AND `time in node` > 0",
+        join(string.( "\n        AND ",
+            conditionToSQLite.( transition.extraConditions, Ref(mpSim) ) )) )
+    Vector{String}( DataFrame(DBInterface.execute( mpSim.simDB,
+        queryCmd ))[:, Symbol(mpSim.idKey)] )
+end  # getEligibleIDs( transition, nAttempts, maxAttempts, mpSim )
+#=
+function getEligibleIDs( transition::Transition, nAttempts::Dict{String,Int},
     maxAttempts::Int, mpSim::MPsim )::Vector{String}
 
     sourceNode = mpSim.baseNodeList[transition.sourceNode]
@@ -225,7 +240,7 @@ function getEligibleIDs( transition::Transition, nAttempts::Dict{String,Int},
             ( nAttempts[id] < maxAttempts ), eligibleIDs )
     end  # if maxAttempts > 0
 
-    filter!( id -> now( mpSim ) > sourceNode.inNodeSince[id], eligibleIDs )
+    # filter!( id -> now( mpSim ) > sourceNode.inNodeSince[id], eligibleIDs )  # Needed???
 
     for cond in filter( cond -> cond.attribute == "time in node",
         transition.extraConditions )
@@ -259,12 +274,12 @@ function checkExtraConditions( transition::Transition,
         isIDokay = isIDokay .& map( ii -> cond.operator(
             eligibleIDsState[:, Symbol( cond.attribute )][ii], cond.value ),
             eachindex( isIDokay ) )
-    end  # for cond in filter( ...
+    end  # for cond in filter( ... )
 
     return checkedIDs[isIDokay]
 
 end  # checkExtraConditions( transition, eligibleIDs, mpSim )
-
+=#
 
 function updateAttemptsAndIDs!( nAttempts::Dict{String,Int}, maxAttempts::Int,
     eligibleIDs::Vector{String} )
@@ -402,7 +417,8 @@ function executeTransitions( transition::Transition, idList::Vector{String},
     tmpIDs = idListState[:, Symbol( mpSim.idKey )]
 
     # Make changes in personnel database.
-    persChangesCmd = [string( "currentNode = '", transition.targetNode, "'" )]
+    persChangesCmd = [string( "currentNode = '", transition.targetNode, "'" ),
+        string( "inNodeSince = ", now(mpSim) )]
     changedAttrVals = Dict{String,String}()
 
     # Target node attributes.
@@ -507,3 +523,6 @@ function updateTimeOfAttrition( transIDs::Vector{String}, targetName::String,
     # end  # for ii in eachindex( idList )
 
 end  # updateTimeOfAttrition( transIDs, targetName, mpSim )
+
+
+include(joinpath( simPrivPath, "graphops.jl" ))

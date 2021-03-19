@@ -7,7 +7,7 @@ The `CompoundNode` type defines a compound node which groups a number of base no
 
 The type contains the following fields:
 * `name::String`: the name of the compound node.
-* `stateList::Vector{String}`: the names of the (base) nodes the compound node consists of. Remark that the simulation must ensure that all the component base nodes actually exist.
+* `baseNodeList::Vector{String}`: the names of the (base) nodes the compound node consists of. Remark that the simulation must ensure that all the component base nodes actually exist.
 * `nodeTarget::Int`: the target number of personnel members in the compound node, where no target is represented by -1. Default = -1
 
 Constructor:
@@ -22,7 +22,7 @@ mutable struct CompoundNode
     baseNodeList::Vector{String}
     nodeTarget::Int  # Necessary? It's not used in the simulation (yet).
 
-    function CompoundNode( name::String )::CompoundNode
+    function CompoundNode( name::String )
 
         newCompNode = new()
         newCompNode.name = name

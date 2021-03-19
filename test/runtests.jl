@@ -80,6 +80,8 @@ disable_logging( Base.CoreLogging.BelowMinLevel )
 
 include( "parallel/simconfig.jl" )
 include( "parallel/mrs.jl" )
+include( "snapshot/simconfig.jl" )
+include( "parallel/mrssnap.jl" )
 
 end  # @testset "Parallel simulations test"
 

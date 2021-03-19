@@ -4,13 +4,13 @@ export  setMRSconfiguration!,
         setMRSmaxThreads!
 
 
-function setMRSconfiguration!( mrs::MRS, mpSim::MPsim )::Bool
+function setMRSconfiguration!( mrs::MRS, mpSim::MPsim )
     mrs.mpSim = deepcopy( mpSim )
     return true
 end  # setMRSconfiguration!( mrs, sim )
 
 
-function setMRSruns!( mrs::MRS, nRuns::Integer )::Bool
+function setMRSruns!( mrs::MRS, nRuns::Integer )
     if nRuns < 0
         return false
     end  # if nRuns < 0
@@ -20,7 +20,7 @@ function setMRSruns!( mrs::MRS, nRuns::Integer )::Bool
 end  # setMRSruns!( mrs, nruns )
 
 
-function setMRSdatabaseName!( mrs::MRS, dbName::AbstractString="" )::Bool
+function setMRSdatabaseName!( mrs::MRS, dbName::AbstractString="" )
     if dbName == ""
         mrs.resultsDBname = ""
         mrs.resultsDB = SQLite.DB()
@@ -38,7 +38,7 @@ function setMRSdatabaseName!( mrs::MRS, dbName::AbstractString="" )::Bool
 end  # setMRSdatabaseName!( mrs, dbName )
 
 
-function setMRSmaxThreads!( mrs::MRS, maxThreads::Integer )::Bool
+function setMRSmaxThreads!( mrs::MRS, maxThreads::Integer )
     if maxThreads <= 0
         return false
     end  # if maxThreads <= 0
@@ -48,4 +48,4 @@ function setMRSmaxThreads!( mrs::MRS, maxThreads::Integer )::Bool
 end  # setMRSmaxThreads!( mrs, maxThreads )
 
 
-verifySimulation!( mrs::MRS )::Bool = verifySimulation!( mrs.mpSim )
+verifySimulation!( mrs::MRS ) = verifySimulation!( mrs.mpSim )

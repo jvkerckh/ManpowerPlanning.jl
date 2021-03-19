@@ -8,9 +8,11 @@ mutable struct MultiRunSimulation
     nRuns::Int
     resultsDBname::String
     maxThreads::Int
+    showInfo::Bool
 
     seedRNG::MersenneTwister
     resultsDB::SQLite.DB
+    nComplete::Int
 
 
     function MultiRunSimulation( mpSim::MPsim )::MRS
@@ -20,8 +22,10 @@ mutable struct MultiRunSimulation
         newMRS.nRuns = 1
         newMRS.resultsDBname = ""
         newMRS.maxThreads = Threads.nthreads()
+        newMRS.showInfo = false
         newMRS.seedRNG = MersenneTwister()
         newMRS.resultsDB = SQLite.DB( "" )
+        newMRS.nComplete = 0
         return newMRS
 
     end  # MultiRunSimulation( mpSim )

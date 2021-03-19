@@ -1,5 +1,6 @@
 function SimJulia.run( mpSim::MPsim, showInfo::Bool=false;
-    saveConfig::Bool=true, seed::Integer=-1, sysEnt::Bool=false )::Nothing
+    saveConfig::Bool=true, seed::Integer=-1, sysEnt::Bool=false,
+    nCommits::Int=1 )
 
     if !verifySimulation!( mpSim )
         error( "Simulation configuration is inconsistent, cannot run." )
@@ -13,9 +14,7 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool=false;
     DBInterface.execute( mpSim.simDB, "BEGIN TRANSACTION" )
 
     try
-        if ( now( mpSim ) != 0 ) || ( mpSim.orgSize == 0 )
-            resetSimulation( mpSim )
-        end  # if ( now( mpSim ) != 0 ) || ...
+        resetSimulation( mpSim )
 
         # Initialise the recruitment processes.
         for name in keys( mpSim.recruitmentByName )
@@ -38,6 +37,8 @@ function SimJulia.run( mpSim::MPsim, showInfo::Bool=false;
                 @process transitionProcess( mpSim.sim, transition, mpSim )
             end  # for transition in mpSim.transitionsByName[name]
         end  # for name in keys( mpSim.transitionsByName )
+
+        mpSim.nCommits = max( nCommits, 1 )
 
         if mpSim.nCommits > 1
             @process dbCommitProcess( mpSim.sim, mpSim )

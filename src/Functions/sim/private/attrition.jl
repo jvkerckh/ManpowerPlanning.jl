@@ -62,34 +62,45 @@ end  # generateTimeToAttrition( attrition, excessTimes )
     attName = string( "Attrition check process " )
 
     # Preparatory steps.
-    timeOfNextCheck = mpSim.attritionTimeSkip
-    priority = typemax( Int )
-    queryCmd = string( "SELECT `", mpSim.idKey, "`, expectedAttritionTime ",
+    timeOfNextCheck = 0.0
+    checkPriority = typemin(Int)
+    execPriority = typemax(Int)
+    # queryCmd = string( "SELECT `", mpSim.idKey, "`, expectedAttritionTime ",
+    queryCmd = string( "SELECT `", mpSim.idKey, "`, expectedAttritionTime, currentNode ",
         "FROM `", mpSim.persDBname, "` WHERE",
         "\n    status IS 'active' AND expectedAttritionTime <= " )
     idSymb = Symbol( mpSim.idKey )
     
-    while now( sim ) < mpSim.simLength
+    while now(sim) < mpSim.simLength
         processTime += now() - tStart
         @yield( timeout( sim, timeOfNextCheck - now( sim ),
-            priority = priority ) )
+            priority=checkPriority ) )
         tStart = now()
 
         # Find who'll undergo attrition in the next cycle.
-        timeOfNextCheck += mpSim.attritionTimeSkip
+        # timeOfNextCheck += mpSim.attritionTimeSkip
+        timeOfNextCheck = getNextEventTime(sim)
         timeOfNextCheck = timeOfNextCheck > mpSim.simLength ? mpSim.simLength :
             timeOfNextCheck
+        # now(sim) == timeOfNextCheck && continue
         result = DataFrame( DBInterface.execute( mpSim.simDB,
             string( queryCmd, timeOfNextCheck ) ) )
 
         # Execute attrition process for these people.
         processTime += now() - tStart
 
+        if !isempty(result)
+            tStart = now()
+            removePersons( result[:, idSymb], result[:, :currentNode],
+                result[:, :expectedAttritionTime], "attrition", mpSim )
+            mpSim.attritionExecTime += now() - tStart
+        end  # if !isempty(result)
+#=
         for ii in 1:size( result, 1 )
             @process executeAttritionProcess( sim, result[ii, idSymb],
-                result[ii, :expectedAttritionTime], mpSim, priority )
+                result[ii, :expectedAttritionTime], mpSim, execPriority )
         end  # for ii in 1:size( result, 1 )
-
+=#
         tStart = now()
     end  # while now( sim ) < mpSim.simLength
 
@@ -108,7 +119,7 @@ end  # checkAttritionProcess( sim, mpSim )
     expAttrTime::Float64, mpSim::MPsim, priority::Int )
 
     # Wait until the time attrition should take place.
-    @yield( timeout( sim, expAttrTime - now( sim ), priority = priority ) )
+    @yield( timeout( sim, expAttrTime - now( sim ), priority=priority ) )
     tStart = now()
 
     # Get the personnel record.
@@ -127,3 +138,6 @@ end  # checkAttritionProcess( sim, mpSim )
     mpSim.attritionExecTime += now() - tStart
 
 end  # executeAttritionProcess( sim, id, expAttrTime, mpSim )
+
+
+getNextEventTime( sim::Simulation ) = first(sim.heap).second.time

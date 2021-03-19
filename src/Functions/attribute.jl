@@ -120,7 +120,7 @@ end  # setPossibleAttributeValues!( attribute, values )
 ```
 addInitialAttributeValue!(
     attribute::Attribute,
-    valWeights::Tuple{String,Float64}... )
+    valWeights::Tuple{String,T}... ) where T <: Real
 ```
 This function adds each value/weight pair in `valWeights` to the initial values of the personnel attribute `attribute`. Values that aren't in the list of possible values get added as well.
 
@@ -132,7 +132,7 @@ Some remarks:
 This function returns `true` if it successfully adds initial values and/or updates their weights, and `false` if it makes no changes.
 """
 function addInitialAttributeValue!( attribute::Attribute,
-    valWeights::Tuple{String,Float64}... )::Bool
+    valWeights::Tuple{String,T}... ) where T <: Real
 
     newVals = map( valWeight -> valWeight[1], collect( valWeights ) )
     newWeights = map( valWeight -> valWeight[2], collect( valWeights ) )

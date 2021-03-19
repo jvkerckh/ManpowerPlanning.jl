@@ -80,10 +80,10 @@ end  # retirementCycle( retirement, mpSim )
 
 
 function removePersons( ids::Vector{String}, currentNodes::Vector{String},
-    reason::String, mpSim::MPsim )
+    simTimes::Union{Float64, Vector{Float64}}, reason::String, mpSim::MPsim )
 
     # Add the retirement transition to the transition records.
-    sqliteCmd = string.( "\n    ('", ids, "', ", now( mpSim ), ", '", reason,
+    sqliteCmd = string.( "\n    ('", ids, "', ", simTimes, ", '", reason,
         "', '", currentNodes, "')" )
     sqliteCmd = string( "INSERT INTO `", mpSim.transDBname, "` (`", mpSim.idKey,
         "`, timeIndex, transition, sourceNode) VALUES", join( sqliteCmd, "," ) )
@@ -96,18 +96,25 @@ function removePersons( ids::Vector{String}, currentNodes::Vector{String},
     end  # for name in unique( currentNodes )
 
     # Update the personnel records.
-    sqliteCmd = string( "UPDATE `", mpSim.persDBname, "`",
-        "\n    SET status = '", reason, "',",
-        "\n        timeExited = ", now( mpSim ), ",",
-        "\n        currentNode = NULL",
-        "\n    WHERE `", mpSim.idKey, "` IN ('", join( ids, "', '" ), "')" )
-    DBInterface.execute( mpSim.simDB, sqliteCmd )
+    sqliteCmd = string.( "UPDATE `", Ref(mpSim.persDBname), "`",
+        "\n    SET status = '", Ref(reason), "',",
+        "\n        timeExited = ", simTimes, ",",
+        "\n        currentNode = NULL,",
+        "\n        inNodeSince = NULL",
+        "\n    WHERE `", mpSim.idKey, "` IS '", ids, "'" )
+    DBInterface.execute.( Ref(mpSim.simDB), sqliteCmd )
 
 end  # removePersons( ids, currentNodes, reason, mpSim )
 
-removePersons( ids::Vector{String}, currentNode::String, reason::String,
-    mpSim::MPsim ) = removePersons( ids, fill( currentNode, length( ids ) ),
-    reason, mpSim )
+removePersons( ids::Vector{String}, currentNode::String,
+    simTimes::Union{Float64, Vector{Float64}}, reason::String, mpSim::MPsim ) =
+    removePersons( ids, fill( currentNode, length(ids) ), simTimes, reason,
+    mpSim )
 
+removePersons( ids::Vector{String},
+    currentNodes::Union{String, Vector{String}}, reason::String,
+    mpSim::MPsim ) = removePersons( ids, currentNodes, now(mpSim), reason, mpSim )
+
+    
 removePerson( id::String, currentNode::String, reason::String, mpSim::MPsim ) =
     removePersons( [id], currentNode, reason, mpSim )

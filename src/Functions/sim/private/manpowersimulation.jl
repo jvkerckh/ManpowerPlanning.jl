@@ -44,21 +44,13 @@ function seedSimulation!( mpSim::MPsim, seed::Integer, sysEnt::Bool )
     end  # for name in keys( mpSim.transitionsByName )
 
 end  # seedSimulation!( mpSim, seed, sysEnt )
-^
+
 
 setSimulationDBcommits!( mpSim::MPsim, nCommits::Integer ) =
     ( mpSim.nCommits = nCommits )
 
 
-function resetSimulation( mpSim::MPsim )
-
-    mpSim.sim = Simulation()
-
-    # Clear the "inNodeSince" from every node.
-    for name in keys( mpSim.baseNodeList )
-        node = mpSim.baseNodeList[name]
-        empty!( node.inNodeSince )
-    end
+function wipeDatabase( mpSim::MPsim )
 
     # Wipe the tables if needed.
     DBInterface.execute( mpSim.simDB, string( "DROP TABLE IF EXISTS `",
@@ -75,35 +67,99 @@ function resetSimulation( mpSim::MPsim )
     
     # Create the tables.
     sqliteCmd = string( "CREATE TABLE `", mpSim.persDBname, "`(",
-        "\n    `", mpSim.idKey, "` VARCHAR(32) NOT NULL PRIMARY KEY,",
-        "\n    timeEntered FLOAT,",
-        "\n    timeExited FLOAT,",
-        "\n    ageAtRecruitment FLOAT,",
-        "\n    expectedAttritionTime FLOAT,",
-        "\n    currentNode VARCHAR(64),",
+        "\n    `", mpSim.idKey, "` TEXT NOT NULL PRIMARY KEY,",
+        "\n    timeEntered REAL,",
+        "\n    timeExited REAL,",
+        "\n    ageAtRecruitment REAL,",
+        "\n    expectedAttritionTime REAL,",
+        "\n    currentNode TEXT,",
+        "\n    inNodeSince REAL,",
         join( string.( "\n    `", collect( keys( mpSim.attributeList ) )
-            , "` VARCHAR(64)," ) ),
-        "\n    status VARCHAR(16) )" )
+            , "` TEXT," ) ),
+        "\n    status TEXT )" )
     DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     sqliteCmd = string( "CREATE TABLE `", mpSim.transDBname, "`(",
-        "\n    `", mpSim.idKey, "` VARCHAR(32),",
-        "\n    timeIndex FLOAT,",
-        "\n    transition VARCHAR(64),",
-        "\n    sourceNode VARCHAR(64),",
-        "\n    targetNode VARCHAR(64),",
+        "\n    `", mpSim.idKey, "` TEXT,",
+        "\n    timeIndex REAL,",
+        "\n    transition TEXT,",
+        "\n    sourceNode TEXT,",
+        "\n    targetNode TEXT,",
         "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
         mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
     DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     sqliteCmd = string( "CREATE TABLE `", mpSim.histDBname, "`(",
-        "\n    `", mpSim.idKey, "` VARCHAR(32),",
-        "\n    timeIndex FLOAT,",
-        "\n    attribute VARCHAR(64),",
-        "\n    value VARCHAR(64),",
+        "\n    `", mpSim.idKey, "` TEXT,",
+        "\n    timeIndex REAL,",
+        "\n    attribute TEXT,",
+        "\n    value TEXT,",
         "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
         mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
     DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+end  # wipeDatabase( mpSim )
+
+function wipeDatabase( mpSim::MPsim, snapshotIDs::Vector{String} )
+
+    # Reset the population number of the simulation.
+    mpSim.orgSize = length(snapshotIDs)
+    mpSim.dbSize = length(snapshotIDs)
+    mpSim.isVirgin = false
+
+    # Reset the tables.
+    sqliteCmd = string( "DELETE FROM `", mpSim.transDBname,
+        "` WHERE transition IS NOT 'Init'" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+    sqliteCmd = string( "DELETE FROM `", mpSim.histDBname,
+        "` WHERE timeIndex > 0 OR `", mpSim.idKey, "` NOT IN ('",
+        join( snapshotIDs, "', '" ), "')" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+    sqliteCmd = string( "DELETE FROM `", mpSim.persDBname,
+        "` WHERE `", mpSim.idKey, "` NOT IN ('", join( snapshotIDs, "', '" ),
+        "')" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+    # Set the "inNodeSince" for every node.
+    queryCmd = string( "SELECT `", mpSim.idKey,
+        "`, timeIndex, targetNode FROM `", mpSim.transDBname, "`" )
+    inNodeInfo = DataFrame(DBInterface.execute( mpSim.simDB, queryCmd ))
+
+    for ii in 1:size( inNodeInfo, 1 )
+        node = mpSim.baseNodeList[inNodeInfo[ii, "targetNode"]]
+        node.inNodeSince[inNodeInfo[ii, mpSim.idKey]] =
+            inNodeInfo[ii, "timeIndex"]
+    end  # for ii in 1:size( inNodeInfo, 1 )
+
+end  # wipeDatabase( mpSim, snapshotIDs )
+
+
+function resetSimulation( mpSim::MPsim, keepSnap::Bool=true )
+
+    mpSim.sim = Simulation()
+
+    snapshotIDs = Vector{String}()
+    dbtables = SQLite.tables(mpSim.simDB)
+
+    if keepSnap && haskey( dbtables, :name ) &&
+        ( [mpSim.persDBname, mpSim.histDBname, mpSim.transDBname] ⊆
+            dbtables.name )
+        queryCmd = string( "SELECT `", mpSim.idKey, "` FROM `",
+            mpSim.transDBname, "` WHERE transition IS 'Init'" )
+        snapshotIDs = DataFrame(DBInterface.execute( mpSim.simDB,
+            queryCmd ))[!, 1]
+    end  # if haskey( dbtables, :name ) && ...
+
+    # Clear the "inNodeSince" from every node.
+    for name in keys( mpSim.baseNodeList )
+        node = mpSim.baseNodeList[name]
+        empty!( node.inNodeSince )
+    end  # for name in keys( mpSim.baseNodeList )
+
+    isempty(snapshotIDs) ? wipeDatabase(mpSim) :
+        wipeDatabase( mpSim, snapshotIDs )
 
     # Set database to new style.
     mpSim.isOldDB = false

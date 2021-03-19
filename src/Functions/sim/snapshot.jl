@@ -1,7 +1,6 @@
 export uploadSnapshot
 
 
-# Order of specialCols: 1. idCol, 2. lastChangeCol, 3. tenureCol, 4. ageCol, 5. node
 """
 ```
 uploadSnapshot(
@@ -9,7 +8,8 @@ uploadSnapshot(
     snapname::AbstractString,
     sheetname::AbstractString,
     colsToImport::Union{Vector{ColIndex}, Vector{String}, Vector{Int}},
-    specialCols::NTuple{5,ColIndex};
+    specialCols::NTuple{5,ColIndex},
+    refDate::Date = Date(now());
     validateData::Bool=true,
     generateSimData::Bool=false )
 ```
@@ -25,8 +25,9 @@ Duplicate IDs get ignored, and missing IDs or times get generated with a best gu
 function uploadSnapshot( mpSim::MPsim, snapname::AbstractString,
     sheetname::AbstractString,
     colsToImport::Union{Vector{ColIndex}, Vector{String}, Vector{Int}},
-    specialCols::NTuple{5,ColIndex}; validateData::Bool=true,
-    generateSimData::Bool=false )::Nothing
+    specialCols::NTuple{5,ColIndex}; refDate::Date=Date(now()),
+    dateType::Symbol=:month, validateData::Bool=true,
+    generateSimData::Bool=false )
 
     snapname = string( snapname, endswith( snapname, ".xlsx" ) ? "" : ".xlsx" )
 
@@ -83,10 +84,18 @@ function uploadSnapshot( mpSim::MPsim, snapname::AbstractString,
             string( xs[1, specialCols[1]] ) : "id" )
 
         ids, isBad = readIDs( xs, specialCols[1], nRecords, mpSim )
-        lastTransTimes = readTimes( xs, specialCols[2], nRecords, isBad, mpSim )
-        tenures = readTimes( xs, specialCols[3], nRecords, isBad, mpSim )
-        ages = readTimes( xs, specialCols[4], nRecords, isBad, mpSim )
+        lastTransTimes = readTimes( xs, specialCols[2], refDate, dateType,
+            nRecords, isBad, mpSim )
+        tenures = readTimes( xs, specialCols[3], refDate, dateType, nRecords,
+            isBad, mpSim )
+        ages = readTimes( xs, specialCols[4], refDate, dateType, nRecords,
+            isBad, mpSim )
         startNodes = readNodes( xs, specialCols[5], nRecords, isBad, mpSim )
+
+        # for timeData in [lastTransTimes, tenures, ages]
+        #     any(isa.( timeData, Date )) &&
+        #         computeTimes!( timeData, refDate, dateType )
+        # end  # for timeData in [lastTransTimes, tenures, ages]
 
         # Read attribute data.
         filter!( ii -> ii ∉ specialCols, colsToImport )        
@@ -148,7 +157,79 @@ function uploadSnapshot( mpSim::MPsim, snapname::AbstractString,
     return
 
 end  # uploadSnapshot( mpSim, snapname, sheetname, colsToImport, specialCols,
-     #   validateData, generateSimData )
+     #   refDate, validateData, generateSimData )
 
+function uploadSnapshot( mrs::MRS, snapname::AbstractString,
+    sheetname::AbstractString,
+    colsToImport::Union{Vector{ColIndex}, Vector{String}, Vector{Int}},
+    specialCols::NTuple{5,ColIndex}; refDate::Date = Date(now()),
+    validateData::Bool=true, generateSimData::Bool=false )
+
+    mpSim = mrs.mpSim
+    uploadSnapshot( mpSim, snapname, sheetname, colsToImport, specialCols,
+        refDate=refDate, validateData=validateData,
+        generateSimData=generateSimData )
+
+    # Wipe the snapshot tables if needed.
+    DBInterface.execute( mrs.resultsDB, string( "DROP TABLE IF EXISTS `",
+        mpSim.histDBname, "`" ) )
+    DBInterface.execute( mrs.resultsDB, string( "DROP TABLE IF EXISTS `",
+        mpSim.transDBname, "`" ) )
+    DBInterface.execute( mrs.resultsDB, string( "DROP TABLE IF EXISTS `",
+        mpSim.persDBname, "`" ) )
+        
+    # Create snapshot tables.
+    sqliteCmd = string( "CREATE TABLE `", mpSim.persDBname, "`(",
+        "\n    `", mpSim.idKey, "` TEXT NOT NULL PRIMARY KEY,",
+        "\n    timeEntered REAL,",
+        "\n    timeExited REAL,",
+        "\n    ageAtRecruitment REAL,",
+        "\n    expectedAttritionTime REAL,",
+        "\n    currentNode TEXT,",
+        "\n    inNodeSince REAL,",
+        join( string.( "\n    `", collect( keys( mpSim.attributeList ) )
+            , "` TEXT," ) ),
+        "\n    status TEXT )" )
+    DBInterface.execute( mrs.resultsDB, sqliteCmd )
+
+    sqliteCmd = string( "CREATE TABLE `", mpSim.transDBname, "`(",
+        "\n    `", mpSim.idKey, "` TEXT,",
+        "\n    timeIndex REAL,",
+        "\n    transition TEXT,",
+        "\n    sourceNode TEXT,",
+        "\n    targetNode TEXT,",
+        "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
+        mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
+    DBInterface.execute( mrs.resultsDB, sqliteCmd )
+
+    sqliteCmd = string( "CREATE TABLE `", mpSim.histDBname, "`(",
+        "\n    `", mpSim.idKey, "` TEXT,",
+        "\n    timeIndex REAL,",
+        "\n    attribute TEXT,",
+        "\n    value TEXT,",
+        "\n    FOREIGN KEY (`", mpSim.idKey, "`) REFERENCES `",
+        mpSim.persDBname, "`(`", mpSim.idKey, "`) )" )
+    DBInterface.execute( mrs.resultsDB, sqliteCmd )
+
+    # Copy snapshot into results database.
+    sqliteCmd = string( "ATTACH '", mrs.resultsDB.file, "' AS target" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+ 
+    sqliteCmd = string( "INSERT INTO target.`", mpSim.persDBname, "`",
+        "\n    SELECT * FROM `", mpSim.persDBname, "`" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+    sqliteCmd = string( "INSERT INTO target.`", mpSim.histDBname, "`",
+        "\n    SELECT * FROM `", mpSim.histDBname, "`" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+    sqliteCmd = string( "INSERT INTO target.`", mpSim.transDBname, "`",
+        "\n    SELECT * FROM `", mpSim.transDBname, "`" )
+    DBInterface.execute( mpSim.simDB, sqliteCmd )
+
+    DBInterface.execute( mpSim.simDB, "DETACH target" )
+
+end  # uploadSnapshot( mps, snapname, sheetname, colsToImport, specialCols,
+     #   refDate, validateData, generateSimData )
 
 include( "private/snapshot.jl" )

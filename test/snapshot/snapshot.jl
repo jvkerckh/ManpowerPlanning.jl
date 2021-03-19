@@ -17,6 +17,10 @@ uploadSnapshot( mpSim, "snapshot/test foto 4", "Sheet1", ["B", "C", "D"],
     ("A", "G", "F", "E", "H") )
 @test ( mpSim.orgSize == 50 ) && !mpSim.isVirgin
 
+uploadSnapshot( mpSim, "snapshot/test foto 5", "Sheet1", ["B", "C", "D"],
+    ("A", "G", "F", "E", "H"), refDate=Date( 2021, 1, 1 ) )
+@test ( mpSim.orgSize == 50 ) && !mpSim.isVirgin
+
 # Generate data procedure.
 clearSimulationAttributes!( mpSim )
 clearSimulationBaseNodes!( mpSim )

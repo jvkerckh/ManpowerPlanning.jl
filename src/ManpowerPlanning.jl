@@ -4,20 +4,20 @@ __precompile__()
 #   methods for the manpower planning project.
 
 module ManpowerPlanning
-
     using DataFrames
+    using DataStructures
     using Dates
     using Distributions
-    using HierarchicalGraphPlot
     using LightGraphs
     using MetaGraphs
     using Random
     using ResumableFunctions
     using SimJulia
     using SQLite
+    using StatsBase
     using XLSX
 
-    version = v"2.6.1"
+    version = v"2.7.0"
 
     export versionMP
     versionMP() = @info string( "Running version ", version,
@@ -36,6 +36,7 @@ module ManpowerPlanning
         "compoundnode",
         "manpowersimulation",
         "multirunsimulation",
+        "multirunreport",
         "subpopulation"
     ]
 
@@ -61,5 +62,4 @@ module ManpowerPlanning
 
     # Deprecated functions
     # include( joinpath( funcPath, "deprecated.jl" ) )
-
 end  # module ManpowerPlanning

@@ -9,7 +9,10 @@
 src/Functions/unprocessed*
 typedeps*
 test/reports/simDBcopy.sqlite
-test/parallel/simDB.sqlite
+test/parallel/*.sqlite
+
+# Example
+example/*
 
 # Documentation
 docs/build*

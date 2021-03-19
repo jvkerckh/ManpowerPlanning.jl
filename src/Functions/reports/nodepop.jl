@@ -29,19 +29,12 @@ function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
         return result
     end  # if now( mpSim ) == 0
 
-    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
-    timeGrid = unique( sort( timeGrid, rev = true ) )
+    timeGrid = cleanTimegrid( timeGrid, mpSim )
 
     if isempty( timeGrid )
         @warn "No valid time points in time grid, cannot generate report."
         return result
     end  # if isempty( timeGrid )
-
-    if timeGrid[end] > 0.0
-        push!( timeGrid, 0.0 )
-    end  # if timeGrid[end] > 0.0
-
-    reverse!( timeGrid )
 
     nodes = filter( collect( nodes ) ) do nodeName
         return ( lowercase( nodeName ) ∈ ["active", ""] ) ||
@@ -53,8 +46,6 @@ function nodePopReport( mpSim::MPsim, timeGrid::Vector{Float64},
         @warn "No valid nodes in node list, cannot generate report."
         return result
     end  # if isempty( nodes )
-
-    nodes = unique( nodes )
 
     # Create reports.
     inFluxes = nodeFluxReport( mpSim, timeGrid, :in, nodes... )
@@ -82,6 +73,58 @@ This function returns a `DataFrame`, with the first column the time points and t
 """
 nodePopReport( mpSim::MPsim, timeRes::Real, nodes::String... ) =
     nodePopReport( mpSim, generateTimeGrid( mpSim, timeRes ), nodes... )
+
+function nodePopReport( mrs::MRS, timeGrid::Vector{Float64}, nodes::String... )
+    result = MultirunReport()
+    mpSim = mrs.mpSim
+
+    if now(mpSim) == 0
+        @warn "Simulation hasn't started yet, can't make report."
+        return result
+    end  # if now(mpSim) == 0
+
+    timeGrid = cleanTimegrid( timeGrid, mpSim )
+
+    if isempty( timeGrid )
+        @warn "No valid time points in time grid, cannot generate report."
+        return result
+    end  # if isempty( timeGrid )
+
+    nodes = cleanNodes( nodes, mpSim )
+
+    if isempty( nodes )
+        @warn "No valid nodes in node list, cannot generate report."
+        return result
+    end  # if isempty( nodes )
+
+    # Get raw data.
+    setSimulationDatabase!( mpSim, mrs.resultsDB.file )
+    rawData = zeros( Real, length(timeGrid), length(nodes), mrs.nRuns )
+    nThreads = min( mrs.nRuns, mrs.maxThreads, Threads.nthreads() )
+    reportError = falses(mrs.nRuns)
+    currentRun = Channel{Int}(1)
+    put!( currentRun, 1 )
+
+    Threads.@threads for threadnum in 1:nThreads  # To change
+        generateRunReport( mpSim, timeGrid, collect(nodes), rawData,
+            reportError, currentRun )
+        # inFluxes = nodeFluxReport( mpSim, timeGrid, :in, nodes...; simRun=ii )
+        # outFluxes = nodeFluxReport( mpSim, timeGrid, :out, nodes...; simRun=ii )
+        # popReport = Array(createPopReport( nodes, timeGrid, inFluxes,
+        #     outFluxes ))[:, 2:end]
+        # rawData[:, :, ii] = popReport
+    end  # for ii in 1:1
+
+    for ii in findall(reportError)
+        generateRunreport( mpSim, timeGrid, nodes, rawData, ii )
+    end  # for ii in findall(reportError)
+
+    setSimulationDatabase!( mpSim, "" )
+    MultirunReport( rawData, timeGrid, nodes )
+end  # nodePopReport( mrs, timeGrid, nodes )
+
+nodePopReport( mrs::MRS, timeRes::Real, nodes::String... ) =
+    nodePopReport( mrs, generateTimeGrid( mrs.mpSim, timeRes ), nodes... ) 
 
 
 """

@@ -55,8 +55,9 @@ function flagDuplicates( ids::Vector{String} )
 end  # flagDuplicates( ids )
 
 
-function readTimes( xs::XLSX.Worksheet, timeCol::Int, nRecords::Int,
-    isBad::Vector{Bool}, mpSim::MPsim, timeFactor::Float64=1.0 )
+function readTimes( xs::XLSX.Worksheet, timeCol::Int, refDate::Date,
+    dateType::Symbol, nRecords::Int, isBad::Vector{Bool}, mpSim::MPsim,
+    timeFactor::Float64=1.0 )
 
     if timeCol == 0
         return zeros( Float64, nRecords - count( isBad ) )
@@ -83,12 +84,14 @@ function readTimes( xs::XLSX.Worksheet, timeCol::Int, nRecords::Int,
             end  # if mpSim.showInfo
         end  # if nMissing > 0
 
+        computeTimes!( times, refDate, dateType )
         times = max.( times, 0.0 )
     end  # let
 
     return times * timeFactor
 
-end  # readTimes( xs, timeCol, nRecords, isBad, mpSim, timeFactor )
+end  # readTimes( xs, timeCol, refDate, dateType, nRecords, isBad, mpSim,
+     #   timeFactor )
 
 
 function readNodes( xs::XLSX.Worksheet, nodeCol::Int, nRecords::Int,
@@ -307,7 +310,7 @@ end  # addSnapshotAttrition( mpSim, personnelData )
 function saveSnapshotToDatabase( mpSim::MPsim, personnelData::Array{Any,2},
     attributeNames::Vector{String} )
 
-    resetSimulation( mpSim )
+    resetSimulation( mpSim, false )
     nRecords = size( personnelData, 1 )
     nAttributes = length( attributeNames )
     ageAtRecruitment = personnelData[:, end-2] - personnelData[:, end-3]
@@ -322,13 +325,14 @@ function saveSnapshotToDatabase( mpSim::MPsim, personnelData::Array{Any,2},
             join( personnelData[ii, 1:(nAttributes + 1)], "', '" ), "', ",
             -personnelData[ii, end-3], ", ", ageAtRecruitment[ii], ", ",
             isValidNode[ii] ? string( "'", node, "'" ) : node, ", ",
+            -personnelData[ii, end-4], ", ",
             personnelData[ii, end] == +Inf ? "NULL" : personnelData[ii, end],
             ", 'active')" )
     end  # map( 1:nRecords ) do ii
 
     personnelCmd = string( "INSERT INTO `", mpSim.persDBname, "` (`",
         join( attributeNames, "`, `" ), "`, `", mpSim.idKey,
-        "`, timeEntered, ageAtRecruitment, currentNode, expectedAttritionTime, status) VALUES",
+        "`, timeEntered, ageAtRecruitment, currentNode, inNodeSince, expectedAttritionTime, status) VALUES",
         join( personnelCmd, "," ) )
     DBInterface.execute( mpSim.simDB, personnelCmd )
 
@@ -370,3 +374,20 @@ function saveNodeTime!( mpSim::MPsim, personnelData::Array{Any,2} )
     end  # for node in keys( mpSim.baseNodeList )
 
 end  # saveNodeTime!( mpSim, personnelData )
+
+
+function dateDiff( date1::Date, date2::Date, dateType::Symbol )
+    dateType === :days && return (date1 - date2).value
+    dateType === :years && return year(date1) - year(date2) +
+        ( dayofyear(date1) - dayofyear(date2) ) / daysinyear(date1)
+
+    ddiff = ( year(date1) - year(date2) ) * 12 + ( month(date1) - month(date2) )
+    ddiff + ( day(date1) - day(date2) ) / daysinmonth(date1)
+end  # dateDiff( date1, date2, dateType )
+
+
+function computeTimes!( timeData::Vector, refDate::Date, dateType::Symbol )
+    dateInds = findall(isa.( timeData, Date ))
+    timeData[dateInds] = dateDiff.( refDate, timeData[dateInds],
+        dateType )
+end  # computeTimes!( timeData, refDate, dateType )

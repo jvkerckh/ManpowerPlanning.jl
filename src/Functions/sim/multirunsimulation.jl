@@ -8,6 +8,7 @@ function SimJulia.run( mrs::MRS, showInfo::Bool=false; saveConfig::Bool=true,
     end  # if !verifySimulation!( mrs )
 
     # Set the random seed of the seed generator.
+    mrs.showInfo = showInfo
     mrs.seedRNG = seed < 0 ? MersenneTwister() : MersenneTwister( seed )
 
     # Initialise the database.
@@ -20,20 +21,38 @@ function SimJulia.run( mrs::MRS, showInfo::Bool=false; saveConfig::Bool=true,
         mkpath( tmpFolder )
     end  # if !ispath( tmpFolder )
 
-    # Run the simulations.
     nThreads = min( mrs.nRuns, mrs.maxThreads, Threads.nthreads() )
+    hasSnapshot = mrs.mpSim.dbSize > 0
+
+    if hasSnapshot
+        # copySnapshots( mrs, tmpFolder )
+        copySnapshots( mrs, tmpFolder, nThreads )
+        GC.gc()
+    end  # if hasSnapshot
+
+    # Run the simulations.
+    tStart = now()
+    mrs.nComplete = 0
     currentSim = Channel{Int}( 1 )
-    resultsFree = Channel{Bool}( 1 )
+    # resultsFree = Channel{Bool}( 1 )
     put!( currentSim, 1 )
-    put!( resultsFree, true )
+    mrs.mpSim.sim = Simulation()
+    # put!( resultsFree, true )
  
-    Threads.@threads for ii in 1:nThreads
-        runsim( mrs, currentSim, resultsFree, tmpFolder )
-    end  # Threads.@threads for ii in ...
+    Threads.@threads for threadnum in 1:nThreads
+        # runsim( mrs, currentSim, resultsFree, tmpFolder )
+        runsim( mrs, threadnum, hasSnapshot, currentSim, tmpFolder, nThreads )
+    end  # Threads.@threads for threadnum in ...
+
+    tElapsed = ( now() - tStart ).value / 1000.0
+    mrs.showInfo && @info string( "Running ", mrs.nRuns, " replications on ",
+        nThreads, " threads took ", tElapsed, " seconds." )
 
     # Clear tmp databases.
-    GC.gc()  # SQLite keeps files locked until their pointers have been
-             #   scrubbed by the GC.
+    copyResults( mrs, tmpFolder )
+    run( mrs.mpSim )
+    GC.gc();  # SQLite keeps files locked until their pointers have been
+              #   scrubbed by the GC.
     rm( tmpFolder, recursive=true, force=true )
     return
 end  #  run( mrs, showInfo, saveConfig, seed, sysEnt )

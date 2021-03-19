@@ -1,13 +1,15 @@
-@testset "Multi-threaded runs test" begin
+@testset "Multi-threaded runs test, no init pop" begin
 
 @info "Commencing test of multi-threaded parallel simulation runs. This test may take a few minutes, depending on the user's hardware and Julia settings."
 tStart = now()
-rm( "tmps", recursive=true, force=true )
+rm( "parallel/tmps", recursive=true, force=true )
+rm( "parallel/simDB.sqlite", force=true )
+
 mrs = MRS( mpSim )
-@test verifySimulation!( mrs )
 setMRSruns!( mrs, 30 )
 setMRSdatabaseName!( mrs, "parallel/simDB.sqlite" )
 setMRSmaxThreads!( mrs, 10 )
+@test verifySimulation!( mrs )
 run( mrs )
 tElapsed = ( now() - tStart ).value / 1000
 @info string( "Running 30 simulations in parallel on ",
@@ -19,4 +21,4 @@ db = SQLite.DB( "parallel/simDB.sqlite" )
 
 println()
 
-end  # @testset "Multi-threaded runs test"
+end  # @testset "Multi-threaded runs test, no init pop"

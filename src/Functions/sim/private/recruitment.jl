@@ -38,21 +38,16 @@ end  # @resumable recruitProcess( sim, recruitment, mpSim )
 
 
 function recruitmentCycle( recruitment::Recruitment, mpSim::MPsim )
-
-    targetNode = mpSim.baseNodeList[recruitment.targetNode]
-    nToRecruit = generatePoolSize( recruitment, targetNode, mpSim )
+    nToRecruit = generatePoolSize( recruitment,
+        mpSim.baseNodeList[recruitment.targetNode], mpSim )
     generatePersons( recruitment, nToRecruit, mpSim )
-
-end  # recruitmentCycle( recruitment::Recruitment, mpSim::MPsim )
+end  # recruitmentCycle( recruitment, mpSim )
 
 
 function generatePoolSize( recruitment::Recruitment, targetNode::BaseNode,
     mpSim::MPsim )
-
     # If the recruitment scheme isn't adaptive, draw from the distribution.
-    if !recruitment.isAdaptive
-        return recruitment.recruitmentDist()
-    end  # if !recruitment.isAdaptive
+    !recruitment.isAdaptive && return recruitment.recruitmentDist()
 
     nToOrgTarget = mpSim.personnelTarget > 0 ? mpSim.personnelTarget -
         mpSim.orgSize : typemax( Int )
@@ -60,89 +55,89 @@ function generatePoolSize( recruitment::Recruitment, targetNode::BaseNode,
         length( targetNode.inNodeSince ) : typemax( Int )
     return max( min( recruitment.maxRecruitment, nToOrgTarget, nToNodeTarget ),
         recruitment.minRecruitment )
-
 end  # generatePoolSize( recruitment, targetNode, mpSim )
 
 
 function generatePersons( recruitment::Recruitment, nToRecruit::Int,
     mpSim::MPsim )
-
-    if nToRecruit == 0
-        return
-    end  # if nToRecruit == 0
-
+    nToRecruit == 0 && return
+    
     # Generate attribute values for the new personnel members.
-    attributeNames = collect( keys( mpSim.attributeList ) )
+    attributeNames = collect(keys(mpSim.attributeList))
     newPersons = DataFrame( fill( "", nToRecruit,
-        length( mpSim.attributeList ) ), Symbol.( attributeNames ) )
+        length(mpSim.attributeList) ), Symbol.(attributeNames) )
+    targetNode = mpSim.baseNodeList[recruitment.targetNode]
     
     for name in attributeNames
         attribute = mpSim.attributeList[name]
 
-        if !isempty( attribute.initValues )
-            newPersons[:, Symbol( name )] = generateValues( attribute,
-                nToRecruit )
-        end  # if !isempty( attribute.initValues )
+        if haskey( targetNode.requirements, name )
+            newPersons[:, name] .= targetNode.requirements[name]
+        elseif !isempty(attribute.initValues)
+            newPersons[:, name] = generateValues( attribute, nToRecruit )
+        end  # if !isempty(attribute.initValues)
     end  # for name in attributeNames
-
-    # Adjust initial values for target node.
-    targetNode = mpSim.baseNodeList[recruitment.targetNode]
-
-    for name in keys( targetNode.requirements )
-        newPersons[:, Symbol( name )] .= targetNode.requirements[name]
-    end  # for name in keys( targetNode.requirements )
-
+    
     # Add ID key and ages.
     ids = string.( "Sim", mpSim.dbSize .+ (1:nToRecruit) )
-    insertcols!( newPersons, 1, Symbol( mpSim.idKey ) => ids )
-    insertcols!( newPersons, 2, :recAge => recruitment.ageDist( nToRecruit ) )
+    insertcols!( newPersons, 1, Symbol(mpSim.idKey) => ids )
+    insertcols!( newPersons, 2, :recAge => recruitment.ageDist(nToRecruit) )
 
     # Update target node populaton.
-    setindex!.( Ref( targetNode.inNodeSince ), now( mpSim ), ids )
+    setindex!.( Ref(targetNode.inNodeSince ), now(mpSim), ids )
 
     # Entries into databases.
     attrition = mpSim.attritionSchemes[targetNode.attrition]
-    timeOfAttrition = now( mpSim ) .+ generateTimeToAttrition( attrition,
+    timeOfAttrition = now(mpSim) .+ generateTimeToAttrition( attrition,
         nToRecruit )
     insertcols!( newPersons, 3, :attrTime => timeOfAttrition )
 
     # Personnel database.
-    attrCmd = map( attributeNames ) do name
-        return string.( ", '", newPersons[:, Symbol( name )], "'" )
-    end  # map( attributeNames ) do name
+    attrCmd = ""
 
-    attrCmd = hcat( attrCmd... )
-    attrCmd = map( ii -> join( attrCmd[ii, :] ), 1:nToRecruit )
+    if !isempty(attributeNames)
+        attrCmd = map( attributeNames ) do name
+            return string.( ", '", newPersons[:, Symbol( name )], "'" )
+        end  # map( attributeNames ) do name
+
+        attrCmd = hcat( attrCmd... )
+        attrCmd = map( ii -> join(attrCmd[ii, :]), 1:nToRecruit )
+    end  # if !isempty(attributeName)
+
     sqliteCmd = map( toa -> toa == +Inf ? "NULL" : toa, timeOfAttrition )
-    sqliteCmd = string.( "\n    ('", newPersons[:, Symbol( mpSim.idKey )],
-        "', 'active', ", now( mpSim ), ", ", newPersons[:, :recAge], ", ",
-        sqliteCmd, ", '", targetNode.name, "'", attrCmd, ")" )
+    # sqliteCmd = string.( "\n    ('", newPersons[:, Symbol(mpSim.idKey)],
+    sqliteCmd = string.( "\n    ('", newPersons[:, mpSim.idKey],
+        "', 'active', ", now(mpSim), ", ", newPersons[:, :recAge], ", ",
+        sqliteCmd, ", '", targetNode.name, "', ", now(mpSim), attrCmd,
+         ")" )
     sqliteCmd = string( "INSERT INTO `", mpSim.persDBname, "` (`", mpSim.idKey,
         "`, status, timeEntered, ageAtRecruitment, ",
-        "expectedAttritionTime, currentNode",
+        "expectedAttritionTime, currentNode, inNodeSince",
         join( string.( ", `", attributeNames, "`" ) ), ") VALUES",
         join( sqliteCmd, "," ) )
+    # println(sqliteCmd)
     DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     # Transition database.
-    sqliteCmd = string.( "\n    ('", ids, "', ", now( mpSim ), ", '",
+    sqliteCmd = string.( "\n    ('", ids, "', ", now(mpSim), ", '",
         recruitment.name, "', '", recruitment.targetNode, "')" )
     sqliteCmd = string( "INSERT INTO `", mpSim.transDBname, "` (`", mpSim.idKey,
         "`, timeIndex, transition, targetNode) VALUES", join( sqliteCmd, "," ) )
     DBInterface.execute( mpSim.simDB, sqliteCmd )
 
     # History database.
-    sqliteCmd = map( attributeNames ) do name
-        return string.( "\n    ('", ids, "', ", now( mpSim ), ", '", name,
-            "', '", newPersons[:, Symbol( name )], "')" )
-    end  # map( attributeNames ) do name
-    
-    sqliteCmd = string( "INSERT INTO `", mpSim.histDBname, "` (`", mpSim.idKey,
-        "`, timeIndex, attribute, value) VALUES",
-        join( vcat( sqliteCmd... ), "," ) )
-    DBInterface.execute( mpSim.simDB, sqliteCmd )
+    if !isempty(attributeNames)
+        sqliteCmd = map(attributeNames) do name
+            return string.( "\n    ('", ids, "', ", now(mpSim), ", '", name,
+                "', '", newPersons[:, Symbol(name)], "')" )
+        end  # map(attributeNames) do name
+        
+        sqliteCmd = string( "INSERT INTO `", mpSim.histDBname, "` (`",
+            mpSim.idKey, "`, timeIndex, attribute, value) VALUES",
+            join( vcat(sqliteCmd...), "," ) )
+        DBInterface.execute( mpSim.simDB, sqliteCmd )
+    end  # if !isempty(attributeNames)
 
     mpSim.orgSize += nToRecruit
     mpSim.dbSize += nToRecruit
-
 end  # generatePersons( recruitment, nToRecruit, mpSim )

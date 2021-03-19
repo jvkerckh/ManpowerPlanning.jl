@@ -2,24 +2,27 @@ const fluxTypes = [:in, :out, :within]
 
 
 function generateNodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    fluxType::Symbol, node::String )
+    fluxType::Symbol, node::String, simNr::Int )
 
-    if lowercase( node ) ∈ ["active", ""]
-        return generatePopFluxReport( mpSim, timeGrid, fluxType )
+    if lowercase(node) ∈ ["active", ""]
+        return generatePopFluxReport( mpSim, timeGrid, fluxType, simNr )
     elseif haskey( mpSim.baseNodeList, node )
-        return generateBaseNodeFluxReport( mpSim, timeGrid, fluxType, node )
+        return generateBaseNodeFluxReport( mpSim, timeGrid, fluxType, node,
+            simNr )
     else
-        return generateCompoundNodeFluxReport( mpSim, timeGrid, fluxType, node )
+        return generateCompoundNodeFluxReport( mpSim, timeGrid, fluxType, node,
+            simNr )
     end  # if lowercase( node ) ∈ ["active", ""]
 
 end  # generateNodeFluxReport( mpSim, timeGrid, fluxType, node )
 
 
 function generatePopFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    fluxType::Symbol )
+    fluxType::Symbol, simNr::Int )
 
     queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
-        "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
+        "` ) counts FROM `", mpSim.transDBname, simNr == 0 ? "" : simNr,
+        "` WHERE" )
 
     # Construct (part of) the query.
     if fluxType === :in
@@ -59,14 +62,15 @@ function generatePopFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     return DataFrame( hcat( vcat( 0.0, timeGrid[1:(end - 1)] ), timeGrid,
         results ), Symbol.( names ) )
 
-end  # generatePopFluxReport( mpSim, timeGrid, fluxType )
+end  # generatePopFluxReport( mpSim, timeGrid, fluxType, simNr )
 
 
 function generateBaseNodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    fluxType::Symbol, node::String )
+    fluxType::Symbol, node::String, simNr::Int )
 
     queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
-        "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
+        "` ) counts FROM `", mpSim.transDBname, simNr == 0 ? "" : simNr,
+        "` WHERE" )
 
     # Construct (part of) the query.
     if fluxType === :in
@@ -97,14 +101,15 @@ function generateBaseNodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
     return DataFrame( hcat( vcat( 0.0, timeGrid[1:(end - 1)] ), timeGrid,
         results ), Symbol.( names ) )
 
-end  # generateBaseNodeFluxReport( mpSim, timeGrid, fluxType, node )
+end  # generateBaseNodeFluxReport( mpSim, timeGrid, fluxType, node, simNr )
 
 
 function generateCompoundNodeFluxReport( mpSim::MPsim,
-    timeGrid::Vector{Float64}, fluxType::Symbol, node::String )
+    timeGrid::Vector{Float64}, fluxType::Symbol, node::String, simNr::Int )
 
     queryPartCmd = string( "SELECT *, count( `", mpSim.idKey,
-        "` ) counts FROM `", mpSim.transDBname, "` WHERE" )
+        "` ) counts FROM `", mpSim.transDBname, simNr == 0 ? "" : simNr,
+        "` WHERE" )
     
     compoundNode = mpSim.compoundNodeList[node]
     nodeList = compoundNode.baseNodeList
@@ -155,7 +160,7 @@ function generateCompoundNodeFluxReport( mpSim::MPsim,
     return DataFrame( hcat( vcat( 0.0, timeGrid[1:(end - 1)] ), timeGrid,
         results ), Symbol.( names ) )
 
-end  # generateCompoundNodeFluxReport( mpSim, timeGrid, fluxType, node )
+end  # generateCompoundNodeFluxReport( mpSim, timeGrid, fluxType, node, simNr )
 
 
 function determineTransitionTypes( mpSim::MPsim, queryCmd::String,
@@ -192,7 +197,13 @@ function performFluxCounts( mpSim::MPsim, queryPartCmd::String,
 
         queryCmd = string( queryCmd,
             "\n   GROUP BY transition, ", mpSim.sNode, ", ", mpSim.tNode )
-        result = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
+        result = nothing
+        try
+            result = DataFrame( DBInterface.execute( mpSim.simDB, queryCmd ) )
+        catch err
+            println(queryCmd)
+            rethrow(err)
+        end
 
         nrecords = size( result, 1 )
 

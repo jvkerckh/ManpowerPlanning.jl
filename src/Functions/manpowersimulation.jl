@@ -1171,13 +1171,13 @@ If the database is an existing database, the function also checks if it's a new 
 
 This function returns `true`, indicating that the database is successfully set.
 """
-function setSimulationDatabase!( mpSim::MPsim, dbName::String = "" )::Bool
-
+function setSimulationDatabase!( mpSim::MPsim, dbName::String="" )::Bool
     setSimulationDatabaseName!( mpSim, dbName )
-    mpSim.simDB = SQLite.DB( mpSim.dbName )
-    validateDatabaseAge!( mpSim )
-    return true
-
+    dbpath = dirname(mpSim.dbName)
+    !ispath(dbpath) && mkpath(dbpath)
+    mpSim.simDB = SQLite.DB(mpSim.dbName)
+    validateDatabaseAge!(mpSim)
+    true
 end  # setSimulationDatabase!( mpSim, dbName )
 
 

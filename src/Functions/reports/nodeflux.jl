@@ -24,52 +24,54 @@ This function will issue a warning and not generate any report in the following 
 This function returns a `Dict{String,DataFrame}`, where the keys are the valid nodes, and the value is the flux report for that node, where fluxes are broken down per specific transitions. In case the function issues a warning, its return value will be an empty dictionary.
 """
 function nodeFluxReport( mpSim::MPsim, timeGrid::Vector{Float64},
-    fluxType::KeyType, nodes::String... )::Dict{String,DataFrame}
+    fluxType::KeyType, nodes::String...; simRun::Int=0 )::Dict{String,DataFrame}
 
     result = Dict{String,DataFrame}()
 
-    if now( mpSim ) == 0
-        @warn "Simulation hasn't started yet, can't make report."
-        return result
-    end  # if now( mpSim ) == 0
+    if simRun == 0
+        if now( mpSim ) == 0
+            @warn "Simulation hasn't started yet, can't make report."
+            return result
+        end  # if now( mpSim ) == 0
 
-    timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
-    timeGrid = unique( sort( timeGrid, rev = true ) )
+        timeGrid = timeGrid[0.0 .<= timeGrid .<= now( mpSim )]
+        timeGrid = unique( sort( timeGrid, rev = true ) )
 
-    if isempty( timeGrid )
-        @warn "No valid time points in time grid, cannot generate report."
-        return result
-    end  # if isempty( timeGrid )
+        if isempty( timeGrid )
+            @warn "No valid time points in time grid, cannot generate report."
+            return result
+        end  # if isempty( timeGrid )
 
-    if timeGrid[end] > 0.0
-        push!( timeGrid, 0.0 )
-    end  # if timeGrid[end] > 0.0
+        if timeGrid[end] > 0.0
+            push!( timeGrid, 0.0 )
+        end  # if timeGrid[end] > 0.0
 
-    reverse!( timeGrid )
-    fluxType = Symbol( fluxType )
+        reverse!( timeGrid )
+        fluxType = Symbol( fluxType )
 
-    if fluxType ∉ fluxTypes
-        @warn "Unknown flux type requested, cannot generate report."
-        return result
-    end  # if fluxType ∉ fluxTypes
+        if fluxType ∉ fluxTypes
+            @warn "Unknown flux type requested, cannot generate report."
+            return result
+        end  # if fluxType ∉ fluxTypes
 
-    nodes = filter( collect( nodes ) ) do nodeName
-        return ( lowercase( nodeName ) ∈ ["active", ""] ) ||
-            ( fluxType === :within ? false :
-                haskey( mpSim.baseNodeList, nodeName ) ) ||
-            haskey( mpSim.compoundNodeList, nodeName )
-    end  # filter( nodes ) do nodeName
+        nodes = filter( collect( nodes ) ) do nodeName
+            return ( lowercase( nodeName ) ∈ ["active", ""] ) ||
+                ( fluxType === :within ? false :
+                    haskey( mpSim.baseNodeList, nodeName ) ) ||
+                haskey( mpSim.compoundNodeList, nodeName )
+        end  # filter( nodes ) do nodeName
 
-    if isempty( nodes )
-        @warn "No valid nodes in node list, cannot generate report."
-        return result
-    end  # if isempty( nodes )
+        if isempty( nodes )
+            @warn "No valid nodes in node list, cannot generate report."
+            return result
+        end  # if isempty( nodes )
 
-    nodes = unique( nodes )
+        nodes = unique( nodes )
+    end  # if simRun == 0
 
     for nodeName in nodes
         result[nodeName] = generateNodeFluxReport( mpSim, timeGrid, fluxType,
-            nodeName )
+            nodeName, simRun )
     end  # for nodeName in nodes
 
     return result

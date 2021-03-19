@@ -2,8 +2,8 @@ function wipeConfigTable( mpSim::MPsim )
 
     DBInterface.execute( mpSim.simDB, "DROP TABLE IF EXISTS config" )
     sqliteCmd = string( "CREATE TABLE config(",
-        "\n    parName VARCHAR(32),",
-        "\n    parType VARCHAR(32),",
+        "\n    parName TEXT,",
+        "\n    parType TEXT,",
         "\n    parValue TEXT )" )
     DBInterface.execute( mpSim.simDB, sqliteCmd )
 

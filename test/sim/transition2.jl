@@ -75,7 +75,7 @@
         all( report[:, :B] .== vcat( 0, 0, fill( 20, 5 ), 70, 70,
         repeat( [70, 60, 50, 90, 80], 3 ), 70, 60 ) )
 end  # @testset "Basic transition test"
-
+#=
 @testset "OUT transition test" begin
     mpSim = ManpowerSimulation()
 
@@ -498,5 +498,5 @@ end  # @testset "# of attempts test"
     @test all( popReport[:, :B] .== subpopReport[:, :A] )
 
 end  # @testset "Extra changes test"
-
+=#
 end  # @testset "Transition process tests"
